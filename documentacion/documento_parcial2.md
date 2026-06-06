@@ -36,6 +36,9 @@ SANTA CRUZ — BOLIVIA
    - 1.4 [ALCANCE](#14-alcance)
 2. [MARCO TEÓRICO](#2-marco-teórico)
 3. [MODELO DE NEGOCIO](#3-modelo-de-negocio)
+   - 3.1 [Diagramas de Actividad - Situación Actual (AS-IS)](#diagramas-de-actividad---situación-actual-as-is)
+   - 3.2 [Síntesis del Modelo de Negocio (AS-IS)](#síntesis-del-modelo-de-negocio-as-is)
+   - 3.3 [Modelo de Negocio Propuesto (TO-BE)](#modelo-de-negocio-propuesto-to-be)
 4. [CAPÍTULO 1: FLUJO DE TRABAJO — CAPTURA DE REQUISITOS](#4-capítulo-1-flujo-de-trabajo--captura-de-requisitos)
    - 4.1 [Identificar Actores y Casos de Uso](#41-identificar-actores-y-casos-de-uso)
      - 4.1.1 [Actores del Sistema](#411-actores-del-sistema)
@@ -65,6 +68,8 @@ SANTA CRUZ — BOLIVIA
 9. [RECOMENDACIONES](#9-recomendaciones)
 10. [BIBLIOGRAFÍA](#10-bibliografía)
 11. [ANEXOS](#11-anexos)
+    - 11.1 [Repositorio Oficial en GitHub](#repositorio-oficial-en-github)
+    - 11.2 [Auditoría de Coherencia y Retroalimentación Metodológica](#112-auditoría-de-coherencia-y-retroalimentación-metodológica)
 
 ---
 
@@ -206,6 +211,7 @@ Permite gestionar el acceso seguro al sistema mediante un esquema de control de 
 - Recuperación de contraseña mediante envío de enlace al correo electrónico
 - Bloqueo temporal de cuenta tras 3 intentos fallidos consecutivos
 - Cambio de contraseña propia con validación de políticas de seguridad (mínimo 8 caracteres, mayúsculas, minúsculas y números)
+- Autogeneración de credenciales para nuevos postulantes: tras el pago exitoso (CU07), el sistema crea la cuenta con el correo ingresado como usuario y genera una contraseña usando la fórmula: CI + primera letra del primer nombre en MAYÚSCULA + primera letra del apellido en minúscula (ej. CI: 12345678, nombre: Alberto Perez -> contraseña: 12345678Ap), enviándolas automáticamente por correo electrónico
 - Gestión de perfiles de usuario por parte del Administrador
 - Registro de bitácora de accesos (login/logout) con fecha, hora e IP
 
@@ -232,9 +238,11 @@ Permite registrar, actualizar, buscar y listar a los postulantes que aspiran ing
 
 **Funcionalidades clave:**
 
-- Registro de postulante con formulario completo y validaciones en tiempo real
-- Verificación automática de requisitos mediante consulta a base de datos externa (ej. SEGIP/SEDUCA) para validar la identidad y el título de bachiller, sin intervención de un administrador (debe estar validado para habilitar el pago)
-- Integración con pasarela de pago Stripe para procesamiento seguro de la matrícula
+- Registro de postulante: flujo público que inicia al hacer clic en "Iniciar Registro" desde la pantalla de login, donde el postulante ingresa su información básica, sexo, datos del colegio y título de bachiller
+- Pantalla intermedia de verificación de datos: muestra un resumen con los datos ingresados para que el postulante confirme que son correctos, con un botón "Siguiente" para proceder y "Cancelar" para regresar al login
+- Verificación de requisitos con pantalla de carga: al presionar "Siguiente", se muestra una pantalla de carga con el mensaje "Verificando datos con el SEGIP o las entidades que hay que verificar" mientras el sistema consulta APIs externas (SEGIP/SEDUCA) para validar la identidad y el bachillerato
+- Integración con pasarela de pago Stripe para procesamiento seguro de la matrícula (habilitada únicamente tras verificación exitosa)
+- Mensaje post-pago y entrega de credenciales: una vez procesado el pago correctamente, se le muestra al usuario el mensaje "Su cuenta ha sido enviada a su correo" y se dispara el correo con los datos de acceso
 - Modificación de datos personales (mientras el estado sea Preinscrito o Inscrito)
 - Búsqueda avanzada por CI, nombre, carrera, estado o gestión
 - Detección automática de postulantes recurrentes por CI (mantiene código original, no genera duplicado)
@@ -1047,7 +1055,6 @@ Los cinco diagramas de actividad presentados evidencian las siguientes **fallas 
 | F10 | Comunicación informal (tablón de anuncios, ventanilla)     | DA04, DA05                   | Información inoportuna, limitada         |
 
 **Conclusión del diagnóstico AS-IS:** Las 10 fallas identificadas se derivan directa o indirectamente de una sola causa raíz: **la ausencia de un sistema de información integrado y centralizado** para la gestión del CUP. El sistema propuesto resolverá la totalidad de estas fallas mediante la digitalización, automatización y centralización de todos los procesos en una única plataforma web accesible desde cualquier dispositivo con conexión a internet.
-
 ---
 
 # 4. CAPÍTULO 1: FLUJO DE TRABAJO — CAPTURA DE REQUISITOS
@@ -1224,21 +1231,21 @@ CU01 <.. Bloquear : <<extend>>
 
 **B. Ficha de Especificación del Caso de Uso**
 
-| Campo               | Descripción                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **CASO DE USO**     | CU01 — Iniciar Sesión en la Plataforma.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| **PROPÓSITO**       | Restringir y asegurar el acceso al sistema, autenticando la identidad del usuario según su rol asignado.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| **DESCRIPCIÓN**     | Permite que un usuario registrado (Administrador, Coordinador, Docente o Postulante) ingrese sus credenciales para acceder al panel correspondiente a su perfil. El sistema valida las credenciales contra la base de datos, genera un token JWT de sesión y redirige al usuario al módulo apropiado según su rol.                                                                                                                                                                                                                                                                                                     |
-| **ACTORES**         | Tablas de BD (`usuarios`, `roles`, `bitacora_accesos`).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| **ACTOR INICIADOR** | Cualquier usuario registrado del sistema.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| **PRECONDICIÓN**    | El usuario debe existir en la tabla `usuarios` con estado "Activo".                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| **FLUJO PRINCIPAL** | 1. El actor ingresa a la URL base del sistema CUP-FICCT. 2. El sistema despliega el formulario de inicio de sesión. 3. El actor introduce su correo electrónico y contraseña. 4. El sistema encripta la contraseña con bcrypt y verifica la coincidencia del hash en la BD. 5. El sistema detecta coincidencia y extrae el rol del usuario. 6. El sistema registra en `bitacora_accesos` la fecha, hora e IP del ingreso (acción: `LOGIN`). 7. El sistema genera un token JWT con expiración configurable y lo almacena en el navegador. 8. El sistema redirige al actor al panel de control correspondiente a su rol. |
-| **POST CONDICIÓN**  | El usuario queda autenticado con su sesión activa. La bitácora conserva el registro inmutable del acceso.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| **EXCEPCIONES**     | *E1: Credenciales Inválidas.* El sistema incrementa el contador de intentos fallidos y notifica "Credenciales incorrectas". *E2: Usuario Inactivo/Bloqueado.* El sistema detiene el acceso con la alerta: "Su cuenta ha sido deshabilitada. Contacte al administrador". *E3: Bloqueo por 3 intentos fallidos.* Se bloquea el acceso temporalmente y se habilita el enlace "¿Olvidó su contraseña?" que redirige a CU03.                                                                                                                                                                                                |
+| Campo               | Descripción                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **CASO DE USO**     | CU01 — Iniciar Sesión en la Plataforma.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| **PROPÓSITO**       | Restringir y asegurar el acceso al sistema, autenticando la identidad del usuario según su rol asignado.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| **DESCRIPCIÓN**     | Permite que un usuario registrado (Administrador, Coordinador, Docente o Postulante) ingrese sus credenciales para acceder al panel correspondiente a su perfil. Para postulantes nuevos, la cuenta es autogenerada tras el pago exitoso (CU07) utilizando su email como usuario y su contraseña autogenerada (CI + primera letra del primer nombre en MAYÚSCULA + primera letra del apellido en minúscula) como contraseña inicial. El sistema valida las credenciales contra la base de datos, genera un token de sesión y redirige al usuario al módulo correspondiente.                                                                           |
+| **ACTORES**         | Tablas de BD (`usuarios`, `roles`, `bitacora_accesos`).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| **ACTOR INICIADOR** | Cualquier usuario registrado del sistema.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| **PRECONDICIÓN**    | El usuario debe existir en la tabla `usuarios` con estado "Activo".                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| **FLUJO PRINCIPAL** | 1. El actor ingresa a la URL base del sistema CUP-FICCT. 2. El sistema despliega el formulario de inicio de sesión, el cual incluye adicionalmente un botón destacado de "Iniciar Registro" para nuevos postulantes. 3. El actor introduce su correo electrónico y contraseña (o en caso de postulantes nuevos, su email y su contraseña autogenerada). 4. El sistema encripta la contraseña con bcrypt y verifica la coincidencia en la BD. 5. El sistema detecta coincidencia y extrae el rol. 6. El sistema registra el acceso en `bitacora_accesos` (LOGIN). 7. El sistema genera un token de sesión y lo almacena. 8. Redirige al panel del rol. |
+| **POST CONDICIÓN**  | El usuario queda autenticado con su sesión activa. La bitácora conserva el registro inmutable del acceso.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| **EXCEPCIONES**     | *E1: Credenciales Inválidas.* El sistema incrementa el contador de intentos fallidos y notifica "Credenciales incorrectas". *E2: Usuario Inactivo/Bloqueado.* El sistema detiene el acceso con la alerta: "Su cuenta ha sido deshabilitada. Contacte al administrador". *E3: Bloqueo por 3 intentos fallidos.* Se bloquea el acceso temporalmente y se habilita el enlace "¿Olvidó su contraseña?" que redirige a CU03.                                                                                                                                                                                                                               |
 
 **C. Prototipo UI (Directriz)**
 
-> Pantalla de login dividida 50/50. Lado izquierdo: imagen institucional de la FICCT con el escudo de la UAGRM. Lado derecho: formulario limpio con logo del sistema, título "Sistema de Admisión CUP — FICCT", campo de correo electrónico, campo de contraseña (protegido), botón principal "INGRESAR" en azul institucional y enlace discreto "¿Olvidó su contraseña?".
+> Pantalla de login en elegante modo oscuro con panel de vidrio templado (glassmorphism). Título destacado "Admisión CUP — FICCT", campos modernos para correo electrónico y contraseña, botón principal "Ingresar al sistema" y un separador visual de "¿Nuevo postulante?" que da paso a un botón destacado de "Iniciar Registro" para iniciar el flujo unificado sin autenticación previa.
 
 ---
 
@@ -1372,17 +1379,17 @@ CU05 ..> CU06 : <<include>>
 
 **B. Ficha de Especificación del Caso de Uso**
 
-| Campo               | Descripción                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **CASO DE USO**     | CU05 — Registrar Postulante Nuevo.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| **PROPÓSITO**       | Capturar los datos personales y académicos del aspirante al CUP, generando su expediente digital en el sistema.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-| **DESCRIPCIÓN**     | El postulante ingresa al sistema y completa un formulario de registro con sus datos personales, información académica, documentación requerida y selección de carreras (1ª y 2ª opción). Antes de procesar el registro, el sistema verifica automáticamente si el CI ya existe en la BD (postulante recurrente) para mantener el código original y no duplicar registros.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| **ACTORES**         | Tablas de BD (`postulantes`, `carreras`, `requisitos_documentales`).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| **ACTOR INICIADOR** | Postulante.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| **PRECONDICIÓN**    | El período de inscripción debe estar abierto (configurado por el Administrador).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| **FLUJO PRINCIPAL** | 1. El postulante accede al portal de inscripción del CUP. 2. El sistema despliega el formulario de registro con los campos: CI, nombres, apellidos, fecha de nacimiento, sexo, dirección, ciudad, teléfono, correo electrónico, colegio de procedencia, 1ª opción de carrera, 2ª opción de carrera. 3. El postulante completa los campos y adjunta los documentos digitalizados requeridos. 4. El sistema ejecuta `<<include>> CU08`: verifica si el CI ya existe. Si es recurrente, recupera el código original. 5. El sistema valida que el correo tenga formato válido, que la 1ª y 2ª opción de carrera sean diferentes, y que todos los campos obligatorios estén completos. 6. El sistema ejecuta `<<include>> CU06`: despliega el checklist de requisitos documentales. 7. El sistema genera un código único de postulante (si es nuevo) y registra el estado como "Preinscrito". 8. El sistema confirma: "Registro exitoso. Su código de postulante es: [código]. Complete la verificación de requisitos para proceder al pago". |
-| **POST CONDICIÓN**  | El postulante existe en la BD con estado "Preinscrito". No puede avanzar al pago hasta completar la verificación de requisitos (CU06).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| **EXCEPCIONES**     | *E1: Período de inscripción cerrado.* "El período de inscripción para la gestión [X] no está habilitado". *E2: Correo ya registrado.* "Este correo electrónico ya está asociado a otro postulante". *E3: Misma carrera en ambas opciones.* "La 1ª y 2ª opción de carrera deben ser diferentes".                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| Campo               | Descripción                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **CASO DE USO**     | CU05 — Registrar Postulante Nuevo.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| **PROPÓSITO**       | Capturar los datos personales y académicos del aspirante al CUP, generando su expediente digital en el sistema.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| **DESCRIPCIÓN**     | El postulante accede de forma pública (sin autenticación previa) desde la pantalla de login haciendo clic en el botón "Iniciar Registro". Completa sus datos personales, sexo, información de procedencia, título de bachiller, datos del colegio y selección de carreras (1ª y 2ª opción). Antes de procesar el registro, el sistema verifica automáticamente si el CI ya existe en la BD (postulante recurrente) para mantener el código original y no duplicar registros. Luego de registrarse, se le presenta una pantalla de verificación de datos con el resumen de la información ingresada y dos botones: "Siguiente" y "Cancelar". Si cancela, regresa al login.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| **ACTORES**         | Tablas de BD (`postulantes`, `carreras`, `requisitos_documentales`).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| **ACTOR INICIADOR** | Postulante (Público).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| **PRECONDICIÓN**    | El período de inscripción debe estar abierto (configurado por el Administrador). No requiere inicio de sesión.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| **FLUJO PRINCIPAL** | 1. El postulante accede al portal de admisiones y hace clic en "Iniciar Registro" desde la pantalla de login. 2. El sistema despliega el formulario de registro con los campos: CI, nombres, apellidos, fecha de nacimiento, sexo, dirección, ciudad, teléfono, correo electrónico, colegio de procedencia, título de bachiller, datos del colegio, 1ª opción de carrera, 2ª opción de carrera y turno. 3. El postulante completa los campos y hace clic en "Iniciar Registro". 4. El sistema ejecuta `<<include>> CU08`: verifica si el CI ya existe. Si es recurrente, recupera el código original. 5. El sistema valida que el correo tenga formato válido, que la 1ª y 2ª opción de carrera sean diferentes y que todos los campos obligatorios estén completos. 6. El sistema despliega una pantalla intermedia de verificación con el resumen de los datos y dos botones: "Siguiente" y "Cancelar". 7. Si el postulante presiona "Cancelar", el sistema cancela el proceso y lo redirige a la pantalla de login. 8. Si presiona "Siguiente", el sistema despliega la pantalla de carga con el mensaje "Verificando datos con el SEGIP o las entidades que hay que verificar" y ejecuta `<<include>> CU06` en segundo plano. 9. Si la verificación es exitosa, el sistema actualiza el estado a "Verificado" y redirige automáticamente al postulante a la pasarela de pagos Stripe (CU07). |
+| **POST CONDICIÓN**  | El postulante queda registrado y verificado en la BD con estado "Verificado". Es redirigido automáticamente a la pasarela de pagos (CU07).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| **EXCEPCIONES**     | *E1: Período de inscripción cerrado.* "El período de inscripción para la gestión [X] no está habilitado". *E2: Correo ya registrado.* "Este correo electrónico ya está asociado a otro postulante". *E3: Misma carrera en ambas opciones.* "La 1ª y 2ª opción de carrera deben ser diferentes".                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 
 ---
 
@@ -1398,35 +1405,30 @@ actor "API SEGIP" as SEGIP
 actor "API SEDUCA" as SEDUCA
 rectangle "Sistema CUP - FICCT" {
   usecase "CU06: Verificar Requisitos" as CU06
-  usecase "Consultar Identidad (SEGIP)" as Identidad
-  usecase "Consultar Datos Académicos (SEDUCA)" as Academico
 }
 Sistema --> CU06
 CU06 --> SEGIP
 CU06 --> SEDUCA
-CU06 ..> Identidad : <<include>>
-CU06 ..> Academico : <<include>>
 @enduml
 ```
 
-
 **B. Ficha de Especificación del Caso de Uso**
 
-| Campo               | Descripción                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **CASO DE USO**     | CU06 — Verificar Requisitos Automáticamente (BD Externa).                                                                                                                                                                                                                                                                                                                                                                                                      |
-| **PROPÓSITO**       | Garantizar la veracidad de la identidad y el título de bachiller del postulante conectándose a una base de datos externa, antes de habilitarlo para el pago.                                                                                                                                                                                                                                                                                                   |
-| **DESCRIPCIÓN**     | El sistema realiza una consulta automática a los servicios web del SEGIP y SEDUCA utilizando los datos ingresados por el postulante en su preinscripción. Si los datos retornados validan su identidad y la emisión de su título de bachiller, el sistema habilita automáticamente el botón de pago (CU07) sin requerir intervención manual.                                                                                                                   |
-| **ACTORES**         | API SEGIP, API SEDUCA, Tablas de BD (`postulantes`).                                                                                                                                                                                                                                                                                                                                                                                                           |
-| **ACTOR INICIADOR** | Sistema (invocado automáticamente tras registro).                                                                                                                                                                                                                                                                                                                                                                                                              |
-| **PRECONDICIÓN**    | El postulante debe estar registrado (CU05 ejecutado) con estado "Preinscrito".                                                                                                                                                                                                                                                                                                                                                                                 |
-| **FLUJO PRINCIPAL** | 1. El sistema toma el CI y fecha de nacimiento del postulante. 2. Ejecuta una petición HTTP a la API del SEGIP para validar identidad. 3. Ejecuta una petición a la API del SEDUCA para verificar la emisión del título de bachiller. 4. Si ambas APIs retornan confirmación positiva, el sistema marca los requisitos como "Validados Automáticamente". 5. El sistema habilita el botón "Proceder al Pago" y actualiza el estado del postulante a verificado. |
-| **POST CONDICIÓN**  | El postulante puede acceder al CU07 (pago). La validación queda registrada en el sistema sin intervención humana.                                                                                                                                                                                                                                                                                                                                              |
-| **EXCEPCIONES**     | *E1: Datos no coinciden en SEGIP/SEDUCA.* El sistema notifica: "No se pudo validar su información automáticamente. Por favor, acérquese a las oficinas para verificación manual". *E2: API externa caída.* El sistema reintenta la validación y notifica posteriormente.                                                                                                                                                                                       |
+| Campo               | Descripción                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **CASO DE USO**     | CU06 — Verificar Requisitos Automáticamente (BD Externa).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| **PROPÓSITO**       | Garantizar la veracidad de la identidad y el título de bachiller del postulante conectándose a bases de datos externas, antes de habilitarlo para el pago.                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| **DESCRIPCIÓN**     | Se ejecuta automáticamente en segundo plano tras hacer clic en "Siguiente" en la pantalla de verificación de datos (CU05), mostrando una pantalla de carga con el mensaje: "Verificando datos con el SEGIP o las entidades que hay que verificar". El sistema realiza consultas automáticas a los servicios web de SEGIP y SEDUCA. Si se valida la identidad y la emisión del título de bachiller, se redirige al postulante al proceso de pago (CU07).                                                                                                                                                         |
+| **ACTORES**         | API SEGIP, API SEDUCA, Tablas de BD (`postulantes`).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| **ACTOR INICIADOR** | Sistema (invocado automáticamente tras la confirmación de datos).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| **PRECONDICIÓN**    | El postulante debe haber confirmado sus datos en la pantalla de verificación de CU05.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| **FLUJO PRINCIPAL** | 1. El sistema despliega la pantalla de carga con el mensaje: "Verificando datos con el SEGIP o las entidades que hay que verificar". 2. El sistema toma el CI y fecha de nacimiento del postulante. 3. Ejecuta una petición HTTP a la API del SEGIP para validar la identidad. 4. Ejecuta una petición a la API del SEDUCA para verificar la emisión del título de bachiller. 5. Si ambas APIs retornan confirmación positiva, el sistema marca los requisitos como "Validados Automáticamente", actualiza el estado del postulante a "Verificado" y lo redirige automáticamente a la pasarela de pagos (CU07). |
+| **POST CONDICIÓN**  | El postulante queda marcado como "Verificado" y es redirigido automáticamente a la pasarela de pagos Stripe (CU07).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| **EXCEPCIONES**     | *E1: Datos no coinciden en SEGIP/SEDUCA.* El sistema notifica: "No se pudo validar su información automáticamente. Por favor, acérquese a las oficinas para verificación manual". *E2: API externa caída.* El sistema reintenta la validación y notifica posteriormente.                                                                                                                                                                                                                                                                                                                                        |
 
 ---
 
-#### CU07: Procesar Pago de Matrícula (Pasarela Stripe)
+#### CU07: Procesar Pago de Matrícula mediante Pasarela Stripe
 
 **A. Estructura del Modelo de CU (Diagrama Específico)**
 
@@ -1434,30 +1436,28 @@ CU06 ..> Academico : <<include>>
 @startuml
 left to right direction
 actor "Postulante" as Post
-actor "Stripe (Pasarela)" as Stripe
+actor "Stripe API" as Stripe
 rectangle "Sistema CUP - FICCT" {
   usecase "CU07: Procesar Pago" as CU07
-  usecase "CU06: Verificar Requisitos" as CU06
 }
 Post --> CU07
 CU07 --> Stripe
-CU07 ..> CU06 : <<include>>
 @enduml
 ```
 
 **B. Ficha de Especificación del Caso de Uso**
 
-| Campo               | Descripción                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **CASO DE USO**     | CU07 — Procesar Pago de Matrícula mediante Pasarela Stripe.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-| **PROPÓSITO**       | Formalizar la inscripción del postulante mediante el pago electrónico seguro de la matrícula del CUP.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| **DESCRIPCIÓN**     | Una vez que todos los requisitos documentales han sido verificados (CU06), el postulante procede al pago de la matrícula a través de la pasarela Stripe. El sistema gestiona la sesión de pago (Checkout Session), recibe la confirmación mediante webhook y actualiza automáticamente el estado del postulante de "Preinscrito" a "Inscrito".                                                                                                                                                                                                                                                                                                                                                                       |
-| **ACTORES**         | Tablas de BD (`pagos`, `postulantes`), Stripe API.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| **ACTOR INICIADOR** | Postulante.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-| **PRECONDICIÓN**    | Todos los requisitos documentales del postulante deben estar marcados como "Cumplido" (CU06 completado).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| **FLUJO PRINCIPAL** | 1. El postulante presiona el botón "Proceder al Pago". 2. El sistema verifica que todos los requisitos estén cumplidos (`<<include>> CU06`). 3. El sistema crea una Checkout Session en Stripe con el monto de la matrícula. 4. El sistema redirige al postulante a la página segura de Stripe. 5. El postulante ingresa los datos de su tarjeta y confirma el pago. 6. Stripe procesa la transacción y envía un webhook de confirmación al backend. 7. El sistema registra el pago en la tabla `pagos` (ID transacción Stripe, monto, fecha, estado). 8. El sistema actualiza el estado del postulante a "Inscrito". 9. El sistema envía una notificación en tiempo real y un correo de confirmación al postulante. |
-| **POST CONDICIÓN**  | El postulante queda con estado "Inscrito" y está habilitado para ser asignado a un grupo (CU11). El pago queda registrado con trazabilidad completa.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| **EXCEPCIONES**     | *E1: Pago rechazado por Stripe.* El sistema muestra: "El pago no pudo ser procesado. Verifique los datos de su tarjeta o intente con otro medio de pago". El estado del postulante no cambia. *E2: Webhook no recibido.* El sistema implementa un mecanismo de verificación de estado de pago con Stripe cada 5 minutos para reconciliar transacciones pendientes.                                                                                                                                                                                                                                                                                                                                                   |
+| Campo               | Descripción                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **CASO DE USO**     | CU07 — Procesar Pago de Matrícula mediante Pasarela Stripe.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| **PROPÓSITO**       | Formalizar la inscripción del postulante mediante el pago electrónico seguro de la matrícula del CUP, autogenerando su cuenta de usuario y notificándole sus accesos.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| **DESCRIPCIÓN**     | Una vez verificado (CU06), el postulante es redirigido automáticamente al portal de pago de Stripe. El sistema gestiona la sesión de pago (Checkout Session) en Stripe y recibe la confirmación mediante un Webhook. Al procesar el pago de la matrícula, el sistema actualiza su estado a "Inscrito", autogenera una cuenta en la tabla `users` con su correo electrónico como usuario y una contraseña estructurada bajo la fórmula: CI + primera letra del primer nombre en MAYÚSCULA + primera letra del apellido en minúscula. El sistema muestra la confirmación e indica que los accesos fueron enviados.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| **ACTORES**         | Tablas de BD (`pagos`, `postulantes`, `users`), Stripe API.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| **ACTOR INICIADOR** | Postulante (Público).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| **PRECONDICIÓN**    | Requisitos documentales del postulante verificados (CU06 completado).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| **FLUJO PRINCIPAL** | 1. El postulante es redirigido automáticamente tras la verificación de requisitos o accede ingresando su CI para buscar su registro. 2. El sistema crea una Checkout Session en Stripe con el monto de la matrícula y redirige al postulante. 3. El postulante ingresa los datos de su tarjeta y confirma el pago. 4. Stripe procesa la transacción y envía el webhook `checkout.session.completed` al backend. 5. El sistema registra el pago en la tabla `pagos` (ID transacción Stripe, monto, fecha, estado). 6. El sistema actualiza el estado del postulante a "Inscrito". 7. El sistema busca la cuenta del usuario en `users` por email; si no existe, la crea con: email = correo del postulante, contraseña = CI + primera letra del 1er nombre en MAYÚSCULA + primera letra del apellido en minúscula (ej. CI: 12345678, Alberto Perez -> contraseña: 12345678Ap), rol = "Postulante", activo = true. 8. El sistema muestra una pantalla de confirmación con el mensaje: "Su cuenta ha sido enviada a su correo". 9. El sistema envía un correo electrónico de confirmación al postulante conteniendo sus accesos detallados (usuario y contraseña generada). |
+| **POST CONDICIÓN**  | El postulante queda con estado "Inscrito" y su cuenta de usuario es creada. El sistema le envía sus datos de acceso por correo y le muestra el mensaje de confirmación correspondiente.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| **EXCEPCIONES**     | *E1: Pago rechazado por Stripe.* El sistema muestra: "El pago no pudo ser procesado. Verifique los datos de su tarjeta o intente con otro medio de pago". El estado del postulante no cambia. *E2: Webhook no recibido.* El sistema implementa un mecanismo de verificación de estado de pago con Stripe cada 5 minutos para reconciliar transacciones pendientes.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 
 ---
 
@@ -1718,6 +1718,23 @@ CU13 ..> CU15 : <<include>>
 
 #### CU14: Cargar Notas Masivamente por el Administrador (CSV/Excel)
 
+**A. Estructura del Modelo de CU (Diagrama Específico)**
+
+```plantuml
+@startuml
+left to right direction
+actor "Administrador" as Admin
+rectangle "Sistema CUP - FICCT" {
+  usecase "CU14: Cargar Notas Masivamente" as CU14
+  usecase "Validar Formato CSV" as ValidarCSV
+  usecase "CU15: Calcular Promedio" as CU15
+}
+Admin --> CU14
+CU14 ..> ValidarCSV : <<include>>
+CU14 ..> CU15 : <<include>>
+@enduml
+```
+
 **B. Ficha de Especificación del Caso de Uso**
 
 | Campo               | Descripción                                                                                                                                                                                                                                                                                                                                                                                                                                       |
@@ -1735,6 +1752,21 @@ CU13 ..> CU15 : <<include>>
 ---
 
 #### CU15: Calcular Promedio Ponderado por Materia
+
+**A. Estructura del Modelo de CU (Diagrama Específico)**
+
+```plantuml
+@startuml
+left to right direction
+actor "Sistema (Automático)" as Sistema
+rectangle "Sistema CUP - FICCT" {
+  usecase "CU15: Calcular Promedio" as CU15
+  usecase "CU16: Determinar Estado" as CU16
+}
+Sistema --> CU15
+CU15 ..> CU16 : <<extend>>
+@enduml
+```
 
 **B. Ficha de Especificación del Caso de Uso**
 
@@ -1817,6 +1849,21 @@ FIN PARA
 
 #### CU17: Ejecutar Asignación de Carreras por Cupo
 
+**A. Estructura del Modelo de CU (Diagrama Específico)**
+
+```plantuml
+@startuml
+left to right direction
+actor "Coordinador" as Coord
+rectangle "Sistema CUP - FICCT" {
+  usecase "CU17: Asignar Carreras" as CU17
+  usecase "CU18: Configurar Cupos" as CU18
+}
+Coord --> CU17
+CU17 ..> CU18 : <<include>>
+@enduml
+```
+
 **B. Ficha de Especificación del Caso de Uso**
 
 | Campo               | Descripción                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
@@ -1834,6 +1881,19 @@ FIN PARA
 ---
 
 #### CU18: Configurar Cupos por Carrera y Gestión
+
+**A. Estructura del Modelo de CU (Diagrama Específico)**
+
+```plantuml
+@startuml
+left to right direction
+actor "Administrador" as Admin
+rectangle "Sistema CUP - FICCT" {
+  usecase "CU18: Configurar Cupos" as CU18
+}
+Admin --> CU18
+@enduml
+```
 
 **B. Ficha de Especificación del Caso de Uso**
 
@@ -1853,6 +1913,19 @@ FIN PARA
 
 #### CU19: Generar Reporte Estructurado (Predefinido)
 
+**A. Estructura del Modelo de CU (Diagrama Específico)**
+
+```plantuml
+@startuml
+left to right direction
+actor "Coordinador / Admin" as User
+rectangle "Sistema CUP - FICCT" {
+  usecase "CU19: Reporte Estructurado" as CU19
+}
+User --> CU19
+@enduml
+```
+
 **B. Ficha de Especificación del Caso de Uso**
 
 | Campo               | Descripción                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
@@ -1870,6 +1943,19 @@ FIN PARA
 ---
 
 #### CU20: Generar Reporte Dinámico (Filtros Interactivos)
+
+**A. Estructura del Modelo de CU (Diagrama Específico)**
+
+```plantuml
+@startuml
+left to right direction
+actor "Coordinador / Admin" as User
+rectangle "Sistema CUP - FICCT" {
+  usecase "CU20: Reporte Dinámico" as CU20
+}
+User --> CU20
+@enduml
+```
 
 **B. Ficha de Especificación del Caso de Uso**
 
@@ -1926,6 +2012,21 @@ IA ..> NLP : <<include>>
 
 #### CU22: Consultar Dashboard Estadístico en Tiempo Real
 
+**A. Estructura del Modelo de CU (Diagrama Específico)**
+
+```plantuml
+@startuml
+left to right direction
+actor "Usuario Autenticado" as User
+rectangle "Sistema CUP - FICCT" {
+  usecase "CU22: Consultar Dashboard" as CU22
+  usecase "Actualizar vía WebSockets" as WS
+}
+User --> CU22
+CU22 ..> WS : <<include>>
+@enduml
+```
+
 **B. Ficha de Especificación del Caso de Uso**
 
 | Campo               | Descripción                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
@@ -1961,7 +2062,7 @@ IA ..> NLP : <<include>>
 
 **CU01 - Iniciar Sesión**
 *Prompt a ingresar textual en tu IA de mockups (Google/Uizard/Figma):*
-> "Diseñar un Layout de Iniciar Sesión para uso Web/Desktop de estilo corporativo moderno, para el uso del sistema de admisión de la facultad FICCT. Debe utilizar la estética 'Glassmorphism' (paneles levemente transparentes emulando vidrio sobre un fondo degradado en tonos azul oscuro y cian). Dividir la pantalla en 50/50: La mitad izquierda muestra una fotografía elegante, desaturada y nítida de estudiantes universitarios colaborando frente a pantallas con código y diagramas técnicos en un laboratorio moderno. La mitad derecha aloja el formulario de ingreso encajado en un panel translúcido blanco con bordes suavemente redondeados y sombra sutil. Los elementos obligatorios son: Logo institucional 'CUP-FICCT' en alta resolución, Gran encabezado 'Portal de Acceso Centralizado', Campo de texto redondeado con ícono interno para 'Correo Electrónico', Campo protegido por puntos con ícono de ojo para 'Contraseña', un gran Botón de acción (accent color azul de alta intensidad #0D6EFD) que ordene 'INGRESAR AL SISTEMA', y debajo del botón un enlace discreto '¿Olvidó su contraseña?' que dirija al flujo de recuperación (CU03). No incluir botón para registrarse de manera pública; las cuentas de usuarios internos son gestionadas exclusivamente por el Administrador (CU04)."
+> "Diseñar un Layout de Iniciar Sesión para uso Web/Desktop de estilo corporativo moderno, para el uso del sistema de admisión de la facultad FICCT. Debe utilizar la estética 'Glassmorphism' (paneles levemente transparentes emulando vidrio sobre un fondo degradado en tonos azul oscuro y cian). Dividir la pantalla en 50/50: La mitad izquierda muestra una fotografía elegante, desaturada y nítida de estudiantes universitarios colaborando frente a pantallas con código y diagramas técnicos en un laboratorio moderno. La mitad derecha aloja el formulario de ingreso encajado en un panel translúcido blanco con bordes suavemente redondeados y sombra sutil. Los elementos obligatorios son: Logo institucional 'CUP-FICCT' en alta resolución, Gran encabezado 'Portal de Acceso Centralizado', Campo de texto redondeado con ícono interno para 'Correo Electrónico', Campo protegido por puntos con ícono de ojo para 'Contraseña', un gran Botón de acción (accent color azul de alta intensidad #0D6EFD) que ordene 'INGRESAR AL SISTEMA', y un separador visual de '¿Nuevo postulante?' que da paso a un botón destacado de 'Iniciar Registro' para iniciar el flujo unificado sin autenticación previa, y debajo un enlace discreto '¿Olvidó su contraseña?' que dirija al flujo de recuperación (CU03). No incluir botón para registrarse de manera pública; las cuentas de usuarios internos son gestionadas exclusivamente por el Administrador (CU04)."
 
 **CU02 - Cerrar Sesión**
 *Prompt a ingresar textual en tu IA de mockups (Google/Uizard/Figma):*
@@ -1977,15 +2078,15 @@ IA ..> NLP : <<include>>
 
 **CU05 - Registrar Postulante**
 *Prompt a ingresar textual en tu IA de mockups (Google/Uizard/Figma):*
-> "Diseñar una Interfaz de Formulario de Registro en Pasos (Wizard) para uso Web/Desktop, destinada a la inscripción digital de postulantes en el CUP-FICCT. El estilo debe ser moderno y amigable, con tipografía limpia (Inter/Roboto). En la parte superior, incluir un componente de progreso lineal (Stepper) que muestre de forma secuencial y numerada: '1. Datos Personales' (estado activo), '2. Documentos e Identidad', y '3. Pago de Matrícula'. Debajo, centrar una tarjeta blanca amplia con bordes redondeados y sombra sutil. El formulario activo del Paso 1 debe contener los campos obligatorios: Nombres, Apellidos, Carnet de Identidad (CI), Fecha de Nacimiento, y dos selectores Dropdown estilizados para 'Primera Opción de Carrera' y 'Segunda Opción de Carrera' (Ingeniería de Sistemas, Informática, Redes). Cada campo debe tener etiquetas (labels) claras, placeholders descriptivos y un asterisco rojo indicando obligatoriedad. En la base derecha, un botón de acción destacado 'Siguiente Paso' con ícono de flecha derecha en color azul institucional."
+> "Diseñar una Interfaz de Formulario de Registro de Postulante para uso Web/Desktop, de estilo moderno y amigable, con tipografía limpia (Inter/Roboto). En el centro, una tarjeta blanca amplia con bordes redondeados y sombra sutil que contiene un formulario de registro público con campos obligatorios para: Carnet de Identidad (CI), Nombres, Apellidos, Fecha de Nacimiento, Sexo (Dropdown con opciones), Correo Electrónico, Teléfono, Colegio de Procedencia, Datos del Colegio (Título de Bachiller, etc.), Primera Opción de Carrera, Segunda Opción de Carrera y Turno de preferencia. En la base derecha, colocar un botón de acción destacado en azul institucional con el texto 'Iniciar Registro'. Al hacer clic, debe abrir una Vista de Verificación de Datos que muestra un resumen de toda la información ingresada para que el postulante confirme que es correcta, presentando dos botones claramente identificados: 'Siguiente' (para continuar con la validación) y 'Cancelar' (para anular el proceso y redirigir inmediatamente a la pantalla de login, CU01)."
 
 **CU06 - Verificar Requisitos Automáticamente**
 *Prompt a ingresar textual en tu IA de mockups (Google/Uizard/Figma):*
-> "Diseñar un Diálogo Modal Flotante de verificación automática de identidad en tiempo real, superpuesto con un fondo oscuro translúcido que desenfoque la pantalla de registro (backdrop-filter: blur). El modal central debe ser de fondo blanco con bordes redondeados y una sombra de gran elevación. Dividir el flujo visual en dos estados consecutivos: Estado A (En Proceso): muestra un loader circular (spinner) en azul cian girando dinámicamente y el texto centrado 'Validando datos biográficos con el Servicio General de Identificación Personal (SEGIP)...'. Estado B (Éxito): reemplaza el loader por una ilustración vectorial o un ícono grande de Check circular de color verde esmeralda brillante con una animación suave, seguido del encabezado en negrita 'Identidad Confirmada' y un detalle en gris indicando 'Los datos del Carnet de Identidad coinciden con los registros oficiales de SEGIP'. Incluir en la parte inferior un botón verde de confirmación 'Continuar con el Registro'."
+> "Diseñar una Vista de Pantalla Completa de Carga (Loading Screen) de estilo minimalista y moderno, que se muestra inmediatamente después de que el postulante hace clic en 'Siguiente' en la pantalla de verificación de datos. El fondo debe ser un degradado sutil de azul oscuro a cian. En el centro, colocar un spinner de carga circular animado que gire suavemente y, debajo de este, un texto destacado en tipografía clara de tamaño mediano que indique: 'Verificando datos con el SEGIP o las entidades que hay que verificar'. Evitar otros elementos distractores, botones o enlaces, manteniendo al postulante en espera interactiva y limpia hasta que se complete la verificación externa y sea redirigido automáticamente a la pasarela de pagos."
 
 **CU07 - Procesar Pago de Matrícula (Stripe)**
 *Prompt a ingresar textual en tu IA de mockups (Google/Uizard/Figma):*
-> "Diseñar una Interfaz de Pago de Matrícula integrada para uso Web/Desktop, que emula la experiencia premium y segura de Stripe Checkout. El fondo de la pantalla debe ser un panel dividido en 60/40: la columna izquierda muestra el resumen de la matrícula (Logo 'CUP-FICCT', texto descriptivo 'Derecho a Examen de Admisión - Gestión 1-2026', y el monto total destacado en gran tamaño y negrita 'Bs. 350.00'). La columna derecha aloja el formulario de pago seguro encajado en una tarjeta blanca limpia. Los campos obligatorios son: 'Nombre en la Tarjeta', un campo especial para 'Número de Tarjeta' que muestra mini-íconos de Visa/Mastercard/Amex a la derecha según el dígito ingresado, campos agrupados horizontalmente para 'Fecha de Expiración (MM/AA)' y 'CVC (3 dígitos)', y un campo para el 'Código Postal'. En la base, un gran botón de acción azul con el texto 'PAGAR Bs. 350.00' acompañado de un ícono de candado de seguridad, y abajo un texto discreto: 'Pagos procesados de forma segura mediante Stripe'."
+> "Diseñar una Interfaz de Pago de Matrícula integrada para uso Web/Desktop de estilo Stripe Checkout, dividida en dos columnas: la izquierda muestra el resumen de la matrícula (Logo 'CUP-FICCT', texto descriptivo 'Derecho a Examen de Admisión - Gestión 1-2026', y el monto total 'Bs. 350.00' en tamaño destacado) y la derecha aloja el formulario de pago seguro (Nombre en la Tarjeta, Número de Tarjeta, Expiración MM/AA, CVC y Código Postal) con un botón principal 'PAGAR Bs. 350.00'. Al completarse el pago de forma exitosa, la interfaz debe reemplazar el formulario por una vista de confirmación que presente una ilustración animada de check verde brillante, un gran título '¡Inscripción Exitosa!', y el mensaje destacado: 'Su cuenta ha sido enviada a su correo', indicando al postulante que revise su bandeja de entrada para obtener sus credenciales de acceso (usuario y contraseña generada)."
 
 **CU08 - Detectar Postulante Recurrente**
 *Prompt a ingresar textual en tu IA de mockups (Google/Uizard/Figma):*
@@ -2436,9 +2537,9 @@ entity "CE_BitacoraAcceso" as E_Bit
 
 Act --> B_Int : 1: + Ingresar email y password
 B_Int --> C_Ctrl : 2: + login(email, password)
-C_Ctrl --> E_Usu : 3: + select_where(email)
+C_Ctrl --> E_Usu : 3: + where('email', email)
 E_Usu --> C_Ctrl : 4: + Datos y Hash
-C_Ctrl --> E_Bit : 5: + RegistrarLoginExitoso()
+C_Ctrl --> E_Bit : 5: + create(data)
 C_Ctrl --> B_Int : 6: + Redirigir a Home
 B_Int --> Act : 7: + MostrarHome()
 @enduml
@@ -2461,8 +2562,8 @@ control "CTR_Auth" as C_Ctrl
 entity "CE_BitacoraAcceso" as E_Bit
 
 Act --> B_Int : 1: + SolicitarCerrarSesion()
-B_Int --> C_Ctrl : 2: + InvalidarSesion(token)
-C_Ctrl --> E_Bit : 3: + RegistrarLogout()
+B_Int --> C_Ctrl : 2: + logout()
+C_Ctrl --> E_Bit : 3: + create(data)
 C_Ctrl --> B_Int : 4: + ConfirmarCierre()
 B_Int --> Act : 5: + MostrarPantallaLogin()
 @enduml
@@ -2485,10 +2586,10 @@ control "CTR_Auth" as C_Ctrl
 entity "CE_Usuario" as E_Usu
 
 Act --> B_Int : 1: + IngresarCorreo(correo)
-B_Int --> C_Ctrl : 2: + GenerarTokenRecuperacion(correo)
-C_Ctrl --> E_Usu : 3: + ValidarExistenciaCorreo(correo)
+B_Int --> C_Ctrl : 2: + forgotPassword(email)
+C_Ctrl --> E_Usu : 3: + where('email', email)
 E_Usu --> C_Ctrl : 4: + DatosExistencia
-C_Ctrl --> C_Ctrl : 5: + EnviarEmailRecuperacion()
+C_Ctrl --> C_Ctrl : 5: + sendResetLink()
 C_Ctrl --> B_Int : 6: + ConfirmarEnvio()
 B_Int --> Act : 7: + MostrarMensajeExito()
 @enduml
@@ -2512,11 +2613,11 @@ entity "CE_Usuario" as E_Usu
 entity "CE_BitacoraAcceso" as E_Bit
 
 Act --> B_Int : 1: + RegistrarNuevoUsuario(datos)
-B_Int --> C_Ctrl : 2: + CrearUsuario(datos)
-C_Ctrl --> E_Usu : 3: + ValidarNoDuplicado(correo)
+B_Int --> C_Ctrl : 2: + store(request)
+C_Ctrl --> E_Usu : 3: + where('email', email)
 E_Usu --> C_Ctrl : 4: + ResultadoValidacion
-C_Ctrl --> E_Usu : 5: + GuardarNuevoUsuario()
-C_Ctrl --> E_Bit : 6: + RegistrarAccionAdmin()
+C_Ctrl --> E_Usu : 5: + create(datos)
+C_Ctrl --> E_Bit : 6: + create(log)
 C_Ctrl --> B_Int : 7: + RetornarExito()
 B_Int --> Act : 8: + ActualizarListaUsuarios()
 @enduml
@@ -2525,7 +2626,7 @@ B_Int --> Act : 8: + ActualizarListaUsuarios()
 #### Realización de Análisis para CU05: Registrar Postulante
 
 **Descripción detallada de la colaboración y dinámica:**
-El flujo inicia cuando el actor *Postulante* interactúa con la `InterfazPreinscripcion`. La frontera solicita la acción al controlador correspondiente, el cual orquesta la lógica de negocio, consulta o actualiza las entidades involucradas y devuelve el resultado a la interfaz para informar al usuario.
+El flujo inicia cuando el actor *Postulante* completa el formulario y presiona "Iniciar Registro". La frontera `IU_Preinscripcion` le muestra una pantalla de verificación de datos. Si el postulante confirma presionando "Siguiente", la interfaz muestra la pantalla de carga "Verificando datos..." y delega la ejecución al `CTR_Preinscripcion`. El controlador verifica si es un postulante recurrente (CU08), valida los datos y delega la validación de identidad y bachillerato al `CTR_Preinscripcion` (CU06). Si la validación es exitosa, se guarda la información en la entidad `CE_Postulante` y se redirige automáticamente al postulante a la pasarela de pagos (CU07).
 
 ```plantuml
 @startuml Com_CU05
@@ -2537,20 +2638,30 @@ actor "Postulante" as Act
 boundary "IU_Preinscripcion" as B_Int
 control "CTR_Preinscripcion" as C_Ctrl
 entity "CE_Postulante" as E_Post
+entity "CE_RequisitoDocumental" as E_Req
 
-Act --> B_Int : 1: + CompletarFormularioRegistro(datos)
-B_Int --> C_Ctrl : 2: + ProcesarRegistro(datos)
-C_Ctrl --> E_Post : 3: + CrearPerfilPostulante()
-C_Ctrl --> E_Post : 4: + GuardarPreferenciasCarrera()
-C_Ctrl --> B_Int : 5: + RetornarPostulanteCreado()
-B_Int --> Act : 6: + MostrarPasosSiguientes()
+Act --> B_Int : 1: + CompletarFormulario(datos)
+Act --> B_Int : 2: + ClicIniciarRegistro()
+B_Int --> Act : 3: + MostrarVerificacionDatos(resumen)
+
+note over B_Int: Si el postulante cancela
+Act --> B_Int : 4a: + ClicCancelar()
+B_Int --> Act : 5a: + RedirigirLogin()
+
+note over B_Int: Si el postulante confirma
+Act --> B_Int : 4b: + ClicSiguiente()
+B_Int --> Act : 5b: + MostrarPantallaCarga("Verificando datos...")
+B_Int --> C_Ctrl : 6b: + store(request)
+C_Ctrl --> E_Post : 7b: + create(datos)
+C_Ctrl --> E_Req : 8b: + create(['postulante_id' => id])
+C_Ctrl --> B_Int : 9b: + RetornarExitoYRedirigirPago()
 @enduml
 ```
 
 #### Realización de Análisis para CU06: Verificar Requisitos Automáticamente
 
 **Descripción detallada de la colaboración y dinámica:**
-El flujo inicia cuando el *Sistema* dispara automáticamente la verificación a través de la `InterfazPreinscripcion`. La frontera delega al `ControladorPreinscripcion`, el cual consulta las APIs externas de SEGIP y SEDUCA para validar la identidad y el bachillerato del postulante, y actualiza el estado del expediente en la entidad `Postulante`.
+Este caso de uso se ejecuta en segundo plano cuando el postulante presiona "Siguiente" en la pantalla de verificación de datos. El controlador `CTR_Preinscripcion` realiza peticiones HTTP a los límites externos `API SEGIP` y `API SEDUCA` para contrastar los datos. Si las respuestas son positivas, actualiza el estado de la entidad `CE_Postulante` a "Verificado" y devuelve el control para iniciar la pasarela de pagos.
 
 ```plantuml
 @startuml Com_CU06
@@ -2558,22 +2669,21 @@ left to right direction
 skinparam actorStyle awesome
 skinparam backgroundColor transparent
 
-actor "Sistema" as Act
 boundary "IU_Preinscripcion" as B_Int
 control "CTR_Preinscripcion" as C_Ctrl
 entity "CE_Postulante" as E_Post
+entity "CE_RequisitoDocumental" as E_Req
 boundary "API SEGIP" as B_SEGIP <<boundary>>
 boundary "API SEDUCA" as B_SEDUCA <<boundary>>
 
-Act --> B_Int : 1: + IniciarVerificacionAutomatica()
-B_Int --> C_Ctrl : 2: + VerificarIdentidad(ci, fecha_nac)
-C_Ctrl --> B_SEGIP : 3: + ConsultarIdentidad(ci)
-B_SEGIP --> C_Ctrl : 4: + ConfirmacionIdentidad
-C_Ctrl --> B_SEDUCA : 5: + ConsultarBachiller(ci)
-B_SEDUCA --> C_Ctrl : 6: + ConfirmacionBachiller
-C_Ctrl --> E_Post : 7: + ActualizarEstado(Verificado)
+B_Int --> C_Ctrl : 1: + verificarRequisitos(postulante)
+C_Ctrl --> B_SEGIP : 2: + ConsultarIdentidad(ci)
+B_SEGIP --> C_Ctrl : 3: + ConfirmacionIdentidad
+C_Ctrl --> B_SEDUCA : 4: + ConsultarBachiller(ci)
+B_SEDUCA --> C_Ctrl : 5: + ConfirmacionBachiller
+C_Ctrl --> E_Post : 6: + update(['estado' => 'Verificado'])
+C_Ctrl --> E_Req : 7: + update(requisitos)
 C_Ctrl --> B_Int : 8: + ConfirmarVerificacion()
-B_Int --> Act : 9: + NotificarVerificacionCompleta()
 @enduml
 ```
 
@@ -2594,8 +2704,8 @@ control "CTR_Preinscripcion" as C_Ctrl
 entity "CE_Postulante" as E_Post
 
 Act --> B_Int : 1: + IngresarCI(ci)
-B_Int --> C_Ctrl : 2: + VerificarPostulanteExistente(ci)
-C_Ctrl --> E_Post : 3: + BuscarRegistroAnterior(ci)
+B_Int --> C_Ctrl : 2: + buscarPorCi(request)
+C_Ctrl --> E_Post : 3: + where('ci', ci)
 E_Post --> C_Ctrl : 4: + RegistroAnterior
 C_Ctrl --> B_Int : 5: + RetornarEstadoDuplicado(true)
 B_Int --> Act : 6: + MostrarAlertaRecurrente()
@@ -2619,8 +2729,8 @@ control "CTR_Busqueda" as C_Ctrl
 entity "CE_Postulante" as E_Post
 
 Act --> B_Int : 1: + IngresarFiltros(criterio)
-B_Int --> C_Ctrl : 2: + BuscarPostulantes(criterio)
-C_Ctrl --> E_Post : 3: + EjecutarConsulta(criterio)
+B_Int --> C_Ctrl : 2: + index(request)
+C_Ctrl --> E_Post : 3: + paginate()
 E_Post --> C_Ctrl : 4: + ListaResultados
 C_Ctrl --> B_Int : 5: + RetornarResultados(lista)
 B_Int --> Act : 6: + RenderizarGrillaResultados()
@@ -2646,12 +2756,12 @@ entity "CE_Grupo" as E_Grupo
 entity "CE_AsignacionGrupo" as E_Asig
 
 Act --> B_Int : 1: + SolicitarAjusteGrupo(postulanteId, nuevoGrupoId)
-B_Int --> C_Ctrl : 2: + ReasignarPostulante(postulanteId, nuevoGrupoId)
-C_Ctrl --> E_Post : 3: + ObtenerPostulante(postulanteId)
+B_Int --> C_Ctrl : 2: + reasignar(request)
+C_Ctrl --> E_Post : 3: + findOrFail(postulante_id)
 E_Post --> C_Ctrl : 4: + DatosPostulante
-C_Ctrl --> E_Grupo : 5: + VerificarCapacidad(nuevoGrupoId)
+C_Ctrl --> E_Grupo : 5: + findOrFail(grupo_id)
 E_Grupo --> C_Ctrl : 6: + CapacidadDisponible
-C_Ctrl --> E_Asig : 7: + ActualizarVinculoGrupo()
+C_Ctrl --> E_Asig : 7: + update(grupo_id)
 C_Ctrl --> B_Int : 8: + RetornarExito()
 B_Int --> Act : 9: + ActualizarListaGrupo()
 @enduml
@@ -2660,7 +2770,7 @@ B_Int --> Act : 9: + ActualizarListaGrupo()
 #### Realización de Análisis para CU12: Asignar Docente a Grupo
 
 **Descripción detallada de la colaboración y dinámica:**
-El flujo inicia cuando el actor *Administrador* interactúa con la `InterfazDocentes`. La frontera delega al `ControladorPlanificacion`, el cual verifica la carga horaria del docente, valida su especialidad contra la materia solicitada y registra la asignación en la entidad `Grupo`.
+El flujo inicia cuando el actor *Administrador* interactúa con la `InterfazDocentes`. La frontera delega al `ControladorPlanificacion`, el cual verifica la carga horaria del docente, valida la existencia del grupo en la entidad `CE_Grupo`, valida su especialidad contra la materia solicitada y registra la asignación en la entidad `AsignacionDocente`.
 
 ```plantuml
 @startuml Com_CU12
@@ -2674,16 +2784,19 @@ control "CTR_Planificacion" as C_Ctrl
 entity "CE_Docente" as E_Doc
 entity "CE_Grupo" as E_Grupo
 entity "CE_Materia" as E_Mat
+entity "CE_AsignacionDocente" as E_AsigDoc
 
 Act --> B_Int : 1: + AsignarDocente(docenteId, grupoId, materiaId)
-B_Int --> C_Ctrl : 2: + VincularDocenteMateria(docenteId, grupoId, materiaId)
-C_Ctrl --> E_Doc : 3: + VerificarCargaHoraria(docenteId)
+B_Int --> C_Ctrl : 2: + asignar(request)
+C_Ctrl --> E_Doc : 3: + findOrFail(docente_id)
 E_Doc --> C_Ctrl : 4: + CargaHorariaValida
-C_Ctrl --> E_Mat : 5: + ValidarEspecialidad(docenteId, materiaId)
-E_Mat --> C_Ctrl : 6: + EspecialidadValida
-C_Ctrl --> E_Grupo : 7: + RegistrarAsignacionMateria()
-C_Ctrl --> B_Int : 8: + RetornarExito()
-B_Int --> Act : 9: + ActualizarMatrizDocente()
+C_Ctrl --> E_Grupo : 5: + findOrFail(grupo_id)
+E_Grupo --> C_Ctrl : 6: + DatosGrupo
+C_Ctrl --> E_Mat : 7: + findOrFail(materia_id)
+E_Mat --> C_Ctrl : 8: + EspecialidadValida
+C_Ctrl --> E_AsigDoc : 9: + create(datos)
+C_Ctrl --> B_Int : 10: + RetornarExito()
+B_Int --> Act : 11: + ActualizarMatrizDocente()
 @enduml
 ```
 
@@ -2704,23 +2817,22 @@ control "CTR_Simulacro" as C_Ctrl
 entity "CE_PreguntaSimulacro" as E_Preg
 
 Act --> B_Int : 1: + IniciarSimulacro()
-B_Int --> C_Ctrl : 2: + GenerarPreguntasSimulacro()
+B_Int --> C_Ctrl : 2: + generar()
 C_Ctrl --> E_Preg : 3: + ObtenerBancoPreguntas()
 E_Preg --> C_Ctrl : 4: + ListaPreguntas
 C_Ctrl --> B_Int : 5: + RetornarPreguntas()
 B_Int --> Act : 6: + MostrarTemporizadorYPreguntas()
 Act --> B_Int : 7: + EnviarRespuestas(respuestas)
-B_Int --> C_Ctrl : 8: + CalificarSimulacro(respuestas)
+B_Int --> C_Ctrl : 8: + calificar(request)
 C_Ctrl --> B_Int : 9: + RetornarNotaSimulacro()
 B_Int --> Act : 10: + MostrarResultadosSimulacro()
 @enduml
 ```
 
-
 #### Realización de Análisis para CU07: Procesar Pago de Matrícula (Stripe)
 
 **Descripción detallada de la colaboración y dinámica:**
-El flujo comienza cuando el actor *Postulante* solicita el pago de su matrícula desde la interfaz de usuario (`InterfazInscripcion`). La frontera delega la solicitud al `ControladorInscripcion`, el cual se comunica con la `PasarelaStripe` para inicializar una sesión de pago segura con el monto correspondiente. El controlador recibe la URL de redirección y ordena a la interfaz redirigir al postulante a la pasarela externa. Una vez que el postulante ingresa su tarjeta y confirma el pago, la pasarela procesa el cargo y notifica de forma asíncrona mediante un Webhook al `ControladorInscripcion`. El controlador valida la autenticidad del webhook, crea el registro físico en la entidad `Pago` y actualiza el estado del postulante a "Inscrito" en la entidad `Postulante`.
+El flujo comienza cuando el actor *Postulante* solicita el pago de su matrícula desde la interfaz de usuario (`IU_Inscripcion`). La frontera delega la solicitud al `CTR_Inscripcion`, el cual se comunica con la `PasarelaStripe` para inicializar una sesión de pago segura con el monto correspondiente. El controlador recibe la URL de redirección y ordena a la interfaz redirigir al postulante a la pasarela externa. Una vez que el postulante ingresa su tarjeta y confirma el pago, la pasarela procesa el cargo y notifica de forma asíncrona mediante un Webhook al `CTR_Inscripcion`. El controlador valida la autenticidad del webhook, crea el registro físico en la entidad `CE_Pago`, actualiza el estado del postulante a "Inscrito" en la entidad `CE_Postulante` y crea la cuenta del postulante en la entidad `CE_Usuario` (referenciada como `E_Usu`) usando la fórmula de contraseña (CI + primera letra del primer nombre en MAYÚSCULA + primera letra del apellido en minúscula). Finalmente, el controlador realiza el envío asíncrono del correo electrónico con las credenciales de acceso. De forma paralela, tras confirmarse el pago exitoso en la pasarela, el postulante es redirigido de regreso a la interfaz local, la cual confirma la operación mostrando el mensaje "Su cuenta ha sido enviada a su correo".
 
 ```plantuml
 @startuml Com_CU07
@@ -2734,24 +2846,29 @@ control "CTR_Inscripcion" as C_Insc
 boundary "PasarelaStripe" as B_Stripe <<boundary>>
 entity "CE_Pago" as E_Pago
 entity "CE_Postulante" as E_Post
+entity "CE_Usuario" as E_Usu
 
 Act --> B_Insc : 1: + Solicitar pago de matrícula()
-B_Insc --> C_Insc : 2: + IniciarProcesoPago(postulanteId)
-C_Insc --> B_Stripe : 3: + CrearSesionPago(monto)
+B_Insc --> C_Insc : 2: + crearSesion(postulante)
+C_Insc --> B_Stripe : 3: + crearSesionStripe()
 B_Stripe --> C_Insc : 4: + UrlRedireccionSesion
 C_Insc --> B_Insc : 5: + RedirigirAPasarela()
 B_Insc --> Act : 6: + MostrarFormularioPagoStripe()
 Act --> B_Stripe : 7: + ConfirmarDatosTarjeta()
-B_Stripe --> C_Insc : 8: + NotificarPagoExitoso(StripeWebhook)
-C_Insc --> E_Pago : 9: + CrearRegistroPago(monto, transaccionId)
-C_Insc --> E_Post : 10: + ActualizarEstado("Inscrito")
+B_Stripe --> C_Insc : 8: + webhook(request)
+C_Insc --> E_Pago : 9: + create(datosPago)
+C_Insc --> E_Post : 10: + update(['estado' => 'Inscrito'])
+C_Insc --> E_Usu : 11: + create(datosUsuario)
+C_Insc --> C_Insc : 12: + enviarCorreo()
+B_Stripe --> B_Insc : 13: + retornarExito()
+B_Insc --> Act : 14: + mostrarMensajeConfirmacion()
 @enduml
 ```
 
 #### Realización de Análisis para CU10: Calcular y Crear Grupos Automáticamente
 
 **Descripción detallada de la colaboración y dinámica:**
-Este caso de uso es invocado por el *Administrador* para balancear la carga de alumnos de forma automática. Al presionar el comando en la interfaz (`InterfazGrupos`), el `ControladorGrupos` inicia el cálculo y distribución masiva. Primero consulta a la entidad `Postulante` para extraer a todos los aspirantes en estado "Inscrito" que carecen de aula/grupo. El controlador calcula el número de aulas necesarias dividiendo la cantidad total entre el límite estricto de 70 personas por aula. Luego, genera dinámicamente las entidades `Grupo` en la base de datos. Una vez creados los grupos, el controlador ejecuta en memoria el balanceo equitativo y registra la asignación en la entidad asociativa `AsignacionGrupo`, cambiando el estado del postulante a "En Evaluación" en la entidad `Postulante`. Finalmente, la interfaz se refresca y confirma la distribución exitosa.
+Este caso de uso es invocado por el *Administrador* para balancear la carga de alumnos de forma automática. Al presionar el comando en la interfaz (`InterfazGrupos`), el `ControladorGrupos` inicia el cálculo y distribución masiva. Primero consulta a la entidad `Postulante` para extraer a todos los aspirantes en estado "Inscrito" que carecen de aula/grupo. El controlador calcula el número de aulas necesarias dividiendo la cantidad total entre el límite estricto de 70 personas por aula. Luego, genera dinámicamente las entidades `Grupo` en la base de datos. Una vez creados los grupos, el controlador ejecuta en memoria el balanceo equitativo y registra la asignación en la entidad asociativa `AsignacionGrupo`, cambiando el estado del postulante a "En Evaluacion" (sin tilde, conforme a la restricción check de la base de datos) en la entidad `Postulante`. Finalmente, la interfaz se refresca y confirma la distribución exitosa.
 
 ```plantuml
 @startuml Com_CU10
@@ -2768,22 +2885,20 @@ entity "CE_Aula" as E_Aula
 entity "CE_AsignacionGrupo" as E_Asig
 
 Act --> B_Grup : 1: + EjecutarCalculoAsignacion()
-B_Grup --> C_Plan : 2: + IniciarAsignacionMasiva()
-C_Plan --> E_Post : 3: + ObtenerPostulantesInscritosSinGrupo()
+B_Grup --> C_Plan : 2: + asignacionMasiva()
+C_Plan --> E_Post : 3: + where('estado', 'Inscrito')
 E_Post --> C_Plan : 4: + ListaPostulantes
 C_Plan --> C_Plan : 5: + CalcularGruposNecesarios(CEIL(Total/70))
 C_Plan --> E_Aula : 6: + VerificarDisponibilidadAulas()
 E_Aula --> C_Plan : 7: + AulasDisponibles
-C_Plan --> E_Grupo : 8: + CrearNuevosGrupos(cantidad, horarios)
+C_Plan --> E_Grupo : 8: + create(datos)
 C_Plan --> C_Plan : 9: + CalcularDistribucionEquitativa()
-C_Plan --> E_Asig : 10: + VincularPostulanteAGrupo(postulanteId, grupoId)
-C_Plan --> E_Post : 11: + ActualizarEstado("En Evaluación")
+C_Plan --> E_Asig : 10: + create(datos)
+C_Plan --> E_Post : 11: + update(['estado' => 'En Evaluacion'])
 C_Plan --> B_Grup : 12: + ConfirmarAsignacionExitosa()
 B_Grup --> Act : 13: + MostrarGruposConPostulantes()
 @enduml
 ```
-
----
 
 ### 5.2.2 Realizaciones de Análisis — CICLO 2 (Gestión Académica, Admisión e Inteligencia Analítica)
 
@@ -2792,7 +2907,7 @@ El segundo ciclo implementa el núcleo evaluativo del preuniversitario, el algor
 #### Realización de Análisis para CU13: Registrar Notas de Examen (Individual)
 
 **Descripción detallada de la colaboración y dinámica:**
-El flujo inicia cuando el actor *Administrador* interactúa con la `InterfazNotas`. La frontera solicita la acción al controlador correspondiente, el cual orquesta la lógica de negocio, consulta o actualiza las entidades involucradas y devuelve el resultado a la interfaz para informar al usuario.
+El flujo inicia cuando el actor *Administrador* interactúa con la `InterfazNotas`. La frontera solicita la acción al controlador correspondiente, el cual orquesta la lógica de negocio, consulta o actualiza las entidades involucradas y devuelve el resultado a la interfaz para informar al usuario. Cada cambio de notas se registra en la entidad `CE_AuditoriaNotas` para su auditoría.
 
 ```plantuml
 @startuml Com_CU13
@@ -2805,14 +2920,14 @@ boundary "IU_Notas" as B_Int
 control "CTR_Evaluacion" as C_Ctrl
 entity "CE_Examen" as E_Exam
 entity "CE_NotaFinal" as E_Nota
-entity "CE_BitacoraAcceso" as E_Bit
+entity "CE_AuditoriaNotas" as E_Aud
 
-Act --> B_Int : 1: + ModificarNota(postulanteId, materia, nuevaNota)
-B_Int --> C_Ctrl : 2: + ActualizarNotaIndividual(postulanteId, materia, nuevaNota)
-C_Ctrl --> E_Exam : 3: + GuardarNota(materia, nuevaNota)
+Act --> B_Int : 1: + ModificarNota(postulanteId, materiaId, numeroExamen, nuevaNota)
+B_Int --> C_Ctrl : 2: + update(request)
+C_Ctrl --> E_Exam : 3: + update(nuevaNota)
 C_Ctrl --> C_Ctrl : 4: + RecalcularPromedio()
-C_Ctrl --> E_Nota : 5: + ActualizarPromedio()
-C_Ctrl --> E_Bit : 6: + RegistrarAjusteManual()
+C_Ctrl --> E_Nota : 5: + update(promedio)
+C_Ctrl --> E_Aud : 6: + create(log)
 C_Ctrl --> B_Int : 7: + RetornarExito()
 B_Int --> Act : 8: + ActualizarPlanillaNotas()
 @enduml
@@ -2821,7 +2936,7 @@ B_Int --> Act : 8: + ActualizarPlanillaNotas()
 #### Realización de Análisis para CU15: Calcular Promedio Ponderado
 
 **Descripción detallada de la colaboración y dinámica:**
-El flujo inicia cuando el actor *Sistema* interactúa con la `InterfazNotas`. La frontera solicita la acción al controlador correspondiente, el cual orquesta la lógica de negocio, consulta o actualiza las entidades involucradas y devuelve el resultado a la interfaz para informar al usuario.
+El flujo inicia cuando el programador de tareas (actor *Sistema*) ejecuta la tarea programada a través de la interfaz de línea de comandos (`Artisan_Console`). La consola solicita la acción al controlador correspondiente, el cual orquesta la lógica de negocio, consulta o actualiza las entidades involucradas y devuelve el resultado a la consola para su registro.
 
 ```plantuml
 @startuml Com_CU15
@@ -2830,26 +2945,26 @@ skinparam actorStyle awesome
 skinparam backgroundColor transparent
 
 actor "Sistema" as Act
-boundary "IU_Notas" as B_Int
+boundary "Artisan_Console" as B_Console <<boundary>>
 control "CTR_Evaluacion" as C_Ctrl
 entity "CE_Examen" as E_Exam
 entity "CE_NotaFinal" as E_Nota
 
-Act --> B_Int : 1: + SolicitarCalculoGlobal()
-B_Int --> C_Ctrl : 2: + EjecutarCalculoPromedios()
-C_Ctrl --> E_Exam : 3: + ObtenerNotasPorMateria()
+Act --> B_Console : 1: + ejecutarCalculoGlobal()
+B_Console --> C_Ctrl : 2: + calcularPromedios()
+C_Ctrl --> E_Exam : 3: + where('postulante_id', id)
 E_Exam --> C_Ctrl : 4: + NotasMateria
 C_Ctrl --> C_Ctrl : 5: + AplicarFormulaPonderacion()
-C_Ctrl --> E_Nota : 6: + GuardarPromedioFinal()
-C_Ctrl --> B_Int : 7: + RetornarExito()
-B_Int --> Act : 8: + RefrescarVistaPromedios()
+C_Ctrl --> E_Nota : 6: + updateOrCreate(promedio)
+C_Ctrl --> B_Console : 7: + RetornarExito()
+B_Console --> Act : 8: + MostrarResumenConsola()
 @enduml
 ```
 
 #### Realización de Análisis para CU16: Determinar Estado (Aprobado/Reprobado)
 
 **Descripción detallada de la colaboración y dinámica:**
-El flujo inicia cuando el actor *Sistema* interactúa con la `InterfazNotas`. La frontera solicita la acción al controlador correspondiente, el cual orquesta la lógica de negocio, consulta o actualiza las entidades involucradas y devuelve el resultado a la interfaz para informar al usuario.
+El flujo inicia cuando el programador de tareas (actor *Sistema*) ejecuta la tarea programada a través de la interfaz de línea de comandos (`Artisan_Console`). La consola solicita la acción al controlador correspondiente, el cual orquesta la lógica de negocio, consulta o actualiza las entidades involucradas y devuelve el resultado a la consola para su registro.
 
 ```plantuml
 @startuml Com_CU16
@@ -2858,19 +2973,19 @@ skinparam actorStyle awesome
 skinparam backgroundColor transparent
 
 actor "Sistema" as Act
-boundary "IU_Notas" as B_Int
+boundary "Artisan_Console" as B_Console <<boundary>>
 control "CTR_Evaluacion" as C_Ctrl
 entity "CE_NotaFinal" as E_Nota
 entity "CE_Postulante" as E_Post
 
-Act --> B_Int : 1: + EjecutarDeterminacionEstado()
-B_Int --> C_Ctrl : 2: + EvaluarAprobacionMasiva()
-C_Ctrl --> E_Nota : 3: + ObtenerPromediosCalculados()
+Act --> B_Console : 1: + ejecutarDeterminacionEstado()
+B_Console --> C_Ctrl : 2: + evaluarEstados()
+C_Ctrl --> E_Nota : 3: + get()
 E_Nota --> C_Ctrl : 4: + PromediosCalculados
 C_Ctrl --> C_Ctrl : 5: + ValidarUmbral(>=60)
-C_Ctrl --> E_Post : 6: + ActualizarEstado(Aprobado/Reprobado)
-C_Ctrl --> B_Int : 7: + RetornarExito()
-B_Int --> Act : 8: + MostrarBadgesEstado()
+C_Ctrl --> E_Post : 6: + update(['estado' => estado])
+C_Ctrl --> B_Console : 7: + RetornarExito()
+B_Console --> Act : 8: + MostrarResumenConsola()
 @enduml
 ```
 
@@ -2891,8 +3006,8 @@ control "CTR_Asignacion" as C_Ctrl
 entity "CE_CupoGestion" as E_Cupo
 
 Act --> B_Int : 1: + EstablecerLimites(cuposPorCarrera)
-B_Int --> C_Ctrl : 2: + ActualizarCupos(cuposPorCarrera)
-C_Ctrl --> E_Cupo : 3: + GuardarNuevosLimites()
+B_Int --> C_Ctrl : 2: + store(request)
+C_Ctrl --> E_Cupo : 3: + updateOrCreate(datos)
 C_Ctrl --> B_Int : 4: + RetornarConfirmacion()
 B_Int --> Act : 5: + MostrarMensajeGuardado()
 @enduml
@@ -2916,10 +3031,10 @@ entity "CE_Admision" as E_Admi
 entity "CE_Postulante" as E_Post
 
 Act --> B_Int : 1: + SeleccionarPlantillaReporte(tipo)
-B_Int --> C_Ctrl : 2: + GenerarReporteEstructurado(tipo)
-C_Ctrl --> E_Admi : 3: + ConsultarDatosAdmision()
+B_Int --> C_Ctrl : 2: + generarPDF(request)
+C_Ctrl --> E_Admi : 3: + get()
 E_Admi --> C_Ctrl : 4: + DatosAdmision
-C_Ctrl --> E_Post : 5: + CruzarDatosPostulantes()
+C_Ctrl --> E_Post : 5: + get()
 E_Post --> C_Ctrl : 6: + DatosPostulantes
 C_Ctrl --> C_Ctrl : 7: + FormatearPDF()
 C_Ctrl --> B_Int : 8: + RetornarDocumento()
@@ -2944,7 +3059,7 @@ control "CTR_Reportes" as C_Ctrl
 entity "CE_DataWarehouse" as E_Data
 
 Act --> B_Int : 1: + ConfigurarFiltrosYCampos(parametros)
-B_Int --> C_Ctrl : 2: + EjecutarConsultaDinamica(parametros)
+B_Int --> C_Ctrl : 2: + generarDinamico(request)
 C_Ctrl --> E_Data : 3: + ConsultarBaseDeDatosBI(parametros)
 E_Data --> C_Ctrl : 4: + DatosBI
 C_Ctrl --> B_Int : 5: + RetornarTablaResultados()
@@ -2955,7 +3070,7 @@ B_Int --> Act : 6: + RenderizarDataGrid()
 #### Realización de Análisis para CU21: Reporte por Voz (IA)
 
 **Descripción detallada de la colaboración y dinámica:**
-El flujo inicia cuando el actor *Coordinador* interactúa con la `InterfazVoz`. La frontera solicita la acción al controlador correspondiente, el cual orquesta la lógica de negocio, consulta o actualiza las entidades involucradas y devuelve el resultado a la interfaz para informar al usuario.
+El flujo inicia cuando el actor *Coordinador* interactúa con la `InterfazVoz`. La frontera solicita la acción al controlador correspondiente, el cual se comunica con el servicio cognitivo de traducción (`API_ServicioCognitivoIA`), ejecuta la consulta generada en el almacén de datos (`CE_DataWarehouse`) y devuelve el resultado a la interfaz para informar al usuario.
 
 ```plantuml
 @startuml Com_CU21
@@ -2966,11 +3081,11 @@ skinparam backgroundColor transparent
 actor "Coordinador" as Act
 boundary "IU_Voz" as B_Int
 control "CTR_ReportesIA" as C_Ctrl
-entity "CE_ServicioCognitivoIA" as B_IA
+boundary "API_ServicioCognitivoIA" as B_IA <<boundary>>
 entity "CE_DataWarehouse" as E_Data
 
 Act --> B_Int : 1: + EmitirComandoVoz(audio)
-B_Int --> C_Ctrl : 2: + ProcesarAudioNLP(audio)
+B_Int --> C_Ctrl : 2: + procesarVoz(request)
 C_Ctrl --> B_IA : 3: + TraducirIntencionASQL(audio)
 B_IA --> C_Ctrl : 4: + RetornarConsultaEstructurada()
 C_Ctrl --> E_Data : 5: + EjecutarConsultaGenerada()
@@ -2984,7 +3099,7 @@ B_Int --> Act : 8: + MostrarResultadosVoz()
 #### Realización de Análisis para CU14: Cargar Notas Masivamente (CSV)
 
 **Descripción detallada de la colaboración y dinámica:**
-El *Administrador* selecciona un archivo de notas plano exportado de los laboratorios locales y lo carga mediante la `InterfazNotas`. Esta frontera transmite el archivo al `ControladorEvaluacion`, el cual abre una transacción y realiza un ciclo de lectura sobre las filas del CSV. Para cada registro, consulta la existencia del estudiante en la entidad `Postulante` mediante su CI. Si es válido, inserta o actualiza la nota correspondiente en la entidad `Examen` (registrando materia y número de examen). El controlador ejecuta la fórmula de ponderación (30% Ex1 + 30% Ex2 + 40% Ex3) y persiste el promedio en la entidad `NotaFinal` junto a su estado (APROBADO/REPROBADO), verificando que la aprobación sea individual por materia. Cada inserción y actualización es anotada en la entidad de auditoría `BitacoraAcceso` para mitigar riesgos de manipulación indebida de calificaciones.
+El *Administrador* selecciona un archivo de notas plano exportado de los laboratorios locales y lo carga mediante la `InterfazNotas`. Esta frontera transmite el archivo al `ControladorEvaluacion`, el cual abre una transacción y realiza un ciclo de lectura sobre las filas del CSV. Para cada registro, consulta la existencia del estudiante en la entidad `Postulante` mediante su CI. Si es válido, inserta o actualiza la nota correspondiente en la entidad `Examen` (registrando materia y número de examen). El controlador ejecuta la fórmula de ponderación (30% Ex1 + 30% Ex2 + 40% Ex3) y persiste el promedio en la entidad `NotaFinal` junto a su estado (APROBADO/REPROBADO), verificando que la aprobación sea individual por materia. Cada inserción y actualización es anotada en la entidad de auditoría `CE_AuditoriaNotas` (mapeada a `auditoria_notas` en la base de datos) para mitigar riesgos de manipulación indebida de calificaciones.
 
 ```plantuml
 @startuml Com_CU14
@@ -2998,16 +3113,16 @@ control "CTR_Evaluacion" as C_Eval
 entity "CE_Postulante" as E_Post
 entity "CE_Examen" as E_Exam
 entity "CE_NotaFinal" as E_Nota
-entity "CE_BitacoraAcceso" as E_Bit
+entity "CE_AuditoriaNotas" as E_Aud
 
 Act --> B_Nota : 1: + CargarArchivoCSV(file)
-B_Nota --> C_Eval : 2: + ProcesarCargaCSV(file)
-C_Eval --> E_Post : 3: + ObtenerPorCI(ci)
+B_Nota --> C_Eval : 2: + storeMasivo(request)
+C_Eval --> E_Post : 3: + where('ci', ci)
 E_Post --> C_Eval : 4: + DatosPostulante
-C_Eval --> E_Exam : 5: + RegistrarNotaExamen(nota, numero)
+C_Eval --> E_Exam : 5: + create(nota)
 C_Eval --> C_Eval : 6: + CalcularPromedioPonderado()
-C_Eval --> E_Nota : 7: + ActualizarNotaFinal(promedio, estado)
-C_Eval --> E_Bit : 8: + RegistrarOperacionCSV(usuarioId, log)
+C_Eval --> E_Nota : 7: + update(promedio, estado)
+C_Eval --> E_Aud : 8: + create(log)
 C_Eval --> B_Nota : 9: + ConfirmarCargaExitosa(resumen)
 B_Nota --> Act : 10: + MostrarResumenCarga()
 @enduml
@@ -3029,23 +3144,22 @@ boundary "IU_Admision" as B_Admi
 control "CTR_AsignacionCarrera" as C_Asig
 entity "CE_Postulante" as E_Post
 entity "CE_CupoGestion" as E_Cupo
-entity "CE_Carrera" as E_Carr
 entity "CE_Admision" as E_Admi
 entity "CE_BitacoraAcceso" as E_Bit
 
 Act --> B_Admi : 1: + ProcesarAsignacionCarreras()
-B_Admi --> C_Asig : 2: + IniciarAsignacionMasiva()
-C_Asig --> E_Post : 3: + ObtenerAprobadosOrdenadosPorPromedio()
+B_Admi --> C_Asig : 2: + asignacionMasiva()
+C_Asig --> E_Post : 3: + getAprobados()
 E_Post --> C_Asig : 4: + ListaAprobados
 loop Para cada postulante aprobado
-  C_Asig --> E_Cupo : 5: + VerificarCupoDisponible(carreraId)
+  C_Asig --> E_Cupo : 5: + where('carrera_id', id)
   E_Cupo --> C_Asig : 6: + CupoDisponible
   alt Cupo disponible > 0
-    C_Asig --> E_Admi : 7: + RegistrarAdmision(postulanteId, carreraId, via)
-    C_Asig --> E_Cupo : 8: + DecrementarCuposDisponibles(carreraId)
+    C_Asig --> E_Admi : 7: + create(datos)
+    C_Asig --> E_Cupo : 8: + decrement(cupos)
   else Cupos agotados en 1ra y 2da opción
-    C_Asig --> E_Post : 9: + MarcarPendienteReasignacion()
-    C_Asig --> E_Bit : 10: + RegistrarAlertaCuposLlenos(ci, promedio)
+    C_Asig --> E_Post : 9: + update(['estado' => 'Pendiente Reasignacion'])
+    C_Asig --> E_Bit : 10: + create(log)
   end
 end
 C_Asig --> B_Admi : 11: + ConfirmarProcesamientoExito()
@@ -3072,21 +3186,18 @@ entity "CE_NotaFinal" as E_Nota
 entity "CE_CupoGestion" as E_Cupo
 
 Act --> B_Dash : 1: + AbrirDashboard()
-B_Dash --> C_Rep : 2: + SolicitarEstadisticasTiempoReal()
-C_Rep --> E_Post : 3: + ObtenerDistribuciónInscritos()
+B_Dash --> C_Rep : 2: + getEstadisticas()
+C_Rep --> E_Post : 3: + get()
 E_Post --> C_Rep : 4: + DistribucionInscritos
-C_Rep --> E_Nota : 5: + ObtenerRendimientoYTasasAprobacion()
+C_Rep --> E_Nota : 5: + get()
 E_Nota --> C_Rep : 6: + RendimientoYTasas
-C_Rep --> E_Cupo : 7: + ObtenerLlenadoCuposCarrera()
+C_Rep --> E_Cupo : 7: + get()
 E_Cupo --> C_Rep : 8: + LlenadoCupos
 C_Rep --> B_Dash : 9: + EnviarDatosEstadisticos()
 B_Dash --> Act : 10: + RenderizarGraficosYTarjetasKPI()
 C_Rep --> B_Dash : 11: + TransmitirActualizacionesWebSocket(evento)
 @enduml
 ```
-
----
-
 ## 5.3 Análisis de Clases 
 
 Las clases de análisis conceptuales del sistema se clasifican rigurosamente según la taxonomía de Jacobson en clases de interfaz (Boundary), control y entidad (Entity). Para reflejar la naturaleza incremental de la metodología PUDS, las clases se dividen y describen a continuación organizadas según su ciclo de desarrollo correspondiente:
@@ -3102,11 +3213,11 @@ Este ciclo define el núcleo organizativo y la infraestructura lógica inicial d
 *   **`BitacoraAcceso` (Entity):** Almacena el historial inmutable de las operaciones sensibles de seguridad, guardando el identificador del usuario, la acción detallada (login exitoso, logout, intento fallido, cambio de credencial), la marca de tiempo UTC y la IP del dispositivo solicitante.
 
 #### B. Módulo de Registro y Gestión de Postulantes
-*   **`InterfazPreinscripcion` (Boundary):** Formulario dinámico estructurado para el ingreso de datos del postulante, carga de fotocopia del CI, certificado de nacimiento y título de bachiller digital, con visualización interactiva del checklist.
+*   **`InterfazPreinscripcion` (Boundary):** Formulario dinámico estructurado para el ingreso de datos del postulante (incluyendo sexo, datos del colegio y título de bachiller), pantalla intermedia de verificación de datos (Siguiente/Cancelar) y pantalla completa de carga de SEGIP.
 *   **`InterfazPagoStripe` (Boundary):** Formulario integrado seguro de Stripe Checkout que captura la información monetaria y de tarjeta sin almacenarla en el servidor local.
-*   **`ControladorPreinscripcion` (Control):** Valida la consistencia de datos de registro, realiza la verificación síncrona contra bases de datos públicas (SEGIP/SEDUCA), gestiona el flujo del Webhook de Stripe y actualiza de forma atómica el estado del postulante.
+*   **`ControladorPreinscripcion` (Control):** Valida la consistencia de datos de registro, realiza la verificación síncrona contra bases de datos públicas (SEGIP/SEDUCA), gestiona el flujo del Webhook de Stripe, autogenera las credenciales del postulante usando la fórmula de contraseña (CI + primera letra del primer nombre en MAYÚSCULA + primera letra del apellido en minúscula), y actualiza de forma atómica el estado del postulante a "Inscrito".
 *   **`Postulante` (Entity):** Representa el expediente maestro del postulante. Almacena la Cédula de Identidad, nombres, apellidos, fecha de nacimiento, sexo, dirección, correo, colegio, turno de preferencia, carrera de 1ra y 2da opción, y estado académico (Preinscrito, Inscrito, En Evaluación, Aprobado, Reprobado, Pendiente Reasignación).
-*   **`RequisitoDigital` (Entity):** Almacena el cumplimiento del checklist documental (cédula digitalizada, certificado de nacimiento, título de bachiller legalizado y formulario de preinscripcion).
+*   **`RequisitoDigital` (Entity):** Almacena el cumplimiento del checklist documental (cédula digitalizada, certificado de nacimiento, título de bachiller legalizado y formulario de registro).
 *   **`Pago` (Entity):** Registra de manera inmutable cada pago verificado por el webhook de Stripe, enlazando el postulante, el identificador único de Stripe Checkout, el monto pagado, la fecha y hora, y el estado financiero de la transacción.
 
 #### C. Módulo de Asignación de Grupos y Docentes
@@ -3142,26 +3253,23 @@ class IU_Login <<Boundary>> {
 class CTR_Auth <<Control>> {
   --
   +login(email, password)
-  +validarCredenciales()
-  +generarTokenJWT()
-  +registrarIngresoBitacora()
 }
 
 class CE_Usuario <<Entity>> {
-  +id_Usuario
+  +id
+  +name
   +email
   +password
-  +full_name
-  +is_active
-  +id_rol
+  +role
+  +active
 }
 
 class CE_BitacoraAcceso <<Entity>> {
-  +id_Bitacora
-  +id_Usuario
-  +accion
-  +fecha_hora
-  +ip
+  +id
+  +user_id
+  +action
+  +created_at
+  +ip_address
 }
 
 ActorUsuario - IU_Login
@@ -3188,17 +3296,15 @@ class IU_Principal <<Boundary>> {
 
 class CTR_Auth <<Control>> {
   --
-  +invalidarSesion(token)
-  +registrarLogout()
-  +confirmarCierre()
+  +logout()
 }
 
 class CE_BitacoraAcceso <<Entity>> {
-  +id_Bitacora
-  +id_Usuario
-  +accion
-  +fecha_hora
-  +ip
+  +id
+  +user_id
+  +action
+  +created_at
+  +ip_address
 }
 
 ActorUsuario - IU_Principal
@@ -3227,17 +3333,17 @@ class IU_Recuperacion <<Boundary>> {
 
 class CTR_Auth <<Control>> {
   --
-  +generarTokenRecuperacion(correo)
-  +validarExistenciaCorreo()
-  +enviarEmailRecuperacion()
-  +confirmarEnvio()
+  +forgotPassword(email)
+  +resetPassword(token, email, password)
 }
 
 class CE_Usuario <<Entity>> {
-  +id_Usuario
+  +id
+  +name
   +email
   +password
-  +token_recuperacion
+  +role
+  +active
 }
 
 ActorUsuario - IU_Recuperacion
@@ -3266,26 +3372,28 @@ class IU_Usuarios <<Boundary>> {
 
 class CTR_Usuarios <<Control>> {
   --
-  +crearUsuario(datos)
-  +validarNoDuplicado(correo)
-  +guardarNuevoUsuario()
-  +registrarAccionAdmin()
+  +index(request)
+  +store(request)
+  +show(user)
+  +update(request, user)
+  +destroy(request, user)
 }
 
 class CE_Usuario <<Entity>> {
-  +id_Usuario
+  +id
+  +name
   +email
   +password
-  +full_name
-  +is_active
-  +id_rol
+  +role
+  +active
 }
 
 class CE_BitacoraAcceso <<Entity>> {
-  +id_Bitacora
-  +id_Usuario
-  +accion
-  +fecha_hora
+  +id
+  +user_id
+  +action
+  +created_at
+  +ip_address
 }
 
 ActorAdmin - IU_Usuarios
@@ -3306,43 +3414,52 @@ actor "POSTULANTE" as ActorPostulante
 
 class IU_Preinscripcion <<Boundary>> {
   +datosPersonales
-  +documentos
   --
   +completarFormularioRegistro(datos)
-  +cargarDocumentos()
   +enviarFormulario()
   +mostrarPasosSiguientes()
 }
 
 class CTR_Preinscripcion <<Control>> {
   --
-  +procesarRegistro(datos)
-  +crearPerfilPostulante()
-  +guardarPreferenciasCarrera()
-  +retornarPostulanteCreado()
+  +store(request)
 }
 
 class CE_Postulante <<Entity>> {
-  +id_Postulante
+  +id
   +ci
   +nombres
   +apellidos
-  +carrera_1ra_opcion
-  +carrera_2da_opcion
+  +fecha_nacimiento
+  +sexo
+  +direccion
+  +telefono
+  +email
+  +colegio_procedencia
+  +ciudad
+  +titulo_bachiller
+  +primera_opcion_id
+  +segunda_opcion_id
+  +turno_preferencia
+  +gestion_id
   +estado
+  +recurrente
 }
 
-class CE_RequisitoDigital <<Entity>> {
-  +id_Requisito
-  +id_Postulante
-  +tipo_documento
-  +ruta_archivo
+class CE_RequisitoDocumental <<Entity>> {
+  +id
+  +postulante_id
+  +ci_digitalizado
+  +certificado_nacimiento
+  +titulo_bachiller_legalizado
+  +formulario_preinscripcion
+  +verificado_bd_externa
 }
 
 ActorPostulante - IU_Preinscripcion
 IU_Preinscripcion - CTR_Preinscripcion
 CTR_Preinscripcion - CE_Postulante
-CTR_Preinscripcion - CE_RequisitoDigital
+CTR_Preinscripcion - CE_RequisitoDocumental
 @enduml
 ```
 
@@ -3363,21 +3480,29 @@ class IU_Preinscripcion <<Boundary>> {
 
 class CTR_Preinscripcion <<Control>> {
   --
-  +verificarIdentidad(ci, fecha_nac)
-  +consultarAPISegip(ci)
-  +consultarAPISeduca(ci)
-  +actualizarEstado(Verificado)
+  +verificarRequisitos(postulante)
 }
 
 class CE_Postulante <<Entity>> {
-  +id_Postulante
+  +id
   +ci
-  +estado_requisitos
+  +estado
+}
+
+class CE_RequisitoDocumental <<Entity>> {
+  +id
+  +postulante_id
+  +ci_digitalizado
+  +certificado_nacimiento
+  +titulo_bachiller_legalizado
+  +formulario_preinscripcion
+  +verificado_bd_externa
 }
 
 ActorSistema - IU_Preinscripcion
 IU_Preinscripcion - CTR_Preinscripcion
 CTR_Preinscripcion - CE_Postulante
+CTR_Preinscripcion - CE_RequisitoDocumental
 @enduml
 ```
 
@@ -3398,30 +3523,38 @@ class IU_Inscripcion <<Boundary>> {
 
 class CTR_Inscripcion <<Control>> {
   --
-  +iniciarProcesoPago(postulanteId)
-  +crearSesionPago(monto)
-  +notificarPagoExitoso(webhook)
-  +crearRegistroPago()
-  +actualizarEstado(Inscrito)
+  +crearSesion(postulante)
+  +webhook(request)
+  +verificarPago(request)
 }
 
 class CE_Pago <<Entity>> {
-  +id_Pago
-  +id_Postulante
+  +id
+  +postulante_id
+  +stripe_checkout_id
   +monto
-  +transaccionId
-  +estado_transaccion
+  +estado_pago
+  +fecha_pago
 }
 
 class CE_Postulante <<Entity>> {
-  +id_Postulante
+  +id
   +estado
+}
+
+class CE_Usuario <<Entity>> {
+  +id
+  +email
+  +password
+  +role
+  +active
 }
 
 ActorPostulante - IU_Inscripcion
 IU_Inscripcion - CTR_Inscripcion
 CTR_Inscripcion - CE_Pago
 CTR_Inscripcion - CE_Postulante
+CTR_Inscripcion - CE_Usuario
 @enduml
 ```
 
@@ -3443,15 +3576,13 @@ class IU_Preinscripcion <<Boundary>> {
 
 class CTR_Preinscripcion <<Control>> {
   --
-  +verificarPostulanteExistente(ci)
-  +buscarRegistroAnterior(ci)
-  +retornarEstadoDuplicado()
+  +buscarPorCi(request)
 }
 
 class CE_Postulante <<Entity>> {
-  +id_Postulante
+  +id
   +ci
-  +historial_intentos
+  +recurrente
 }
 
 ActorPostulante - IU_Preinscripcion
@@ -3478,15 +3609,14 @@ class IU_Busqueda <<Boundary>> {
 
 class CTR_Busqueda <<Control>> {
   --
-  +buscarPostulantes(criterio)
-  +ejecutarConsulta(criterio)
-  +retornarResultados(lista)
+  +index(request)
 }
 
 class CE_Postulante <<Entity>> {
-  +id_Postulante
+  +id
   +ci
   +nombres
+  +apellidos
   +estado
 }
 
@@ -3513,34 +3643,32 @@ class IU_Grupos <<Boundary>> {
 
 class CTR_Planificacion <<Control>> {
   --
-  +iniciarAsignacionMasiva()
-  +obtenerPostulantesInscritosSinGrupo()
-  +calcularGruposNecesarios()
-  +crearNuevosGrupos()
-  +calcularDistribucionEquitativa()
-  +vincularPostulanteAGrupo()
+  +asignacionMasiva()
 }
 
 class CE_Postulante <<Entity>> {
-  +id_Postulante
+  +id
   +estado
 }
 
 class CE_Grupo <<Entity>> {
-  +id_Grupo
+  +id
+  +numero
   +turno
-  +id_Aula
+  +aula_id
+  +gestion_id
 }
 
 class CE_Aula <<Entity>> {
-  +id_Aula
+  +id
+  +nombre
   +capacidad
 }
 
 class CE_AsignacionGrupo <<Entity>> {
-  +id_Asignacion
-  +id_Postulante
-  +id_Grupo
+  +id
+  +postulante_id
+  +grupo_id
 }
 
 ActorAdmin - IU_Grupos
@@ -3569,24 +3697,25 @@ class IU_Grupos <<Boundary>> {
 
 class CTR_Planificacion <<Control>> {
   --
-  +reasignarPostulante(postulanteId, nuevoGrupoId)
-  +verificarCapacidad(nuevoGrupoId)
-  +actualizarVinculoGrupo()
+  +reasignar(request)
 }
 
 class CE_Postulante <<Entity>> {
-  +id_Postulante
+  +id
 }
 
 class CE_Grupo <<Entity>> {
-  +id_Grupo
-  +cupos_disponibles
+  +id
+  +numero
+  +turno
+  +aula_id
+  +gestion_id
 }
 
 class CE_AsignacionGrupo <<Entity>> {
-  +id_Asignacion
-  +id_Postulante
-  +id_Grupo
+  +id
+  +postulante_id
+  +grupo_id
 }
 
 ActorAdmin - IU_Grupos
@@ -3617,24 +3746,25 @@ class IU_Docentes <<Boundary>> {
 
 class CTR_Planificacion <<Control>> {
   --
-  +vincularDocenteMateria(docenteId, grupoId, materiaId)
-  +verificarCargaHoraria(docenteId)
-  +validarEspecialidad(docenteId, materiaId)
-  +registrarAsignacionMateria()
+  +asignar(request)
 }
 
 class CE_Docente <<Entity>> {
-  +id_Docente
-  +carga_horaria
+  +id
+  +ci
+  +nombres
+  +apellidos
   +especialidad
+  +grado_academico
+  +correo
 }
 
 class CE_Grupo <<Entity>> {
-  +id_Grupo
+  +id
 }
 
 class CE_Materia <<Entity>> {
-  +id_Materia
+  +id
   +nombre
 }
 
@@ -3666,14 +3796,13 @@ class IU_Simulacro <<Boundary>> {
 
 class CTR_Simulacro <<Control>> {
   --
-  +generarPreguntasSimulacro()
-  +obtenerBancoPreguntas()
-  +calificarSimulacro(respuestas)
-  +retornarNotaSimulacro()
+  +generar()
+  +calificar(request)
 }
 
 class CE_PreguntaSimulacro <<Entity>> {
-  +id_Pregunta
+  +id
+  +materia_id
   +enunciado
   +opciones
   +respuesta_correcta
@@ -3713,6 +3842,520 @@ Este ciclo madura e integra la lógica de negocio sustantiva de la facultad, imp
 *   **`AsistenteVoz` (Boundary/Control):** Interfaz Web Speech API para capturar entrada de audio y coordinar su procesamiento semántico de lenguaje natural.
 *   **`AsistenteChatbot` (Boundary/Control):** Widget de chat flotante en el frontend conectado con la API de OpenAI que procesa preguntas de postulantes relativas a requisitos, fechas, estado y notas, traduciéndolas a consultas a la base de datos local de forma segura.
 
+#### Diagramas de Análisis de Clases por Caso de Uso (Ciclo 2)
+
+##### CU13: Registrar Notas de Examen por el Administrador (Individual)
+```plantuml
+@startuml CU13_Analisis
+allowmixing
+left to right direction
+skinparam classAttributeIconSize 0
+
+actor "Administrador" as ActorAdministrador
+
+class IU_Notas <<Boundary>> {
+  --
+  +ModificarNota(postulanteId, materia, nuevaNota)
+  +ActualizarPlanillaNotas()
+}
+
+class CTR_Evaluacion <<Control>> {
+  --
+  +update(request)
+  +RecalcularPromedio()
+}
+
+class CE_Examen <<Entity>> {
+  +id
+  +postulante_id
+  +materia_id
+  +nota
+  +nro_examen
+  --
+  +update(nuevaNota)
+}
+
+class CE_NotaFinal <<Entity>> {
+  +id
+  +postulante_id
+  +materia_id
+  +promedio
+  +estado
+  --
+  +update(promedio)
+}
+
+class CE_BitacoraAcceso <<Entity>> {
+  +id
+  +user_id
+  +action
+  +created_at
+  +ip_address
+  --
+  +create(log)
+}
+
+ActorAdministrador - IU_Notas
+IU_Notas - CTR_Evaluacion
+CTR_Evaluacion - CE_Examen
+CTR_Evaluacion - CE_NotaFinal
+CTR_Evaluacion - CE_BitacoraAcceso
+@enduml
+```
+
+##### CU14: Cargar Notas Masivamente (CSV)
+```plantuml
+@startuml CU14_Analisis
+allowmixing
+left to right direction
+skinparam classAttributeIconSize 0
+
+actor "Administrador" as ActorAdministrador
+
+class IU_Notas <<Boundary>> {
+  --
+  +CargarArchivoCSV(file)
+  +MostrarResumenCarga()
+}
+
+class CTR_Evaluacion <<Control>> {
+  --
+  +storeMasivo(request)
+  +CalcularPromedioPonderado()
+}
+
+class CE_Postulante <<Entity>> {
+  +id
+  +ci
+  +nombre
+  +estado
+}
+
+class CE_Examen <<Entity>> {
+  +id
+  +postulante_id
+  +materia_id
+  +nota
+  +nro_examen
+  --
+  +create(nota)
+}
+
+class CE_NotaFinal <<Entity>> {
+  +id
+  +postulante_id
+  +materia_id
+  +promedio
+  +estado
+  --
+  +update(promedio, estado)
+}
+
+class CE_BitacoraAcceso <<Entity>> {
+  +id
+  +user_id
+  +action
+  +created_at
+  +ip_address
+  --
+  +create(log)
+}
+
+ActorAdministrador - IU_Notas
+IU_Notas - CTR_Evaluacion
+CTR_Evaluacion - CE_Postulante
+CTR_Evaluacion - CE_Examen
+CTR_Evaluacion - CE_NotaFinal
+CTR_Evaluacion - CE_BitacoraAcceso
+@enduml
+```
+
+##### CU15: Calcular Promedio Ponderado
+```plantuml
+@startuml CU15_Analisis
+allowmixing
+left to right direction
+skinparam classAttributeIconSize 0
+
+actor "Sistema" as ActorSistema
+
+class IU_Notas <<Boundary>> {
+  --
+  +SolicitarCalculoGlobal()
+  +RefrescarVistaPromedios()
+}
+
+class CTR_Evaluacion <<Control>> {
+  --
+  +calcularPromedios()
+  +AplicarFormulaPonderacion()
+}
+
+class CE_Examen <<Entity>> {
+  +id
+  +postulante_id
+  +materia_id
+  +nota
+  +nro_examen
+}
+
+class CE_NotaFinal <<Entity>> {
+  +id
+  +postulante_id
+  +materia_id
+  +promedio
+  +estado
+  --
+  +updateOrCreate(promedio)
+}
+
+ActorSistema - IU_Notas
+IU_Notas - CTR_Evaluacion
+CTR_Evaluacion - CE_Examen
+CTR_Evaluacion - CE_NotaFinal
+@enduml
+```
+
+##### CU16: Determinar Estado (Aprobado/Reprobado)
+```plantuml
+@startuml CU16_Analisis
+allowmixing
+left to right direction
+skinparam classAttributeIconSize 0
+
+actor "Sistema" as ActorSistema
+
+class IU_Notas <<Boundary>> {
+  --
+  +EjecutarDeterminacionEstado()
+  +MostrarBadgesEstado()
+}
+
+class CTR_Evaluacion <<Control>> {
+  --
+  +evaluarEstados()
+  +ValidarUmbral(nota)
+}
+
+class CE_NotaFinal <<Entity>> {
+  +id
+  +postulante_id
+  +materia_id
+  +promedio
+  +estado
+}
+
+class CE_Postulante <<Entity>> {
+  +id
+  +ci
+  +nombre
+  +estado
+  --
+  +update(estado)
+}
+
+ActorSistema - IU_Notas
+IU_Notas - CTR_Evaluacion
+CTR_Evaluacion - CE_NotaFinal
+CTR_Evaluacion - CE_Postulante
+@enduml
+```
+
+##### CU17: Asignar Carreras por Cupo
+```plantuml
+@startuml CU17_Analisis
+allowmixing
+left to right direction
+skinparam classAttributeIconSize 0
+
+actor "Coordinador" as ActorCoordinador
+
+class IU_Admision <<Boundary>> {
+  --
+  +ProcesarAsignacionCarreras()
+  +MostrarResultadosYAlertas()
+}
+
+class CTR_AsignacionCarrera <<Control>> {
+  --
+  +asignacionMasiva()
+}
+
+class CE_Postulante <<Entity>> {
+  +id
+  +ci
+  +nombre
+  +estado
+  +promedio_general
+  --
+  +getAprobados()
+  +update(estado)
+}
+
+class CE_CupoGestion <<Entity>> {
+  +id
+  +gestion_id
+  +carrera_id
+  +cupo_maximo
+  +cupos_disponibles
+  --
+  +decrement(cupos)
+}
+
+class CE_Carrera <<Entity>> {
+  +id
+  +nombre
+  +codigo
+}
+
+class CE_Admision <<Entity>> {
+  +id
+  +postulante_id
+  +carrera_id
+  +via_asignacion
+  +fecha
+  --
+  +create(datos)
+}
+
+class CE_BitacoraAcceso <<Entity>> {
+  +id
+  +user_id
+  +action
+  +created_at
+  +ip_address
+  --
+  +create(log)
+}
+
+ActorCoordinador - IU_Admision
+IU_Admision - CTR_AsignacionCarrera
+CTR_AsignacionCarrera - CE_Postulante
+CTR_AsignacionCarrera - CE_CupoGestion
+CTR_AsignacionCarrera - CE_Carrera
+CTR_AsignacionCarrera - CE_Admision
+CTR_AsignacionCarrera - CE_BitacoraAcceso
+@enduml
+```
+
+##### CU18: Configurar Cupos por Carrera
+```plantuml
+@startuml CU18_Analisis
+allowmixing
+left to right direction
+skinparam classAttributeIconSize 0
+
+actor "Administrador" as ActorAdministrador
+
+class IU_Configuracion <<Boundary>> {
+  --
+  +EstablecerLimites(cuposPorCarrera)
+  +MostrarMensajeGuardado()
+}
+
+class CTR_Asignacion <<Control>> {
+  --
+  +store(request)
+}
+
+class CE_CupoGestion <<Entity>> {
+  +id
+  +gestion_id
+  +carrera_id
+  +cupo_maximo
+  +cupos_disponibles
+  --
+  +updateOrCreate(datos)
+}
+
+ActorAdministrador - IU_Configuracion
+IU_Configuracion - CTR_Asignacion
+CTR_Asignacion - CE_CupoGestion
+@enduml
+```
+
+##### CU19: Generar Reporte Estructurado
+```plantuml
+@startuml CU19_Analisis
+allowmixing
+left to right direction
+skinparam classAttributeIconSize 0
+
+actor "Coordinador" as ActorCoordinador
+
+class IU_Reportes <<Boundary>> {
+  --
+  +SeleccionarPlantillaReporte(tipo)
+  +MostrarPrevisualizacionPDF()
+}
+
+class CTR_Reportes <<Control>> {
+  --
+  +generarPDF(request)
+  +FormatearPDF()
+}
+
+class CE_Admision <<Entity>> {
+  +id
+  +postulante_id
+  +carrera_id
+  +via_asignacion
+  +fecha
+}
+
+class CE_Postulante <<Entity>> {
+  +id
+  +ci
+  +nombre
+  +estado
+}
+
+ActorCoordinador - IU_Reportes
+IU_Reportes - CTR_Reportes
+CTR_Reportes - CE_Admision
+CTR_Reportes - CE_Postulante
+@enduml
+```
+
+##### CU20: Generar Reporte Dinámico (OLAP)
+```plantuml
+@startuml CU20_Analisis
+allowmixing
+left to right direction
+skinparam classAttributeIconSize 0
+
+actor "Coordinador" as ActorCoordinador
+
+class IU_ReportesDinamicos <<Boundary>> {
+  --
+  +ConfigurarFiltrosYCampos(parametros)
+  +RenderizarDataGrid()
+}
+
+class CTR_Reportes <<Control>> {
+  --
+  +generarDinamico(request)
+}
+
+class CE_DataWarehouse <<Entity>> {
+  +hechos_hecho_inscripcion
+  +dim_tiempo
+  +dim_postulante
+  +dim_carrera
+  --
+  +ConsultarBaseDeDatosBI(parametros)
+}
+
+ActorCoordinador - IU_ReportesDinamicos
+IU_ReportesDinamicos - CTR_Reportes
+CTR_Reportes - CE_DataWarehouse
+@enduml
+```
+
+##### CU21: Reporte por Voz y Chatbot (IA)
+```plantuml
+@startuml CU21_Analisis
+allowmixing
+left to right direction
+skinparam classAttributeIconSize 0
+
+actor "Coordinador" as ActorCoordinador
+
+class IU_Voz <<Boundary>> {
+  --
+  +EmitirComandoVoz(audio)
+  +MostrarResultadosVoz()
+}
+
+class IU_Chatbot <<Boundary>> {
+  --
+  +EnviarPregunta(texto)
+  +MostrarRespuestaChatbot(texto)
+}
+
+class CTR_ReportesIA <<Control>> {
+  --
+  +procesarVoz(request)
+  +procesarPreguntaChatbot(request)
+}
+
+class CE_ServicioCognitivoIA <<Entity>> {
+  +api_key
+  +model_version
+  --
+  +TraducirIntencionASQL(audio)
+  +ProcesarPreguntaAbierta(texto)
+}
+
+class CE_DataWarehouse <<Entity>> {
+  +hechos_hecho_inscripcion
+  +dim_tiempo
+  +dim_postulante
+  +dim_carrera
+  --
+  +EjecutarConsultaGenerada()
+}
+
+ActorCoordinador - IU_Voz
+ActorCoordinador - IU_Chatbot
+IU_Voz - CTR_ReportesIA
+IU_Chatbot - CTR_ReportesIA
+CTR_ReportesIA - CE_ServicioCognitivoIA
+CTR_ReportesIA - CE_DataWarehouse
+@enduml
+```
+
+##### CU22: Consultar Dashboard Estadístico en Tiempo Real
+```plantuml
+@startuml CU22_Analisis
+allowmixing
+left to right direction
+skinparam classAttributeIconSize 0
+
+actor "Coordinador" as ActorCoordinador
+
+class IU_Dashboard <<Boundary>> {
+  --
+  +AbrirDashboard()
+  +RenderizarGraficosYTarjetasKPI()
+  +TransmitirActualizacionesWebSocket(evento)
+}
+
+class CTR_Reportes <<Control>> {
+  --
+  +getEstadisticas()
+}
+
+class CE_Postulante <<Entity>> {
+  +id
+  +ci
+  +nombre
+  +estado
+}
+
+class CE_NotaFinal <<Entity>> {
+  +id
+  +postulante_id
+  +materia_id
+  +promedio
+  +estado
+}
+
+class CE_CupoGestion <<Entity>> {
+  +id
+  +gestion_id
+  +carrera_id
+  +cupo_maximo
+  +cupos_disponibles
+}
+
+ActorCoordinador - IU_Dashboard
+IU_Dashboard - CTR_Reportes
+CTR_Reportes - CE_Postulante
+CTR_Reportes - CE_NotaFinal
+CTR_Reportes - CE_CupoGestion
+@enduml
+```
 
 
 ### 5.4. Dependencias de Paquetes Arquitectónicos
@@ -3900,180 +4543,38 @@ L3B2 ..> L4B2
 
 #### 1. Diagrama de Secuencia para CU01: Iniciar Sesión (Autenticación y RBAC)
 
-**Descripción detallada y dinámica del flujo de diseño:**
-El flujo de interacción secuencial ilustra el protocolo de autenticación seguro modelado en base a componentes BCE:
-1. El *Usuario* ingresa sus credenciales en la interfaz de login `IU_Login`.
-2. La interfaz frontera delega la solicitud de inicio de sesión llamando al controlador de negocio `CTR_Auth`.
-3. El controlador consulta a la entidad `CE_Usuario` para recuperar el registro coincidente con el email.
-4. La entidad devuelve los metadatos y el hash de la contraseña almacenada.
-5. **[ALT]** El controlador verifica la autenticidad de las credenciales:
-   - **Credenciales válidas:** El controlador registra el log de auditoría en `CE_BitacoraAcceso`, confirma y redirige al Home.
-   - **Credenciales inválidas:** El controlador incrementa el contador de intentos fallidos y notifica el error a la interfaz.
-6. La frontera muestra el home correspondiente al rol del usuario o el mensaje de error según el resultado.
-
 ```plantuml
 @startuml Seq_CU01
 skinparam actorStyle awesome
 skinparam backgroundColor transparent
 
 actor "Usuario" as Act
-participant "IU_Login" as UI <<Form>>
-participant "CTR_Auth" as Ctrl <<ctr>>
-participant "CE_Usuario" as E_Usu <<BD>>
-participant "CE_BitacoraAcceso" as E_Bit <<BD>>
+participant "LoginPage" as UI <<Form>>
+participant "AuthController" as Ctrl <<ctr>>
+participant "User" as E_Usu <<BD>>
+participant "BitacoraAcceso" as E_Bit <<BD>>
 
 Act -> UI : 1: Ingresar email y password
 activate UI
 UI -> Ctrl : 2: login(email, password)
 activate Ctrl
-Ctrl -> E_Usu : 3: select_where(email)
+Ctrl -> E_Usu : 3: where('email', email)
 activate E_Usu
-E_Usu --> Ctrl : 4: Datos y Hash
+E_Usu --> Ctrl : Datos y Hash
 deactivate E_Usu
-alt Credenciales válidas
-  Ctrl -> E_Bit : 5: RegistrarLoginExitoso()
+alt Credenciales Válidas
+  Ctrl -> E_Bit : 4: create(data_exito)
   activate E_Bit
   E_Bit --> Ctrl : Confirmación
   deactivate E_Bit
-  Ctrl --> UI : 6: Redirigir a Home
-  deactivate Ctrl
-  UI --> Act : 7: MostrarHome()
-else Credenciales inválidas
-  Ctrl -> E_Usu : 5: IncrementarIntentosFallidos()
-  activate E_Usu
-  E_Usu --> Ctrl : Confirmación
-  deactivate E_Usu
-  Ctrl --> UI : 6: NotificarError("Credenciales incorrectas")
-  deactivate Ctrl
-  UI --> Act : 7: MostrarMensajeError()
-end
-deactivate UI
-@enduml
-```
-
-#### 2. Diagrama de Secuencia para CU02: Cerrar Sesión
-
-**Descripción detallada y dinámica del flujo de diseño:**
-1. El *Usuario* solicita cerrar su sesión desde la interfaz principal.
-2. La frontera delega la invalidación de credenciales al controlador de autenticación `CTR_Auth`.
-3. El controlador anota de forma inmutable la salida y desconexión en la entidad `CE_BitacoraAcceso`.
-4. El controlador confirma la invalidación y ordena el cierre.
-5. La interfaz destruye los tokens y redirige al usuario a la pantalla de login.
-
-```plantuml
-@startuml Seq_CU02
-skinparam actorStyle awesome
-skinparam backgroundColor transparent
-
-actor "Usuario" as Act
-participant "IU_Principal" as UI <<Form>>
-participant "CTR_Auth" as Ctrl <<ctr>>
-participant "CE_BitacoraAcceso" as E_Bit <<BD>>
-
-Act -> UI : 1: SolicitarCerrarSesion()
-activate UI
-UI -> Ctrl : 2: InvalidarSesion(token)
-activate Ctrl
-Ctrl -> E_Bit : 3: RegistrarLogout()
-activate E_Bit
-E_Bit --> Ctrl : Confirmación
-deactivate E_Bit
-Ctrl -> UI : 4: ConfirmarCierre()
-deactivate Ctrl
-UI --> Act : 5: MostrarPantallaLogin()
-deactivate UI
-@enduml
-```
-
-#### 3. Diagrama de Secuencia para CU03: Recuperar Contraseña
-
-**Descripción detallada y dinámica del flujo de diseño:**
-1. El *Usuario* ingresa su correo electrónico para solicitar un restablecimiento.
-2. La frontera delega la solicitud de recuperación al controlador de autenticación `CTR_Auth`.
-3. El controlador consulta a `CE_Usuario` para validar la existencia del correo.
-4. La entidad devuelve la información de coincidencia.
-5. **[ALT]** El controlador evalúa el resultado de la validación:
-   - **Correo registrado:** El controlador genera el token de recuperación, ejecuta el envío de correo y confirma a la interfaz.
-   - **Correo no registrado:** El controlador retorna un mensaje genérico por seguridad sin revelar si el correo existe.
-6. La interfaz muestra el mensaje correspondiente en la pantalla.
-
-```plantuml
-@startuml Seq_CU03
-skinparam actorStyle awesome
-skinparam backgroundColor transparent
-
-actor "Usuario" as Act
-participant "IU_Recuperacion" as UI <<Form>>
-participant "CTR_Auth" as Ctrl <<ctr>>
-participant "CE_Usuario" as E_Usu <<BD>>
-
-Act -> UI : 1: IngresarCorreo(correo)
-activate UI
-UI -> Ctrl : 2: GenerarTokenRecuperacion(correo)
-activate Ctrl
-Ctrl -> E_Usu : 3: ValidarExistenciaCorreo(correo)
-activate E_Usu
-E_Usu --> Ctrl : 4: DatosExistencia
-deactivate E_Usu
-alt Correo registrado en el sistema
-  Ctrl -> Ctrl : 5: GenerarTokenYEnviarEmail()
-  Ctrl --> UI : 6: ConfirmarEnvio()
-  deactivate Ctrl
-  UI --> Act : 7: MostrarMensajeExito()
-else Correo no registrado
-  Ctrl --> UI : 5: MostrarMensajeGenerico()
-  deactivate Ctrl
-  UI --> Act : 6: MostrarMensaje("Si el correo existe, recibirá un enlace")
-end
-deactivate UI
-@enduml
-```
-
-#### 4. Diagrama de Secuencia para CU04: Gestionar Perfiles de Usuario
-
-**Descripción detallada y dinámica del flujo de diseño:**
-1. El *Administrador* ingresa los datos del nuevo perfil de usuario en la interfaz.
-2. La frontera delega la creación del usuario al controlador de perfiles `CTR_Usuarios`.
-3. El controlador valida con la entidad `CE_Usuario` que no existan correos duplicados.
-4. La entidad confirma la validez de la validación.
-5. **[ALT]** El controlador evalúa el resultado de la validación de duplicados:
-   - **Correo no duplicado:** El controlador persiste el nuevo usuario, registra la acción en auditoría y retorna éxito.
-   - **Correo duplicado:** El controlador rechaza la operación y notifica al administrador que el correo ya existe.
-6. La interfaz actualiza la grilla de usuarios o muestra el error correspondiente.
-
-```plantuml
-@startuml Seq_CU04
-skinparam actorStyle awesome
-skinparam backgroundColor transparent
-
-actor "Administrador" as Act
-participant "IU_Usuarios" as UI <<Form>>
-participant "CTR_Usuarios" as Ctrl <<ctr>>
-participant "CE_Usuario" as E_Usu <<BD>>
-participant "CE_BitacoraAcceso" as E_Bit <<BD>>
-
-Act -> UI : 1: RegistrarNuevoUsuario(datos)
-activate UI
-UI -> Ctrl : 2: CrearUsuario(datos)
-activate Ctrl
-Ctrl -> E_Usu : 3: ValidarNoDuplicado(correo)
-activate E_Usu
-E_Usu --> Ctrl : 4: ResultadoValidacion
-deactivate E_Usu
-alt Correo no duplicado
-  Ctrl -> E_Usu : 5: GuardarNuevoUsuario()
-  activate E_Usu
-  E_Usu --> Ctrl : Confirmación
-  deactivate E_Usu
-  Ctrl -> E_Bit : 6: RegistrarAccionAdmin()
+  Ctrl --> UI : 5: Retornar Token y Usuario
+  UI --> Act : 6: Redirigir a DashboardPage
+else Credenciales Inválidas
+  Ctrl -> E_Bit : 4: create(data_fallo)
   activate E_Bit
   E_Bit --> Ctrl : Confirmación
   deactivate E_Bit
-  Ctrl --> UI : 7: RetornarExito()
-  deactivate Ctrl
-  UI --> Act : 8: ActualizarListaUsuarios()
-else Correo duplicado detectado
-  Ctrl --> UI : 5: NotificarErrorDuplicado("El correo ya existe")
+  Ctrl --> UI : 5: NotificarError("Credenciales incorrectas")
   deactivate Ctrl
   UI --> Act : 6: MostrarMensajeError()
 end
@@ -4081,15 +4582,108 @@ deactivate UI
 @enduml
 ```
 
-#### 5. Diagrama de Secuencia para CU05: Registrar Postulante Nuevo
+#### 2. Diagrama de Secuencia para CU02: Cerrar Sesión
 
-**Descripción detallada y dinámica del flujo de diseño:**
-1. El *Postulante* completa los campos biográficos y de carrera en el formulario de inscripción `IU_Preinscripcion`.
-2. La frontera delega la lógica de registro al controlador `CTR_Preinscripcion`.
-3. El controlador orquesta la creación del expediente en la entidad `CE_Postulante`.
-4. El controlador guarda las preferencias de turnos y carrera del estudiante.
-5. El controlador retorna la estructura con el código único de preinscripción.
-6. La interfaz renderiza las pantallas de validaciones documentales automáticas.
+```plantuml
+@startuml Seq_CU02
+skinparam actorStyle awesome
+skinparam backgroundColor transparent
+
+actor "Usuario" as Act
+participant "Layout" as UI <<Form>>
+participant "AuthController" as Ctrl <<ctr>>
+participant "BitacoraAcceso" as E_Bit <<BD>>
+
+Act -> UI : 1: SolicitarCerrarSesion()
+activate UI
+UI -> Ctrl : 2: logout()
+activate Ctrl
+Ctrl -> E_Bit : 3: create(data_logout)
+activate E_Bit
+E_Bit --> Ctrl : Confirmación
+deactivate E_Bit
+Ctrl --> UI : 4: ConfirmarCierre()
+deactivate Ctrl
+UI --> Act : 5: Redirigir a LoginPage
+deactivate UI
+@enduml
+```
+
+#### 3. Diagrama de Secuencia para CU03: Recuperar Contraseña
+
+```plantuml
+@startuml Seq_CU03
+skinparam actorStyle awesome
+skinparam backgroundColor transparent
+
+actor "Usuario" as Act
+participant "ForgotPasswordPage" as UI <<Form>>
+participant "AuthController" as Ctrl <<ctr>>
+participant "User" as E_Usu <<BD>>
+
+Act -> UI : 1: IngresarCorreo(correo)
+activate UI
+UI -> Ctrl : 2: forgotPassword(email)
+activate Ctrl
+Ctrl -> E_Usu : 3: where('email', email)
+activate E_Usu
+E_Usu --> Ctrl : DatosExistencia
+deactivate E_Usu
+alt Correo existe en base de datos
+  Ctrl -> Ctrl : 4: sendResetLink()
+  Ctrl --> UI : 5: ConfirmarEnvio()
+  UI --> Act : 6: MostrarMensajeExito()
+else Correo no existe
+  Ctrl --> UI : 5: ConfirmarEnvio() (Mensaje Genérico)
+  deactivate Ctrl
+  UI --> Act : 6: MostrarMensajeGenerico()
+end
+deactivate UI
+@enduml
+```
+
+#### 4. Diagrama de Secuencia para CU04: Gestionar Perfiles de Usuario
+
+```plantuml
+@startuml Seq_CU04
+skinparam actorStyle awesome
+skinparam backgroundColor transparent
+
+actor "Administrador" as Act
+participant "UsersPage" as UI <<Form>>
+participant "UserController" as Ctrl <<ctr>>
+participant "User" as E_Usu <<BD>>
+participant "BitacoraAcceso" as E_Bit <<BD>>
+
+Act -> UI : 1: RegistrarNuevoUsuario(datos)
+activate UI
+UI -> Ctrl : 2: store(request)
+activate Ctrl
+Ctrl -> E_Usu : 3: where('email', email)
+activate E_Usu
+E_Usu --> Ctrl : ResultadoValidación
+deactivate E_Usu
+alt Correo no duplicado
+  Ctrl -> E_Usu : 4: create(datos)
+  activate E_Usu
+  E_Usu --> Ctrl : Confirmación
+  deactivate E_Usu
+  Ctrl -> E_Bit : 5: create(datos_auditoria)
+  activate E_Bit
+  E_Bit --> Ctrl : Confirmación
+  deactivate E_Bit
+  Ctrl --> UI : 6: RetornarExito(user, temp_password)
+  UI --> Act : 7: ActualizarListaUsuarios()
+else Correo duplicado
+  Ctrl --> UI : 6: NotificarErrorDuplicado()
+  deactivate Ctrl
+  UI --> Act : 7: MostrarMensajeError()
+end
+deactivate UI
+@enduml
+```
+
+#### 5. Diagrama de Secuencia para CU05: Registrar Postulante Nuevo
 
 ```plantuml
 @startuml Seq_CU05
@@ -4097,40 +4691,44 @@ skinparam actorStyle awesome
 skinparam backgroundColor transparent
 
 actor "Postulante" as Act
-participant "IU_Preinscripcion" as UI <<Form>>
-participant "CTR_Preinscripcion" as Ctrl <<ctr>>
-participant "CE_Postulante" as E_Post <<BD>>
+participant "PreinscripcionPage" as UI <<Form>>
+participant "PostulanteController" as Ctrl <<ctr>>
+participant "Postulante" as E_Post <<BD>>
+participant "RequisitoDocumental" as E_Req <<BD>>
 
 Act -> UI : 1: CompletarFormularioRegistro(datos)
 activate UI
-UI -> Ctrl : 2: ProcesarRegistro(datos)
+UI -> Ctrl : 2: store(request)
 activate Ctrl
-Ctrl -> E_Post : 3: CrearPerfilPostulante()
+Ctrl -> E_Post : 3: where('ci', ci)
 activate E_Post
-E_Post --> Ctrl : Confirmación
+E_Post --> Ctrl : RegistroExistente
 deactivate E_Post
-Ctrl -> E_Post : 4: GuardarPreferenciasCarrera()
-activate E_Post
-E_Post --> Ctrl : Confirmación
-deactivate E_Post
-Ctrl --> UI : 5: RetornarPostulanteCreado()
-deactivate Ctrl
-UI --> Act : 6: MostrarPasosSiguientes()
+alt Postulante Nuevo
+  Ctrl -> E_Post : 4: create(datos)
+  activate E_Post
+  E_Post --> Ctrl : Confirmación
+  deactivate E_Post
+  Ctrl -> E_Req : 5: create(['postulante_id' => id])
+  activate E_Req
+  E_Req --> Ctrl : Confirmación
+  deactivate E_Req
+  Ctrl --> UI : 6: RetornarPostulanteCreado()
+  UI --> Act : 7: MostrarVerificacionDatos()
+else Postulante Recurrente
+  Ctrl -> E_Post : 4: update(datos, recurrente=true)
+  activate E_Post
+  E_Post --> Ctrl : Confirmación
+  deactivate E_Post
+  Ctrl --> UI : 5: RetornarDatosRecurrente()
+  deactivate Ctrl
+  UI --> Act : 6: MostrarAlertaRecurrente()
+end
 deactivate UI
 @enduml
 ```
 
 #### 6. Diagrama de Secuencia para CU06: Verificar Requisitos Automáticamente (SEGIP/SEDUCA)
-
-**Descripción detallada y dinámica del flujo de diseño:**
-1. El *Sistema* dispara automáticamente la verificación a través de la `IU_Preinscripcion`.
-2. La frontera delega la solicitud al `CTR_Preinscripcion` llamando a `VerificarIdentidad(ci, fecha_nac)`.
-3. El controlador se comunica con el límite externo `API SEGIP` para validar la identidad física.
-4. El SEGIP retorna la confirmación o rechazo de los datos biométricos.
-5. **[ALT]** El controlador evalúa el resultado de la verificación SEGIP:
-   - **Identidad verificada:** El controlador continúa consultando a `API SEDUCA` para validar el título de bachiller. Si SEDUCA confirma, se actualiza el estado del postulante a "Verificado".
-   - **Identidad no verificada (SEGIP o SEDUCA):** El controlador rechaza la verificación y notifica el error a la interfaz, indicando qué servicio falló.
-6. La frontera notifica al sistema o usuario el resultado del proceso documental.
 
 ```plantuml
 @startuml Seq_CU06
@@ -4138,42 +4736,45 @@ skinparam actorStyle awesome
 skinparam backgroundColor transparent
 
 actor "Sistema" as Act
-participant "IU_Preinscripcion" as UI <<Form>>
-participant "CTR_Preinscripcion" as Ctrl <<ctr>>
-participant "API SEGIP" as B_SEGIP <<Form>>
-participant "API SEDUCA" as B_SEDUCA <<Form>>
-participant "CE_Postulante" as E_Post <<BD>>
+participant "PreinscripcionPage" as UI <<Form>>
+participant "PostulanteController" as Ctrl <<ctr>>
+boundary "VerificacionExternaService" as Serv <<service>>
+boundary "API SEGIP" as B_SEGIP <<external>>
+boundary "API SEDUCA" as B_SEDUCA <<external>>
+participant "RequisitoDocumental" as E_Req <<BD>>
+participant "Postulante" as E_Post <<BD>>
 
 Act -> UI : 1: IniciarVerificacionAutomatica()
 activate UI
-UI -> Ctrl : 2: VerificarIdentidad(ci, fecha_nac)
+UI -> Ctrl : 2: verificarRequisitos(postulante)
 activate Ctrl
-Ctrl -> B_SEGIP : 3: ConsultarIdentidad(ci)
+Ctrl -> Serv : 3: verificarCompleto(ci, fecha_nacimiento)
+activate Serv
+Serv -> B_SEGIP : 4: ConsultarIdentidad(ci)
 activate B_SEGIP
-B_SEGIP --> Ctrl : 4: ResultadoVerificacion
+B_SEGIP --> Serv : ConfirmacionIdentidad
 deactivate B_SEGIP
-alt Identidad verificada por SEGIP
-  Ctrl -> B_SEDUCA : 5: ConsultarBachiller(ci)
-  activate B_SEDUCA
-  B_SEDUCA --> Ctrl : 6: ResultadoBachiller
-  deactivate B_SEDUCA
-  alt Bachiller confirmado por SEDUCA
-    Ctrl -> E_Post : 7: ActualizarEstado(Verificado)
-    activate E_Post
-    E_Post --> Ctrl : Confirmación
-    deactivate E_Post
-    Ctrl --> UI : 8: ConfirmarVerificacion()
-    deactivate Ctrl
-    UI --> Act : 9: NotificarVerificacionCompleta()
-  else Bachiller no encontrado en SEDUCA
-    Ctrl --> UI : 7: NotificarErrorVerificacion("Título no verificado en SEDUCA")
-    deactivate Ctrl
-    UI --> Act : 8: MostrarErrorVerificacion()
-  end
-else Identidad no verificada por SEGIP
-  Ctrl --> UI : 5: NotificarErrorVerificacion("Identidad no verificada en SEGIP")
+Serv -> B_SEDUCA : 5: ConsultarBachiller(ci)
+activate B_SEDUCA
+B_SEDUCA --> Serv : ConfirmacionBachiller
+deactivate B_SEDUCA
+Serv --> Ctrl : 6: ResultadoVerificacion (aprobado=true)
+deactivate Serv
+alt Verificacion Exitosa
+  Ctrl -> E_Req : 7: update(ci_digitalizado=true, verificado_bd_externa=true...)
+  activate E_Req
+  E_Req --> Ctrl : Confirmación
+  deactivate E_Req
+  Ctrl -> E_Post : 8: update(estado="Verificado")
+  activate E_Post
+  E_Post --> Ctrl : Confirmación
+  deactivate E_Post
+  Ctrl --> UI : 9: ConfirmarVerificacion()
+  UI --> Act : 10: MostrarEstadoVerificado()
+else Verificacion Fallida
+  Ctrl --> UI : 9: NotificarErrorVerificacion()
   deactivate Ctrl
-  UI --> Act : 6: MostrarErrorVerificacion()
+  UI --> Act : 10: MostrarMensajeError()
 end
 deactivate UI
 @enduml
@@ -4181,70 +4782,56 @@ deactivate UI
 
 #### 7. Diagrama de Secuencia para CU07: Procesar Pago de Matrícula (Stripe)
 
-**Descripción detallada y dinámica del flujo de diseño:**
-1. El *Postulante* solicita el pago de su matrícula desde la interfaz de usuario `IU_Inscripcion`.
-2. La frontera delega la solicitud al `CTR_Inscripcion` llamando a `IniciarProcesoPago(postulanteId)`.
-3. El controlador se comunica con el límite externo `PasarelaStripe` para inicializar una sesión de pago segura.
-4. El controlador recibe la URL de redirección y la entrega a la interfaz.
-5. El controlador ordena redirigir al postulante a la pasarela externa.
-6. La frontera renderiza la pantalla de pago externa de Stripe.
-7. El postulante confirma los datos de su tarjeta directamente en la pasarela.
-8. Stripe procesa el cargo de forma segura y notifica asíncronamente mediante Webhook a `CTR_Inscripcion`.
-9. El controlador registra la transacción de pago de forma persistente en `CE_Pago`.
-10. El controlador actualiza el estado del postulante a "Inscrito" en la entidad `CE_Postulante`.
-
 ```plantuml
 @startuml Seq_CU07
 skinparam actorStyle awesome
 skinparam backgroundColor transparent
 
 actor "Postulante" as Act
-participant "IU_Inscripcion" as UI <<Form>>
-participant "CTR_Inscripcion" as Ctrl <<ctr>>
-participant "PasarelaStripe" as B_Stripe <<Form>>
-participant "CE_Pago" as E_Pago <<BD>>
-participant "CE_Postulante" as E_Post <<BD>>
+participant "InscripcionPage" as UI <<Form>>
+participant "PagoController" as Ctrl <<ctr>>
+boundary "PasarelaStripe" as B_Stripe <<external>>
+participant "Pago" as E_Pago <<BD>>
+participant "Postulante" as E_Post <<BD>>
+participant "User" as E_User <<BD>>
 
-Act -> UI : 1: Solicitar pago de matrícula()
+Act -> UI : 1: SolicitarPagoMatricula()
 activate UI
-UI -> Ctrl : 2: IniciarProcesoPago(postulanteId)
+UI -> Ctrl : 2: crearSesion(postulante)
 activate Ctrl
-Ctrl -> B_Stripe : 3: CrearSesionPago(monto)
+Ctrl -> B_Stripe : 3: crearSesionStripe()
 activate B_Stripe
-B_Stripe --> Ctrl : 4: UrlRedireccionSesion
+B_Stripe --> Ctrl : UrlRedireccion (mock/checkout)
 deactivate B_Stripe
-Ctrl --> UI : 5: RedirigirAPasarela()
-deactivate Ctrl
-UI --> Act : 6: MostrarFormularioPagoStripe()
-deactivate UI
-
-Act -> B_Stripe : 7: ConfirmarDatosTarjeta()
+Ctrl --> UI : 4: RedirigirAPasarela()
+UI --> Act : 5: MostrarFormularioPagoStripe()
+Act -> B_Stripe : 6: ConfirmarDatosTarjeta()
 activate B_Stripe
-B_Stripe --> Ctrl : 8: NotificarPagoExitoso(StripeWebhook)
+B_Stripe -> Ctrl : 7: webhook(request)
 deactivate B_Stripe
 activate Ctrl
-Ctrl -> E_Pago : 9: CrearRegistroPago(monto, transaccionId)
+Ctrl -> E_Pago : 8: create(datosPago)
 activate E_Pago
 E_Pago --> Ctrl : Confirmación
 deactivate E_Pago
-Ctrl -> E_Post : 10: ActualizarEstado("Inscrito")
+Ctrl -> E_Post : 9: update(estado="Inscrito")
 activate E_Post
 E_Post --> Ctrl : Confirmación
 deactivate E_Post
+Ctrl -> E_User : 10: create(datosUsuario)
+activate E_User
+E_User --> Ctrl : Confirmación
+deactivate E_User
+Ctrl -> Ctrl : 11: EnviarCorreoCredenciales()
+Ctrl --> B_Stripe : 12: ConfirmarWebhook
 deactivate Ctrl
+B_Stripe --> UI : 13: Redireccion exitosa
+UI --> Act : 14: MostrarMensaje("Su cuenta ha sido enviada a su correo")
+deactivate UI
 @enduml
 ```
 
 #### 8. Diagrama de Secuencia para CU08: Detectar Postulante Recurrente
-
-**Descripción detallada y dinámica del flujo de diseño:**
-1. El *Postulante* ingresa su cédula de identidad en la interfaz `IU_Preinscripcion`.
-2. La frontera delega la verificación al controlador `CTR_Preinscripcion` mediante `VerificarPostulanteExistente(ci)`.
-3. El controlador busca si existe algún expediente anterior con el mismo CI en la entidad `CE_Postulante`.
-4. La entidad devuelve los datos de coincidencia histórica.
-5. **[ALT]** El controlador evalúa el resultado de la búsqueda:
-   - **Postulante recurrente encontrado:** El controlador retorna los datos del registro anterior y la interfaz muestra una alerta indicando que el postulante ya se encuentra registrado.
-   - **Postulante nuevo:** El controlador confirma que no existen antecedentes y la interfaz permite continuar con el registro normal.
 
 ```plantuml
 @startuml Seq_CU08
@@ -4252,26 +4839,25 @@ skinparam actorStyle awesome
 skinparam backgroundColor transparent
 
 actor "Postulante" as Act
-participant "IU_Preinscripcion" as UI <<Form>>
-participant "CTR_Preinscripcion" as Ctrl <<ctr>>
-participant "CE_Postulante" as E_Post <<BD>>
+participant "PreinscripcionPage" as UI <<Form>>
+participant "PostulanteController" as Ctrl <<ctr>>
+participant "Postulante" as E_Post <<BD>>
 
-Act -> UI : 1: IngresarCI(ci)
+Act -> UI : 1: IngresarCI()
 activate UI
-UI -> Ctrl : 2: VerificarPostulanteExistente(ci)
+UI -> Ctrl : 2: buscarPorCi(request)
 activate Ctrl
-Ctrl -> E_Post : 3: BuscarRegistroAnterior(ci)
+Ctrl -> E_Post : 3: where('ci', ci)
 activate E_Post
-E_Post --> Ctrl : 4: ResultadoBusqueda
+E_Post --> Ctrl : RegistroAnterior
 deactivate E_Post
-alt Postulante recurrente encontrado
-  Ctrl --> UI : 5: RetornarDatosRecurrente(datosAnteriores)
+alt Postulante Recurrente
+  Ctrl --> UI : 4: RetornarDatosRecurrente(postulante)
+  UI --> Act : 5: MostrarAlertaRecurrente()
+else Postulante Nuevo
+  Ctrl --> UI : 4: ConfirmarNuevoPostulante()
   deactivate Ctrl
-  UI --> Act : 6: MostrarAlertaRecurrente()
-else Postulante nuevo (sin antecedentes)
-  Ctrl --> UI : 5: ConfirmarNuevoPostulante()
-  deactivate Ctrl
-  UI --> Act : 6: HabilitarRegistroNormal()
+  UI --> Act : 5: HabilitarRegistroNormal()
 end
 deactivate UI
 @enduml
@@ -4279,54 +4865,32 @@ deactivate UI
 
 #### 9. Diagrama de Secuencia para CU09: Buscar y Consultar Postulantes
 
-**Descripción detallada y dinámica del flujo de diseño:**
-1. El *Administrador* ingresa criterios de búsqueda en la interfaz `IU_Busqueda`.
-2. La frontera delega la solicitud al controlador `CTR_Busqueda` llamando a `BuscarPostulantes(criterio)`.
-3. El controlador ejecuta la consulta filtrada en la entidad de dominio `CE_Postulante`.
-4. La entidad retorna la colección con los expedientes coincidentes.
-5. El controlador devuelve la lista de resultados formateada a la interfaz.
-6. La frontera renderiza la grilla dinámica con los datos cargados.
-
 ```plantuml
 @startuml Seq_CU09
 skinparam actorStyle awesome
 skinparam backgroundColor transparent
 
 actor "Administrador" as Act
-participant "IU_Busqueda" as UI <<Form>>
-participant "CTR_Busqueda" as Ctrl <<ctr>>
-participant "CE_Postulante" as E_Post <<BD>>
+participant "BusquedaPostulantesPage" as UI <<Form>>
+participant "PostulanteController" as Ctrl <<ctr>>
+participant "Postulante" as E_Post <<BD>>
 
 Act -> UI : 1: IngresarFiltros(criterio)
 activate UI
-UI -> Ctrl : 2: BuscarPostulantes(criterio)
+UI -> Ctrl : 2: index(request)
 activate Ctrl
-Ctrl -> E_Post : 3: EjecutarConsulta(criterio)
+Ctrl -> E_Post : 3: paginate()
 activate E_Post
-E_Post --> Ctrl : 4: ListaResultados
+E_Post --> Ctrl : ListaResultados
 deactivate E_Post
-Ctrl --> UI : 5: RetornarResultados(lista)
+Ctrl --> UI : 4: RetornarResultados(lista)
 deactivate Ctrl
-UI --> Act : 6: RenderizarGrillaResultados()
+UI --> Act : 5: RenderizarGrillaResultados()
 deactivate UI
 @enduml
 ```
 
 #### 10. Diagrama de Secuencia para CU10: Calcular y Crear Grupos Automáticamente
-
-**Descripción detallada y dinámica del flujo de diseño:**
-1. El *Administrador* ejecuta la distribución automatizada desde la interfaz `IU_Grupos`.
-2. La frontera llama al orquestador `CTR_Planificacion` solicitando `IniciarAsignacionMasiva()`.
-3. El controlador consulta a `CE_Postulante` para obtener todos los alumnos en estado "Inscrito" sin grupo.
-4. La entidad retorna la nómina de estudiantes listos para ser distribuidos.
-5. El controlador calcula en memoria el número de grupos necesarios aplicando una cota superior de 70 personas por aula.
-6. El controlador consulta el stock y disponibilidad de infraestructura física en `CE_Aula`.
-7. La entidad de aula retorna los salones que se encuentran libres en la gestión.
-8. El controlador crea e inserta los nuevos objetos correspondientes en `CE_Grupo`.
-9. El controlador ejecuta secuencialmente en memoria el balanceo y distribución equitativa de turnos y salones.
-10. **[LOOP]** Para cada postulante inscrito, el controlador asocia al postulante con su respectivo grupo en `CE_AsignacionGrupo` y actualiza su estado a "En Evaluación" en `CE_Postulante`.
-11. El controlador confirma el éxito de la asignación a la frontera de usuario.
-12. La interfaz refresca y despliega los grupos formados con sus respectivos alumnos asignados.
 
 ```plantuml
 @startuml Seq_CU10
@@ -4334,41 +4898,44 @@ skinparam actorStyle awesome
 skinparam backgroundColor transparent
 
 actor "Administrador" as Act
-participant "IU_Grupos" as UI <<Form>>
-participant "CTR_Planificacion" as Ctrl <<ctr>>
-participant "CE_Postulante" as E_Post <<BD>>
-participant "CE_Aula" as E_Aula <<BD>>
-participant "CE_Grupo" as E_Grupo <<BD>>
-participant "CE_AsignacionGrupo" as E_Asig <<BD>>
+participant "GruposPage" as UI <<Form>>
+participant "GrupoController" as Ctrl <<ctr>>
+boundary "PlanificacionService" as Serv <<service>>
+participant "Postulante" as E_Post <<BD>>
+participant "Aula" as E_Aula <<BD>>
+participant "Grupo" as E_Grupo <<BD>>
+participant "AsignacionGrupo" as E_Asig <<BD>>
 
 Act -> UI : 1: EjecutarCalculoAsignacion()
 activate UI
-UI -> Ctrl : 2: IniciarAsignacionMasiva()
+UI -> Ctrl : 2: asignacionMasiva()
 activate Ctrl
-Ctrl -> E_Post : 3: ObtenerPostulantesInscritosSinGrupo()
+Ctrl -> Serv : 3: ejecutarAsignacionMasiva(gestion_id)
+activate Serv
+Serv -> E_Post : 4: where('estado', 'Inscrito')
 activate E_Post
-E_Post --> Ctrl : 4: ListaPostulantes
+E_Post --> Serv : ListaPostulantes
 deactivate E_Post
-Ctrl -> Ctrl : 5: CalcularGruposNecesarios(CEIL(Total/70))
-Ctrl -> E_Aula : 6: VerificarDisponibilidadAulas()
+Serv -> Serv : 5: CalcularGruposNecesarios(CEIL(Total/70))
+Serv -> E_Aula : 6: get()
 activate E_Aula
-E_Aula --> Ctrl : 7: AulasDisponibles
+E_Aula --> Serv : AulasDisponibles
 deactivate E_Aula
-Ctrl -> E_Grupo : 8: CrearNuevosGrupos(cantidad, horarios)
+Serv -> E_Grupo : 7: create(datos)
 activate E_Grupo
-E_Grupo --> Ctrl : Confirmación
+E_Grupo --> Serv : Confirmación
 deactivate E_Grupo
-Ctrl -> Ctrl : 9: CalcularDistribucionEquitativa()
-loop Para cada postulante inscrito sin grupo
-  Ctrl -> E_Asig : 10: VincularPostulanteAGrupo(postulanteId, grupoId)
-  activate E_Asig
-  E_Asig --> Ctrl : Confirmación
-  deactivate E_Asig
-  Ctrl -> E_Post : 11: ActualizarEstado("En Evaluación")
-  activate E_Post
-  E_Post --> Ctrl : Confirmación
-  deactivate E_Post
-end
+Serv -> Serv : 8: CalcularDistribucionEquitativa()
+Serv -> E_Asig : 9: create(datos)
+activate E_Asig
+E_Asig --> Serv : Confirmación
+deactivate E_Asig
+Serv -> E_Post : 10: update(estado="En Evaluación")
+activate E_Post
+E_Post --> Serv : Confirmación
+deactivate E_Post
+Serv --> Ctrl : 11: ConfirmarAsignacionExitosa()
+deactivate Serv
 Ctrl --> UI : 12: ConfirmarAsignacionExitosa()
 deactivate Ctrl
 UI --> Act : 13: MostrarGruposConPostulantes()
@@ -4378,54 +4945,48 @@ deactivate UI
 
 #### 11. Diagrama de Secuencia para CU11: Asignar Postulantes a Grupos (Manual/Individual)
 
-**Descripción detallada y dinámica del flujo de diseño:**
-1. El *Administrador* solicita reubicar o asignar manualmente un postulante desde la interfaz `IU_Grupos`.
-2. La frontera delega la acción al controlador `CTR_Planificacion` mediante `ReasignarPostulante(postulanteId, nuevoGrupoId)`.
-3. El controlador obtiene los datos biográficos de `CE_Postulante` para verificar sus opciones de turno.
-4. La entidad devuelve los datos correspondientes del expediente.
-5. El controlador valida la cota física de capacidad máxima directamente sobre la entidad `CE_Grupo`.
-6. El grupo devuelve la capacidad restante y stock de vacantes.
-7. **[ALT]** El controlador evalúa la capacidad disponible:
-   - **Capacidad disponible:** El controlador registra la nueva relación en `CE_AsignacionGrupo` y confirma el éxito.
-   - **Grupo lleno (capacidad máxima alcanzada):** El controlador rechaza la operación y notifica que el grupo ha alcanzado su capacidad máxima de 70 estudiantes.
-8. La interfaz actualiza la vista detallada o muestra el error.
-
 ```plantuml
 @startuml Seq_CU11
 skinparam actorStyle awesome
 skinparam backgroundColor transparent
 
 actor "Administrador" as Act
-participant "IU_Grupos" as UI <<Form>>
-participant "CTR_Planificacion" as Ctrl <<ctr>>
-participant "CE_Postulante" as E_Post <<BD>>
-participant "CE_Grupo" as E_Grupo <<BD>>
-participant "CE_AsignacionGrupo" as E_Asig <<BD>>
+participant "GruposPage" as UI <<Form>>
+participant "GrupoController" as Ctrl <<ctr>>
+boundary "PlanificacionService" as Serv <<service>>
+participant "Postulante" as E_Post <<BD>>
+participant "Grupo" as E_Grupo <<BD>>
+participant "AsignacionGrupo" as E_Asig <<BD>>
 
-Act -> UI : 1: SolicitarAjusteGrupo(postulanteId, nuevoGrupoId)
+Act -> UI : 1: SolicitarAjusteGrupo()
 activate UI
-UI -> Ctrl : 2: ReasignarPostulante(postulanteId, nuevoGrupoId)
+UI -> Ctrl : 2: reasignar(request)
 activate Ctrl
-Ctrl -> E_Post : 3: ObtenerPostulante(postulanteId)
+Ctrl -> Serv : 3: reasignarPostulante(postulante_id, grupo_id)
+activate Serv
+Serv -> E_Post : 4: findOrFail(postulante_id)
 activate E_Post
-E_Post --> Ctrl : 4: DatosPostulante
+E_Post --> Serv : Postulante
 deactivate E_Post
-Ctrl -> E_Grupo : 5: VerificarCapacidad(nuevoGrupoId)
+Serv -> E_Grupo : 5: findOrFail(grupo_id)
 activate E_Grupo
-E_Grupo --> Ctrl : 6: CapacidadDisponible
+E_Grupo --> Serv : Grupo
 deactivate E_Grupo
-alt Capacidad disponible en el grupo
-  Ctrl -> E_Asig : 7: ActualizarVinculoGrupo()
+Serv -> Serv : 6: VerificarCapacidad()
+alt Capacidad Disponible
+  Serv -> E_Asig : 7: update(grupo_id)
   activate E_Asig
-  E_Asig --> Ctrl : Confirmación
+  E_Asig --> Serv : Confirmación
   deactivate E_Asig
-  Ctrl --> UI : 8: RetornarExito()
+  Serv --> Ctrl : 8: ConfirmarReasignacion()
+  Ctrl --> UI : 9: RetornarExito()
+  UI --> Act : 10: ActualizarListaGrupo()
+else Grupo Lleno
+  Serv --> Ctrl : 8: RetornarError("Grupo lleno")
+  deactivate Serv
+  Ctrl --> UI : 9: NotificarError("Capacidad superada")
   deactivate Ctrl
-  UI --> Act : 9: ActualizarListaGrupo()
-else Grupo lleno (capacidad máxima 70 alcanzada)
-  Ctrl --> UI : 7: NotificarError("Grupo lleno, capacidad máxima alcanzada")
-  deactivate Ctrl
-  UI --> Act : 8: MostrarMensajeError()
+  UI --> Act : 10: MostrarMensajeError()
 end
 deactivate UI
 @enduml
@@ -4433,52 +4994,51 @@ deactivate UI
 
 #### 12. Diagrama de Secuencia para CU12: Asignar Docente a Grupo y Materia
 
-**Descripción detallada y dinámica del flujo de diseño:**
-1. El *Administrador* asigna un docente a un grupo y materia en la pantalla de gestión de `IU_Docentes`.
-2. La frontera delega la lógica al controlador `CTR_Planificacion` llamando a `VincularDocenteMateria(docenteId, grupoId, materiaId)`.
-3. El controlador verifica la carga horaria actual de la entidad `CE_Docente` para mitigar choques u sobrecarga.
-4. La entidad devuelve la carga horaria activa.
-5. **[ALT]** El controlador evalúa la carga horaria del docente:
-   - **Carga disponible (< 4 grupos):** El controlador valida la especialidad del docente en `CE_Materia`, registra la asignación en `CE_Grupo` y retorna éxito.
-   - **Carga máxima alcanzada (4 grupos):** El controlador rechaza la operación e indica que el docente ya tiene la carga máxima asignada.
-6. La interfaz actualiza la matriz de docentes o muestra el error correspondiente.
-
 ```plantuml
 @startuml Seq_CU12
 skinparam actorStyle awesome
 skinparam backgroundColor transparent
 
 actor "Administrador" as Act
-participant "IU_Docentes" as UI <<Form>>
-participant "CTR_Planificacion" as Ctrl <<ctr>>
-participant "CE_Docente" as E_Doc <<BD>>
-participant "CE_Materia" as E_Mat <<BD>>
-participant "CE_Grupo" as E_Grup <<BD>>
+participant "DocentesPage" as UI <<Form>>
+participant "DocenteController" as Ctrl <<ctr>>
+participant "Docente" as E_Doc <<BD>>
+participant "Materia" as E_Mat <<BD>>
+participant "AsignacionDocente" as E_AsigDoc <<BD>>
 
-Act -> UI : 1: AsignarDocente(docenteId, grupoId, materiaId)
+Act -> UI : 1: AsignarDocente()
 activate UI
-UI -> Ctrl : 2: VincularDocenteMateria(docenteId, grupoId, materiaId)
+UI -> Ctrl : 2: asignar(request)
 activate Ctrl
-Ctrl -> E_Doc : 3: VerificarCargaHoraria(docenteId)
+Ctrl -> E_Doc : 3: findOrFail(docente_id)
 activate E_Doc
-E_Doc --> Ctrl : 4: CargaHorariaActiva
+E_Doc --> Ctrl : Docente
 deactivate E_Doc
-alt Carga disponible (grupos < 4)
-  Ctrl -> E_Mat : 5: ValidarEspecialidad(docenteId, materiaId)
+Ctrl -> E_Doc : 4: tieneCargaDisponible() (carga < 4)
+activate E_Doc
+E_Doc --> Ctrl : CargaValida
+deactivate E_Doc
+alt Carga < 4
+  Ctrl -> E_Mat : 5: findOrFail(materia_id)
   activate E_Mat
-  E_Mat --> Ctrl : 6: EspecialidadValida
+  E_Mat --> Ctrl : Materia
   deactivate E_Mat
-  Ctrl -> E_Grup : 7: RegistrarAsignacionMateria(docenteId, materiaId)
-  activate E_Grup
-  E_Grup --> Ctrl : Confirmación
-  deactivate E_Grup
-  Ctrl --> UI : 8: RetornarExito()
+  Ctrl -> Ctrl : 6: ValidarEspecialidad()
+  alt Especialidad Coincide
+    Ctrl -> E_AsigDoc : 7: create(docente_id, grupo_id, materia_id)
+    activate E_AsigDoc
+    E_AsigDoc --> Ctrl : Confirmación
+    deactivate E_AsigDoc
+    Ctrl --> UI : 8: RetornarExito()
+    UI --> Act : 9: ActualizarMatrizDocentes()
+  else Especialidad no coincide
+    Ctrl --> UI : 8: NotificarError("Especialidad no coincide")
+    UI --> Act : 9: MostrarMensajeError()
+  end
+else Carga >= 4
+  Ctrl --> UI : 8: NotificarError("Docente con carga máxima")
   deactivate Ctrl
-  UI --> Act : 9: ActualizarMatrizDocentes()
-else Carga máxima alcanzada (4 grupos)
-  Ctrl --> UI : 5: NotificarError("Docente ya tiene 4 grupos asignados")
-  deactivate Ctrl
-  UI --> Act : 6: MostrarAlertaCargaMaxima()
+  UI --> Act : 9: MostrarAlertaCargaMaxima()
 end
 deactivate UI
 @enduml
@@ -4486,66 +5046,40 @@ deactivate UI
 
 #### 23. Diagrama de Secuencia para CU23: Realizar Simulacro de Examen (Práctica)
 
-**Descripción detallada y dinámica del flujo de diseño:**
-1. El *Postulante* solicita iniciar un simulacro de examen en la interfaz reactiva `IU_Simulacro`.
-2. La frontera delega la inicialización al controlador `CTR_Simulacro` llamando a `generarPreguntasSimulacro()`.
-3. El controlador consulta a `CE_PreguntaSimulacro` para obtener el banco completo de preguntas cargadas.
-4. La entidad devuelve la colección de preguntas de práctica registradas.
-5. El controlador selecciona aleatoriamente 10 preguntas por cada una de las 4 materias (40 preguntas en total).
-6. El controlador retorna la lista de preguntas seleccionadas a la interfaz.
-7. La frontera renderiza las preguntas e inicializa un temporizador visual de cuenta regresiva en pantalla.
-8. El postulante contesta la prueba y presiona el botón para finalizar el examen, enviando sus respuestas a `IU_Simulacro`.
-9. La frontera delega la calificación al controlador `CTR_Simulacro` mediante `calificarSimulacro(respuestas)`.
-10. El controlador evalúa en memoria las respuestas del postulante contra las respuestas correctas de la entidad y calcula la nota.
-11. El controlador retorna la nota final obtenida en el simulacro de forma síncrona.
-12. La frontera detiene el temporizador y muestra el reporte detallado con las respuestas correctas, incorrectas y la nota final.
-
 ```plantuml
 @startuml Seq_CU23
 skinparam actorStyle awesome
 skinparam backgroundColor transparent
 
 actor "Postulante" as Act
-participant "IU_Simulacro" as UI <<Form>>
-participant "CTR_Simulacro" as Ctrl <<ctr>>
-participant "CE_PreguntaSimulacro" as E_Preg <<BD>>
+participant "SimulacroPage" as UI <<Form>>
+participant "SimulacroController" as Ctrl <<ctr>>
+participant "PreguntaSimulacro" as E_Preg <<BD>>
 
 Act -> UI : 1: IniciarSimulacro()
 activate UI
-UI -> Ctrl : 2: generarPreguntasSimulacro()
+UI -> Ctrl : 2: generar()
 activate Ctrl
-Ctrl -> E_Preg : 3: obtenerBancoPreguntas()
+Ctrl -> E_Preg : 3: where('materia_id', id)
 activate E_Preg
-E_Preg --> Ctrl : 4: BancoPreguntas
+E_Preg --> Ctrl : BancoPreguntas
 deactivate E_Preg
-Ctrl -> Ctrl : 5: SeleccionarPreguntasAleatorias()
-Ctrl --> UI : 6: ListaPreguntasGeneradas
+Ctrl -> Ctrl : 4: SeleccionarPreguntasAleatorias()
+Ctrl --> UI : 5: RetornarPreguntas (sin respuestas_correctas)
 deactivate Ctrl
-UI --> Act : 7: mostrarTemporizadorYPreguntas()
-deactivate UI
-
-Act -> UI : 8: enviarRespuestas(respuestas)
-activate UI
-UI -> Ctrl : 9: calificarSimulacro(respuestas)
+UI --> Act : 6: mostrarTemporizadorYPreguntas()
+Act -> UI : 7: enviarRespuestas(respuestas)
+UI -> Ctrl : 8: calificar(request)
 activate Ctrl
-Ctrl -> Ctrl : 10: CalcularNotaSimulacro()
-Ctrl --> UI : 11: retornarNotaSimulacro(nota)
+Ctrl -> Ctrl : 9: CalcularNotaSimulacro()
+Ctrl --> UI : 10: retornarNotaSimulacro()
 deactivate Ctrl
-UI --> Act : 12: mostrarResultadosSimulacro()
+UI --> Act : 11: mostrarResultadosSimulacro()
 deactivate UI
 @enduml
 ```
 
-
 #### 13. Diagrama de Secuencia para CU13: Registrar Notas (Individual)
-
-**Descripción detallada y dinámica del flujo de diseño:**
-1. El *Administrador* modifica la calificación de un postulante en la interfaz `IU_Notas`.
-2. La frontera delega la solicitud al controlador `CTR_Evaluacion` llamando a `ActualizarNotaIndividual(...)`.
-3. **[ALT]** El controlador valida la nota ingresada:
-   - **Nota válida (0-100):** El controlador guarda la nota en `CE_Examen`, recalcula el promedio, actualiza `CE_NotaFinal`, registra en bitácora y retorna éxito.
-   - **Nota fuera de rango:** El controlador rechaza la operación y notifica que la nota debe estar entre 0 y 100.
-4. La interfaz actualiza visualmente la planilla de notas o muestra el error.
 
 ```plantuml
 @startuml Seq_CU13
@@ -4553,27 +5087,27 @@ skinparam actorStyle awesome
 skinparam backgroundColor transparent
 
 actor "Administrador" as Act
-participant "IU_Notas" as UI <<Form>>
-participant "CTR_Evaluacion" as Ctrl <<ctr>>
-participant "CE_Examen" as E_Exam <<BD>>
-participant "CE_NotaFinal" as E_Nota <<BD>>
-participant "CE_BitacoraAcceso" as E_Bit <<BD>>
+participant "NotasPage" as UI <<Form>>
+participant "EvaluacionController" as Ctrl <<ctr>>
+participant "Examen" as E_Exam <<BD>>
+participant "NotaFinal" as E_Nota <<BD>>
+participant "BitacoraAcceso" as E_Bit <<BD>>
 
 Act -> UI : 1: ModificarNota(postulanteId, materia, nuevaNota)
 activate UI
-UI -> Ctrl : 2: ActualizarNotaIndividual(postulanteId, materia, nuevaNota)
+UI -> Ctrl : 2: update(request)
 activate Ctrl
 alt Nota válida (0 <= nota <= 100)
-  Ctrl -> E_Exam : 3: GuardarNota(materia, nuevaNota)
+  Ctrl -> E_Exam : 3: update(nuevaNota)
   activate E_Exam
   E_Exam --> Ctrl : Confirmación
   deactivate E_Exam
   Ctrl -> Ctrl : 4: RecalcularPromedio()
-  Ctrl -> E_Nota : 5: ActualizarPromedio()
+  Ctrl -> E_Nota : 5: update(promedio)
   activate E_Nota
   E_Nota --> Ctrl : Confirmación
   deactivate E_Nota
-  Ctrl -> E_Bit : 6: RegistrarAjusteManual()
+  Ctrl -> E_Bit : 6: create(log)
   activate E_Bit
   E_Bit --> Ctrl : Confirmación
   deactivate E_Bit
@@ -4591,51 +5125,39 @@ deactivate UI
 
 #### 14. Diagrama de Secuencia para CU14: Cargar Notas Masivamente (CSV)
 
-**Descripción detallada y dinámica del flujo de diseño:**
-1. El *Administrador* selecciona e importa un archivo de notas plano (CSV) en la interfaz `IU_Notas`.
-2. La frontera delega el procesamiento masivo al controlador `CTR_Evaluacion` llamando a `ProcesarCargaCSV(file)`.
-3. El controlador inicia un bucle transaccional para cada fila del archivo CSV, consultando la existencia del CI en `CE_Postulante`.
-4. La entidad devuelve la información y datos del postulante consultado.
-5. El controlador registra o actualiza la nota correspondiente en la entidad de examen `CE_Examen`.
-6. El controlador ejecuta de forma interna la fórmula del promedio ponderado en memoria.
-7. El controlador actualiza la nota consolidada y determina el estado por materia en `CE_NotaFinal`.
-8. Concluido el procesamiento de las filas, el controlador registra el log del proceso en la bitácora de `CE_BitacoraAcceso`.
-9. El controlador confirma y devuelve el resumen del resultado de la carga masiva a la frontera.
-10. La interfaz muestra un cuadro con el reporte de registros importados exitosamente y filas omitidas.
-
 ```plantuml
 @startuml Seq_CU14
 skinparam actorStyle awesome
 skinparam backgroundColor transparent
 
 actor "Administrador" as Act
-participant "IU_Notas" as UI <<Form>>
-participant "CTR_Evaluacion" as Ctrl <<ctr>>
-participant "CE_Postulante" as E_Post <<BD>>
-participant "CE_Examen" as E_Exam <<BD>>
-participant "CE_NotaFinal" as E_Nota <<BD>>
-participant "CE_BitacoraAcceso" as E_Bit <<BD>>
+participant "NotasPage" as UI <<Form>>
+participant "EvaluacionController" as Ctrl <<ctr>>
+participant "Postulante" as E_Post <<BD>>
+participant "Examen" as E_Exam <<BD>>
+participant "NotaFinal" as E_Nota <<BD>>
+participant "BitacoraAcceso" as E_Bit <<BD>>
 
 Act -> UI : 1: CargarArchivoCSV(file)
 activate UI
-UI -> Ctrl : 2: ProcesarCargaCSV(file)
+UI -> Ctrl : 2: storeMasivo(request)
 activate Ctrl
 loop Para cada fila del archivo CSV
-  Ctrl -> E_Post : 3: ObtenerPorCI(ci)
+  Ctrl -> E_Post : 3: where('ci', ci)
   activate E_Post
   E_Post --> Ctrl : DatosPostulante
   deactivate E_Post
-  Ctrl -> E_Exam : 5: RegistrarNotaExamen(nota, numero)
+  Ctrl -> E_Exam : 5: create(nota)
   activate E_Exam
   E_Exam --> Ctrl : Confirmación
   deactivate E_Exam
   Ctrl -> Ctrl : 6: CalcularPromedioPonderado()
-  Ctrl -> E_Nota : 7: ActualizarNotaFinal(promedio, estado)
+  Ctrl -> E_Nota : 7: update(promedio, estado)
   activate E_Nota
   E_Nota --> Ctrl : Confirmación
   deactivate E_Nota
 end
-Ctrl -> E_Bit : 8: RegistrarOperacionCSV(usuarioId, log)
+Ctrl -> E_Bit : 8: create(log)
 activate E_Bit
 E_Bit --> Ctrl : Confirmación
 deactivate E_Bit
@@ -4648,46 +5170,35 @@ deactivate UI
 
 #### 15. Diagrama de Secuencia para CU15: Calcular Promedio Ponderado
 
-**Descripción detallada y dinámica del flujo de diseño:**
-1. El *Sistema* o el usuario dispara el cálculo general de calificaciones en `IU_Notas`.
-2. La frontera delega la solicitud de ejecución de la fórmula ponderada al controlador `CTR_Evaluacion`.
-3. **[LOOP]** Para cada materia del postulante:
-   - El controlador consulta a `CE_Examen` para extraer las calificaciones parciales.
-   - **[ALT]** El controlador verifica la completitud de las notas:
-     - **3 notas completas:** Ejecuta la ponderación (30% Ex1 + 30% Ex2 + 40% Ex3) y guarda el promedio en `CE_NotaFinal`.
-     - **Notas incompletas:** Calcula un promedio parcial indicando "Incompleto".
-4. El controlador retorna la confirmación del cálculo exitoso a la interfaz.
-5. La frontera actualiza de forma instantánea el listado y grilla de promedios ponderados.
-
 ```plantuml
 @startuml Seq_CU15
 skinparam actorStyle awesome
 skinparam backgroundColor transparent
 
 actor "Sistema" as Act
-participant "IU_Notas" as UI <<Form>>
-participant "CTR_Evaluacion" as Ctrl <<ctr>>
-participant "CE_Examen" as E_Exam <<BD>>
-participant "CE_NotaFinal" as E_Nota <<BD>>
+participant "NotasPage" as UI <<Form>>
+participant "EvaluacionController" as Ctrl <<ctr>>
+participant "Examen" as E_Exam <<BD>>
+participant "NotaFinal" as E_Nota <<BD>>
 
 Act -> UI : 1: SolicitarCalculoGlobal()
 activate UI
-UI -> Ctrl : 2: EjecutarCalculoPromedios()
+UI -> Ctrl : 2: calcularPromedios()
 activate Ctrl
 loop Para cada materia del postulante
-  Ctrl -> E_Exam : 3: ObtenerNotasPorMateria(materiaId)
+  Ctrl -> E_Exam : 3: where('postulante_id', id)
   activate E_Exam
-  E_Exam --> Ctrl : 4: NotasMateria
+  E_Exam --> Ctrl : NotasMateria
   deactivate E_Exam
   alt 3 exámenes registrados (notas completas)
     Ctrl -> Ctrl : 5: AplicarFormulaPonderacion(30%-30%-40%)
-    Ctrl -> E_Nota : 6: GuardarPromedioFinal(promedio, "Completo")
+    Ctrl -> E_Nota : 6: updateOrCreate(promedio)
     activate E_Nota
     E_Nota --> Ctrl : Confirmación
     deactivate E_Nota
   else Notas incompletas (faltan exámenes)
     Ctrl -> Ctrl : 5: CalcularPromedioParcial()
-    Ctrl -> E_Nota : 6: GuardarPromedioParcial(promedio, "Incompleto")
+    Ctrl -> E_Nota : 6: updateOrCreate(promedio)
     activate E_Nota
     E_Nota --> Ctrl : Confirmación
     deactivate E_Nota
@@ -4702,47 +5213,34 @@ deactivate UI
 
 #### 16. Diagrama de Secuencia para CU16: Determinar Estado (Aprobado/Reprobado)
 
-**Descripción detallada y dinámica del flujo de diseño:**
-1. El *Sistema* o el usuario dispara la evaluación del estado académico final en la interfaz `IU_Notas`.
-2. La frontera delega la evaluación al controlador de negocio `CTR_Evaluacion`.
-3. El controlador recupera todas las notas consolidadas de la entidad `CE_NotaFinal`.
-4. La entidad devuelve los promedios calculados para cada estudiante.
-5. **[LOOP]** Para cada postulante con notas completas:
-   - El controlador valida si el promedio es ≥60 en cada materia.
-   - **[ALT]** El controlador determina el estado:
-     - **Todas las materias ≥60:** Actualiza el estado a "Aprobado" en `CE_Postulante`.
-     - **Alguna materia <60:** Actualiza el estado a "Reprobado" en `CE_Postulante`.
-6. El controlador confirma a la interfaz que la evaluación concluyó.
-7. La frontera refresca y muestra los distintivos visuales del estado del postulante.
-
 ```plantuml
 @startuml Seq_CU16
 skinparam actorStyle awesome
 skinparam backgroundColor transparent
 
 actor "Sistema" as Act
-participant "IU_Notas" as UI <<Form>>
-participant "CTR_Evaluacion" as Ctrl <<ctr>>
-participant "CE_NotaFinal" as E_Nota <<BD>>
-participant "CE_Postulante" as E_Post <<BD>>
+participant "NotasPage" as UI <<Form>>
+participant "EvaluacionController" as Ctrl <<ctr>>
+participant "NotaFinal" as E_Nota <<BD>>
+participant "Postulante" as E_Post <<BD>>
 
 Act -> UI : 1: EjecutarDeterminacionEstado()
 activate UI
-UI -> Ctrl : 2: EvaluarAprobacionMasiva()
+UI -> Ctrl : 2: evaluarEstados()
 activate Ctrl
-Ctrl -> E_Nota : 3: ObtenerPromediosCalculados()
+Ctrl -> E_Nota : 3: get()
 activate E_Nota
-E_Nota --> Ctrl : 4: PromediosCalculados
+E_Nota --> Ctrl : PromediosCalculados
 deactivate E_Nota
 loop Para cada postulante con notas completas
   Ctrl -> Ctrl : 5: ValidarUmbral(>=60 por cada materia)
   alt Todas las materias >= 60
-    Ctrl -> E_Post : 6: ActualizarEstado("Aprobado")
+    Ctrl -> E_Post : 6: update(estado="Aprobado")
     activate E_Post
     E_Post --> Ctrl : Confirmación
     deactivate E_Post
   else Alguna materia < 60
-    Ctrl -> E_Post : 6: ActualizarEstado("Reprobado")
+    Ctrl -> E_Post : 6: update(estado="Reprobado")
     activate E_Post
     E_Post --> Ctrl : Confirmación
     deactivate E_Post
@@ -4757,62 +5255,48 @@ deactivate UI
 
 #### 17. Diagrama de Secuencia para CU17: Asignar Carreras por Cupo (Algoritmo de Admisión)
 
-**Descripción detallada y dinámica del flujo de diseño:**
-1. El *Coordinador* de la facultad inicia el algoritmo masivo desde la interfaz `IU_Admision`.
-2. La frontera delega el procesamiento al controlador `CTR_AsignacionCarrera` llamando a `IniciarAsignacionMasiva()`.
-3. El controlador consulta a `CE_Postulante` para recuperar los postulantes con estado "Aprobado", ordenados descendente por su promedio general.
-4. La entidad de postulante devuelve la lista de aprobados por mérito.
-5. Para cada postulante del bucle, el controlador consulta la entidad de cupos `CE_CupoGestion` de su primera opción de carrera.
-6. La entidad devuelve la disponibilidad de plazas.
-7. Si es mayor a 0, el controlador crea el registro en `CE_Admision` indicando la vía y decrementa el cupo en `CE_CupoGestion`.
-8. En caso de que se encuentren agotados, el controlador repite el procedimiento con la segunda opción del postulante.
-9. Si ambas opciones están llenas, el controlador marca de forma persistente al postulante en "Pendiente Reasignacion" en `CE_Postulante`.
-10. El controlador anota e inserta una alerta o log de contingencia por cupos agotados en la entidad `CE_BitacoraAcceso`.
-11. Completados los postulantes, el controlador confirma el éxito de la operación a la interfaz.
-12. La frontera actualiza el dashboard general de vacantes consumidas y postulantes excedidos.
-
 ```plantuml
 @startuml Seq_CU17
 skinparam actorStyle awesome
 skinparam backgroundColor transparent
 
 actor "Coordinador" as Act
-participant "IU_Admision" as UI <<Form>>
-participant "CTR_AsignacionCarrera" as Ctrl <<ctr>>
-participant "CE_Postulante" as E_Post <<BD>>
-participant "CE_CupoGestion" as E_Cupo <<BD>>
-participant "CE_Carrera" as E_Carr <<BD>>
-participant "CE_Admision" as E_Admi <<BD>>
-participant "CE_BitacoraAcceso" as E_Bit <<BD>>
+participant "AdmisionPage" as UI <<Form>>
+participant "AdmisionController" as Ctrl <<ctr>>
+participant "Postulante" as E_Post <<BD>>
+participant "CupoGestion" as E_Cupo <<BD>>
+participant "Carrera" as E_Carr <<BD>>
+participant "Admision" as E_Admi <<BD>>
+participant "BitacoraAcceso" as E_Bit <<BD>>
 
 Act -> UI : 1: ProcesarAsignacionCarreras()
 activate UI
-UI -> Ctrl : 2: IniciarAsignacionMasiva()
+UI -> Ctrl : 2: asignacionMasiva()
 activate Ctrl
-Ctrl -> E_Post : 3: ObtenerAprobadosOrdenadosPorPromedio()
+Ctrl -> E_Post : 3: getAprobados()
 activate E_Post
-E_Post --> Ctrl : 4: ListaAprobados
+E_Post --> Ctrl : ListaAprobados
 deactivate E_Post
 loop Para cada postulante aprobado
-  Ctrl -> E_Cupo : 5: VerificarCupoDisponible(carreraId)
+  Ctrl -> E_Cupo : 5: where('carrera_id', id)
   activate E_Cupo
-  E_Cupo --> Ctrl : 6: CupoDisponible
+  E_Cupo --> Ctrl : CupoDisponible
   deactivate E_Cupo
   alt Cupo disponible > 0
-    Ctrl -> E_Admi : 7: RegistrarAdmision(postulanteId, carreraId, via)
+    Ctrl -> E_Admi : 7: create(datos)
     activate E_Admi
     E_Admi --> Ctrl : Confirmación
     deactivate E_Admi
-    Ctrl -> E_Cupo : 8: DecrementarCuposDisponibles(carreraId)
+    Ctrl -> E_Cupo : 8: decrement(cupos)
     activate E_Cupo
     E_Cupo --> Ctrl : Confirmación
     deactivate E_Cupo
   else Cupos agotados en 1ra y 2da opción
-    Ctrl -> E_Post : 9: MarcarPendienteReasignacion()
+    Ctrl -> E_Post : 9: update(estado="Pendiente Reasignacion")
     activate E_Post
     E_Post --> Ctrl : Confirmación
     deactivate E_Post
-    Ctrl -> E_Bit : 10: RegistrarAlertaCuposLlenos(ci, promedio)
+    Ctrl -> E_Bit : 10: create(datos_alerta)
     activate E_Bit
     E_Bit --> Ctrl : Confirmación
     deactivate E_Bit
@@ -4827,28 +5311,21 @@ deactivate UI
 
 #### 18. Diagrama de Secuencia para CU18: Configurar Cupos por Carrera
 
-**Descripción detallada y dinámica del flujo de diseño:**
-1. El *Administrador* o decano establece las vacantes permitidas en `IU_Configuracion`.
-2. La frontera delega la actualización al controlador `CTR_Asignacion` llamando a `ActualizarCupos(cuposPorCarrera)`.
-3. El controlador guarda los nuevos límites configurados de forma persistente en `CE_CupoGestion`.
-4. El controlador retorna la confirmación del éxito de la configuración.
-5. La interfaz renderiza el mensaje de éxito de la persistencia de cupos.
-
 ```plantuml
 @startuml Seq_CU18
 skinparam actorStyle awesome
 skinparam backgroundColor transparent
 
 actor "Administrador" as Act
-participant "IU_Configuracion" as UI <<Form>>
-participant "CTR_Asignacion" as Ctrl <<ctr>>
-participant "CE_CupoGestion" as E_Cupo <<BD>>
+participant "ConfiguracionPage" as UI <<Form>>
+participant "AdmisionController" as Ctrl <<ctr>>
+participant "CupoGestion" as E_Cupo <<BD>>
 
 Act -> UI : 1: EstablecerLimites(cuposPorCarrera)
 activate UI
-UI -> Ctrl : 2: ActualizarCupos(cuposPorCarrera)
+UI -> Ctrl : 2: store(request)
 activate Ctrl
-Ctrl -> E_Cupo : 3: GuardarNuevosLimites()
+Ctrl -> E_Cupo : 3: updateOrCreate(datos)
 activate E_Cupo
 E_Cupo --> Ctrl : Confirmación
 deactivate E_Cupo
@@ -4861,39 +5338,28 @@ deactivate UI
 
 #### 19. Diagrama de Secuencia para CU19: Generar Reporte Estructurado
 
-**Descripción detallada y dinámica del flujo de diseño:**
-1. El *Coordinador* selecciona una plantilla oficial estructurada (ej: PDF) en `IU_Reportes`.
-2. La frontera delega la solicitud al controlador `CTR_Reportes` llamando a `GenerarReporteEstructurado(tipo)`.
-3. El controlador realiza la consulta de admisión en la entidad `CE_Admision`.
-4. La entidad devuelve la colección de admisiones registradas.
-5. El controlador cruza los datos de admisión correspondientes en `CE_Postulante`.
-6. La entidad de postulante devuelve la información biográfica básica.
-7. El controlador orquesta la compilación y formateo de la plantilla física (ej: PDF).
-8. El controlador retorna el documento stream binario a la interfaz de usuario.
-9. La frontera previsualiza o gatilla la descarga automática del documento en el navegador.
-
 ```plantuml
 @startuml Seq_CU19
 skinparam actorStyle awesome
 skinparam backgroundColor transparent
 
 actor "Coordinador" as Act
-participant "IU_Reportes" as UI <<Form>>
-participant "CTR_Reportes" as Ctrl <<ctr>>
-participant "CE_Admision" as E_Admi <<BD>>
-participant "CE_Postulante" as E_Post <<BD>>
+participant "ReportesPage" as UI <<Form>>
+participant "ReporteController" as Ctrl <<ctr>>
+participant "Admision" as E_Admi <<BD>>
+participant "Postulante" as E_Post <<BD>>
 
 Act -> UI : 1: SeleccionarPlantillaReporte(tipo)
 activate UI
-UI -> Ctrl : 2: GenerarReporteEstructurado(tipo)
+UI -> Ctrl : 2: generarPDF(request)
 activate Ctrl
-Ctrl -> E_Admi : 3: ConsultarDatosAdmision()
+Ctrl -> E_Admi : 3: get()
 activate E_Admi
-E_Admi --> Ctrl : 4: DatosAdmision
+E_Admi --> Ctrl : DatosAdmision
 deactivate E_Admi
-Ctrl -> E_Post : 5: CruzarDatosPostulantes()
+Ctrl -> E_Post : 5: get()
 activate E_Post
-E_Post --> Ctrl : 6: DatosPostulantes
+E_Post --> Ctrl : DatosPostulantes
 deactivate E_Post
 Ctrl -> Ctrl : 7: FormatearPDF()
 Ctrl --> UI : 8: RetornarDocumento()
@@ -4905,31 +5371,23 @@ deactivate UI
 
 #### 20. Diagrama de Secuencia para CU20: Generar Reporte Dinámico
 
-**Descripción detallada y dinámica del flujo de diseño:**
-1. El *Coordinador* configura los filtros intermedios y columnas personalizadas en `IU_ReportesDinamicos`.
-2. La frontera delega la construcción de la consulta al controlador `CTR_Reportes` llamando a `EjecutarConsultaDinamica(...)`.
-3. El controlador ejecuta y compila la consulta parametrizada sobre la entidad agregada `CE_DataWarehouse`.
-4. La entidad de datos consolidados retorna el set físico de registros filtrados.
-5. El controlador devuelve la colección estructurada formateada a la interfaz.
-6. La frontera renderiza y exporta la grilla interactiva o grid en pantalla.
-
 ```plantuml
 @startuml Seq_CU20
 skinparam actorStyle awesome
 skinparam backgroundColor transparent
 
 actor "Coordinador" as Act
-participant "IU_ReportesDinamicos" as UI <<Form>>
-participant "CTR_Reportes" as Ctrl <<ctr>>
-participant "CE_DataWarehouse" as E_Data <<BD>>
+participant "ReportesDinamicosPage" as UI <<Form>>
+participant "ReporteController" as Ctrl <<ctr>>
+participant "DataWarehouse" as E_Data <<BD>>
 
 Act -> UI : 1: ConfigurarFiltrosYCampos(parametros)
 activate UI
-UI -> Ctrl : 2: EjecutarConsultaDinamica(parametros)
+UI -> Ctrl : 2: generarDinamico(request)
 activate Ctrl
 Ctrl -> E_Data : 3: ConsultarBaseDeDatosBI(parametros)
 activate E_Data
-E_Data --> Ctrl : 4: DatosBI
+E_Data --> Ctrl : DatosBI
 deactivate E_Data
 Ctrl --> UI : 5: RetornarTablaResultados()
 deactivate Ctrl
@@ -4940,38 +5398,28 @@ deactivate UI
 
 #### 21. Diagrama de Secuencia para CU21: Reporte por Comando de Voz (IA)
 
-**Descripción detallada y dinámica del flujo de diseño:**
-1. El *Coordinador* presiona el control del micrófono y dicta una consulta en `IU_Voz`.
-2. La frontera transmite el audio capturado al backend mediante `ProcesarAudioNLP(audio)`.
-3. El controlador de IA `CTR_ReportesIA` delega la traducción asíncrona a la interfaz externa `CE_ServicioCognitivoIA` (OpenAI API).
-4. El servicio cognitivo interpreta semánticamente la voz y retorna una consulta estructurada (SQL / parámetros).
-5. El controlador orquesta la llamada y consulta dinámica sobre `CE_DataWarehouse`.
-6. El almacén de datos retorna la información consolidada extraída.
-7. El controlador consolida los resultados y los envía de vuelta a la interfaz.
-8. La frontera dibuja la gráfica interactiva correspondiente con la información recuperada.
-
 ```plantuml
 @startuml Seq_CU21
 skinparam actorStyle awesome
 skinparam backgroundColor transparent
 
 actor "Coordinador" as Act
-participant "IU_Voz" as UI <<Form>>
-participant "CTR_ReportesIA" as Ctrl <<ctr>>
-participant "CE_ServicioCognitivoIA" as B_IA <<Form>>
-participant "CE_DataWarehouse" as E_Data <<BD>>
+participant "ReportesVozPage" as UI <<Form>>
+participant "ReporteController" as Ctrl <<ctr>>
+boundary "ServicioCognitivoIA" as B_IA <<external>>
+participant "DataWarehouse" as E_Data <<BD>>
 
 Act -> UI : 1: EmitirComandoVoz(audio)
 activate UI
-UI -> Ctrl : 2: ProcesarAudioNLP(audio)
+UI -> Ctrl : 2: procesarVoz(request)
 activate Ctrl
 Ctrl -> B_IA : 3: TraducirIntencionASQL(audio)
 activate B_IA
-B_IA --> Ctrl : 4: RetornarConsultaEstructurada()
+B_IA --> Ctrl : RetornarConsultaEstructurada()
 deactivate B_IA
 Ctrl -> E_Data : 5: EjecutarConsultaGenerada()
 activate E_Data
-E_Data --> Ctrl : 6: ResultadosSQL
+E_Data --> Ctrl : ResultadosSQL
 deactivate E_Data
 Ctrl --> UI : 7: RetornarResultados()
 deactivate Ctrl
@@ -4982,46 +5430,33 @@ deactivate UI
 
 #### 22. Diagrama de Secuencia para CU22: Consultar Dashboard Estadístico en Tiempo Real
 
-**Descripción detallada y dinámica del flujo de diseño:**
-1. El *Coordinador* abre la vista del tablero principal en la interfaz reactiva `IU_Dashboard`.
-2. La frontera solicita de forma síncrona las estadísticas consolidadas al controlador `CTR_Reportes`.
-3. El controlador ejecuta consultas agregadas de postulantes inscritos sobre la entidad `CE_Postulante`.
-4. El postulante devuelve los resultados agrupados y segmentados por perfiles.
-5. El controlador realiza la consulta de rendimiento académico sobre `CE_NotaFinal`.
-6. La entidad de notas devuelve las tasas de aprobación y promedios por grupos.
-7. El controlador consulta el stock y avance de llenado de vacantes sobre `CE_CupoGestion`.
-8. La entidad de cupos devuelve el número de plazas consumidas.
-9. El controlador consolida la estructura agregada y la envía de vuelta a la interfaz.
-10. La frontera inicializa y renderiza los componentes y gráficos circulares en pantalla.
-11. El controlador orquesta la transmisión asíncrona de eventos a través de WebSocket a la frontera para re-renderizar gráficos en tiempo real cuando ocurran nuevas operaciones.
-
 ```plantuml
 @startuml Seq_CU22
 skinparam actorStyle awesome
 skinparam backgroundColor transparent
 
 actor "Coordinador" as Act
-participant "IU_Dashboard" as UI <<Form>>
-participant "CTR_Reportes" as Ctrl <<ctr>>
-participant "CE_Postulante" as E_Post <<BD>>
-participant "CE_NotaFinal" as E_Nota <<BD>>
-participant "CE_CupoGestion" as E_Cupo <<BD>>
+participant "DashboardPage" as UI <<Form>>
+participant "ReporteController" as Ctrl <<ctr>>
+participant "Postulante" as E_Post <<BD>>
+participant "NotaFinal" as E_Nota <<BD>>
+participant "CupoGestion" as E_Cupo <<BD>>
 
 Act -> UI : 1: AbrirDashboard()
 activate UI
-UI -> Ctrl : 2: SolicitarEstadisticasTiempoReal()
+UI -> Ctrl : 2: getEstadisticas()
 activate Ctrl
-Ctrl -> E_Post : 3: ObtenerDistribuciónInscritos()
+Ctrl -> E_Post : 3: get()
 activate E_Post
-E_Post --> Ctrl : 4: DistribucionInscritos
+E_Post --> Ctrl : DistribucionInscritos
 deactivate E_Post
-Ctrl -> E_Nota : 5: ObtenerRendimientoYTasasAprobacion()
+Ctrl -> E_Nota : 5: get()
 activate E_Nota
-E_Nota --> Ctrl : 6: RendimientoYTasas
+E_Nota --> Ctrl : RendimientoYTasas
 deactivate E_Nota
-Ctrl -> E_Cupo : 7: ObtenerLlenadoCuposCarrera()
+Ctrl -> E_Cupo : 7: get()
 activate E_Cupo
-E_Cupo --> Ctrl : 8: LlenadoCupos
+E_Cupo --> Ctrl : LlenadoCupos
 deactivate E_Cupo
 Ctrl --> UI : 9: EnviarDatosEstadisticos()
 deactivate Ctrl
@@ -5031,14 +5466,11 @@ activate UI
 Ctrl -> UI : 11: TransmitirActualizacionesWebSocket(evento)
 deactivate UI
 @enduml
-´´´
-
-
----
+```
 
 ## 6.3 Diseño de Datos (Modelo Lógico y DDL Físico)
 
-El diseño de datos define el modelo relacional físico en PostgreSQL 18. Para soportar el proceso del CUP, se han diseñado 18 tablas vinculadas. Las propiedades ACID garantizan consistencia total transaccional.
+El diseño de datos define el modelo relacional físico en PostgreSQL 18. Para soportar el proceso del CUP, se han diseñado 21 tablas vinculadas. Las propiedades ACID garantizan consistencia total transaccional.
 
 ### Diagrama del Modelo de Clases de Persistencia (Relacional)
 
@@ -5117,6 +5549,7 @@ class "postulantes" {
   * gestion_id: BIGINT [FK]
   * estado: VARCHAR(50)
   * recurrente: BOOLEAN
+  * user_id: BIGINT [FK]
 }
 
 class "requisitos_documentales" {
@@ -5180,6 +5613,7 @@ class "docentes" {
   * especialidad: VARCHAR(100)
   * grado_academico: VARCHAR(100)
   * correo: VARCHAR(150)
+  * user_id: BIGINT [FK]
 }
 
 class "asignaciones_docente" {
@@ -5226,6 +5660,38 @@ class "admisiones" {
   * fecha_admision: TIMESTAMP
 }
 
+class "notificaciones" {
+  + id: BIGINT [PK]
+  --
+  * usuario_id: BIGINT [FK]
+  * tipo_evento: VARCHAR(50)
+  * mensaje: TEXT
+  * estado: VARCHAR(15)
+  * fecha_generacion: TIMESTAMP
+  * fecha_lectura: TIMESTAMP
+}
+
+class "conversaciones_chatbot" {
+  + id: BIGINT [PK]
+  --
+  * postulante_id: BIGINT [FK]
+  * pregunta: TEXT
+  * respuesta: TEXT
+  * resuelta: BOOLEAN
+  * fecha: TIMESTAMP
+}
+
+class "auditoria_notas" {
+  + id: BIGINT [PK]
+  --
+  * examen_id: BIGINT [FK]
+  * usuario_modificador_id: BIGINT [FK]
+  * nota_anterior: DECIMAL(5,2)
+  * nota_nueva: DECIMAL(5,2)
+  * motivo: TEXT
+  * fecha_modificacion: TIMESTAMP
+}
+
 ' Relaciones
 users "1" -- "0..*" bitacora_accesos
 gestiones "1" -- "0..*" cupos_gestion
@@ -5249,6 +5715,12 @@ materias "1" -- "0..*" notas_finales
 postulantes "1" -- "0..1" admisiones
 carreras "1" -- "0..*" admisiones
 materias "1" -- "0..*" preguntas_simulacro
+users "1" -- "0..1" postulantes
+users "1" -- "0..1" docentes
+users "1" -- "0..*" notificaciones
+postulantes "1" -- "0..*" conversaciones_chatbot
+examenes "1" -- "0..*" auditoria_notas
+users "1" -- "0..*" auditoria_notas
 @enduml
 ```
 
@@ -5259,51 +5731,69 @@ materias "1" -- "0..*" preguntas_simulacro
 El siguiente script DDL crea todas las tablas con sus respectivas llaves primarias, llaves foráneas, índices de alto rendimiento y restricciones relacionales:
 
 ```sql
--- DDL DE CREACIÓN DE BASE DE DATOS - SISTEMA CUP FICCT
--- MOTOR: PostgreSQL (versiones 16 o superiores)
+-- ==============================================================================
+-- DDL DE CREACION DE BASE DE DATOS - SISTEMA CUP FICCT
+-- MOTOR: PostgreSQL 16+
+-- DESCRIPCIÓN: Define la estructura lógica y física de la base de datos relacional
+--              para el Sistema de Admisión y Curso Preuniversitario (CUP) de la FICCT.
+-- ==============================================================================
 
 BEGIN;
 
--- 1. Tabla de Usuarios
+-- ==============================================================================
+-- 1. MÓDULO DE AUTENTICACIÓN, ROLES Y AUDITORÍA DE ACCESOS
+-- ==============================================================================
+
+-- Tabla: users
+-- Propósito: Almacena las cuentas de acceso al sistema con contraseñas encriptadas.
+-- Roles permitidos: Administrador, Coordinador, Docente, Postulante.
 CREATE TABLE users (
     id BIGSERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
-    email VARCHAR(255) UNIQUE NOT NULL,
-    password VARCHAR(255) NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL, -- Nombre de usuario para el login
+    password VARCHAR(255) NOT NULL, -- Almacenada como hash Bcrypt
     role VARCHAR(50) NOT NULL CHECK (role IN ('Administrador', 'Coordinador', 'Docente', 'Postulante')),
-    active BOOLEAN DEFAULT TRUE,
+    active BOOLEAN DEFAULT TRUE, -- Habilita o deshabilita la cuenta
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 2. Tabla de Bitácora de Accesos
+-- Tabla: bitacora_accesos
+-- Propósito: Bitácora inmutable para registrar el historial de ingresos y salidas del sistema.
 CREATE TABLE bitacora_accesos (
     id BIGSERIAL PRIMARY KEY,
     user_id BIGINT NOT NULL,
-    ip_address VARCHAR(45) NOT NULL,
-    action VARCHAR(255) NOT NULL,
+    ip_address VARCHAR(45) NOT NULL, -- Dirección IP del dispositivo
+    action VARCHAR(255) NOT NULL, -- Detalle de la acción (ej. "LOGIN", "LOGOUT")
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
--- 3. Tabla de Gestiones Académicas
+-- ==============================================================================
+-- 2. MÓDULO DE CONFIGURACIÓN ACADÉMICA Y CONTROL DE CUPOS
+-- ==============================================================================
+
+-- Tabla: gestiones
+-- Propósito: Configura los períodos académicos del CUP (ej. '1-2026', '2-2026').
 CREATE TABLE gestiones (
     id BIGSERIAL PRIMARY KEY,
-    codigo VARCHAR(10) UNIQUE NOT NULL, -- Ej: '1-2026', '2-2026'
-    activa BOOLEAN DEFAULT FALSE,
+    codigo VARCHAR(10) UNIQUE NOT NULL, -- Código identificador único
+    activa BOOLEAN DEFAULT FALSE, -- Solo una gestión puede estar activa a la vez
     fecha_inicio DATE NOT NULL,
     fecha_fin DATE NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 4. Tabla de Carreras de la FICCT
+-- Tabla: carreras
+-- Propósito: Catálogo maestro de las carreras evaluadas en la FICCT.
 CREATE TABLE carreras (
     id BIGSERIAL PRIMARY KEY,
-    nombre VARCHAR(100) UNIQUE NOT NULL, -- 'Ingeniería Informática', 'Ingeniería de Sistemas', etc.
-    codigo VARCHAR(10) UNIQUE NOT NULL
+    nombre VARCHAR(100) UNIQUE NOT NULL,
+    codigo VARCHAR(10) UNIQUE NOT NULL -- Código de carrera asignado por la UAGRM
 );
 
--- 5. Tabla de Cupos por Gestión y Carrera
+-- Tabla: cupos_gestion
+-- Propósito: Define el límite máximo de admisión y el stock de vacantes por carrera en cada gestión.
 CREATE TABLE cupos_gestion (
     id BIGSERIAL PRIMARY KEY,
     gestion_id BIGINT NOT NULL,
@@ -5316,10 +5806,15 @@ CREATE TABLE cupos_gestion (
     UNIQUE (gestion_id, carrera_id)
 );
 
--- 6. Tabla de Postulantes
+-- ==============================================================================
+-- 3. MÓDULO DE REGISTRO, VERIFICACIÓN Y PAGOS DEL POSTULANTE
+-- ==============================================================================
+
+-- Tabla: postulantes
+-- Propósito: Almacena los perfiles de los postulantes, sus preferencias de carrera y estado académico.
 CREATE TABLE postulantes (
     id BIGSERIAL PRIMARY KEY,
-    ci VARCHAR(20) UNIQUE NOT NULL,
+    ci VARCHAR(20) UNIQUE NOT NULL, -- Cédula de Identidad única
     nombres VARCHAR(150) NOT NULL,
     apellidos VARCHAR(150) NOT NULL,
     fecha_nacimiento DATE NOT NULL,
@@ -5329,22 +5824,27 @@ CREATE TABLE postulantes (
     email VARCHAR(150) NOT NULL,
     colegio_procedencia VARCHAR(150),
     ciudad VARCHAR(100) DEFAULT 'Santa Cruz de la Sierra',
-    titulo_bachiller VARCHAR(255), -- Ruta del archivo cargado
+    titulo_bachiller VARCHAR(255), -- Ruta o URL del documento digitalizado
     primera_opcion_id BIGINT NOT NULL,
     segunda_opcion_id BIGINT NOT NULL,
-    turno_preferencia VARCHAR(20) NOT NULL CHECK (turno_preferencia IN ('Mañana', 'Tarde', 'Noche')),
+    turno_preferencia VARCHAR(20) NOT NULL CHECK (turno_preferencia IN ('Manana', 'Tarde', 'Noche')),
     gestion_id BIGINT NOT NULL,
-    estado VARCHAR(50) DEFAULT 'Preinscrito' CHECK (estado IN ('Preinscrito', 'Verificado', 'Inscrito', 'En Evaluacion', 'Aprobado', 'Reprobado', 'Pendiente Reasignacion')),
-    recurrente BOOLEAN DEFAULT FALSE,
+    estado VARCHAR(50) DEFAULT 'Preinscrito' CHECK (
+        estado IN ('Preinscrito', 'Verificado', 'Inscrito', 'En Evaluacion', 'Aprobado', 'Reprobado', 'Pendiente Reasignacion')
+    ),
+    recurrente BOOLEAN DEFAULT FALSE, -- Flag para detectar postulantes recurrentes
+    user_id BIGINT DEFAULT NULL, -- Vinculación con su cuenta de acceso
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (primera_opcion_id) REFERENCES carreras(id),
     FOREIGN KEY (segunda_opcion_id) REFERENCES carreras(id),
     FOREIGN KEY (gestion_id) REFERENCES gestiones(id),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
     CONSTRAINT chk_opciones_diferentes CHECK (primera_opcion_id <> segunda_opcion_id)
 );
 
--- 7. Tabla de Requisitos Documentales (Checklist + Verificación Externa)
+-- Tabla: requisitos_documentales
+-- Propósito: Lista de control digitalizada de la documentación requerida por el postulante.
 CREATE TABLE requisitos_documentales (
     id BIGSERIAL PRIMARY KEY,
     postulante_id BIGINT UNIQUE NOT NULL,
@@ -5352,51 +5852,60 @@ CREATE TABLE requisitos_documentales (
     certificado_nacimiento BOOLEAN DEFAULT FALSE,
     titulo_bachiller_legalizado BOOLEAN DEFAULT FALSE,
     formulario_preinscripcion BOOLEAN DEFAULT FALSE,
-    verificado_bd_externa BOOLEAN DEFAULT FALSE, -- SEGIP / SEDUCA
+    verificado_bd_externa BOOLEAN DEFAULT FALSE, -- Confirmación de APIs SEGIP/SEDUCA
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (postulante_id) REFERENCES postulantes(id) ON DELETE CASCADE
 );
 
--- 8. Tabla de Pagos (Stripe Webhook Sync)
+-- Tabla: pagos
+-- Propósito: Registra las transacciones financieras exitosas procesadas por Stripe.
 CREATE TABLE pagos (
     id BIGSERIAL PRIMARY KEY,
     postulante_id BIGINT NOT NULL,
-    stripe_checkout_id VARCHAR(255) UNIQUE NOT NULL,
+    stripe_checkout_id VARCHAR(255) UNIQUE NOT NULL, -- Identificador único de Stripe
     monto DECIMAL(10,2) NOT NULL CHECK (monto > 0),
-    estado_pago VARCHAR(50) NOT NULL, -- 'Succeeded', 'Pending', 'Failed'
+    estado_pago VARCHAR(50) NOT NULL, -- Estado del pago (succeeded, pending, etc.)
     fecha_pago TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (postulante_id) REFERENCES postulantes(id) ON DELETE CASCADE
 );
 
--- 9. Tabla de Materias
+-- ==============================================================================
+-- 4. MÓDULO DE PLANIFICACIÓN DE GRUPOS, HORARIOS Y MATERIAS
+-- ==============================================================================
+
+-- Tabla: materias
+-- Propósito: Catálogo maestro de las materias evaluadas en el CUP (Computación, Física, etc.).
 CREATE TABLE materias (
     id BIGSERIAL PRIMARY KEY,
-    nombre VARCHAR(50) UNIQUE NOT NULL, -- 'Computación', 'Matemáticas', 'Inglés', 'Física'
+    nombre VARCHAR(50) UNIQUE NOT NULL,
     codigo VARCHAR(10) UNIQUE NOT NULL
 );
 
--- 10. Tabla de Aulas
+-- Tabla: aulas
+-- Propósito: Registro de aulas físicas de la FICCT con su capacidad límite.
 CREATE TABLE aulas (
     id BIGSERIAL PRIMARY KEY,
-    nombre VARCHAR(50) NOT NULL, -- 'Aula 101-Módulo 236', etc.
+    nombre VARCHAR(50) NOT NULL,
     capacidad INT NOT NULL CHECK (capacidad > 0),
     ubicacion VARCHAR(100)
 );
 
--- 11. Tabla de Grupos Habilitados
+-- Tabla: grupos
+-- Propósito: Grupos habilitados por gestión, asignados a un aula y horario/turno específico.
 CREATE TABLE grupos (
     id BIGSERIAL PRIMARY KEY,
-    numero INT NOT NULL,
+    numero INT NOT NULL, -- Número secuencial de grupo
     gestion_id BIGINT NOT NULL,
-    turno VARCHAR(20) NOT NULL CHECK (turno IN ('Mañana', 'Tarde', 'Noche')),
+    turno VARCHAR(20) NOT NULL CHECK (turno IN ('Manana', 'Tarde', 'Noche')),
     aula_id BIGINT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (gestion_id) REFERENCES gestiones(id) ON DELETE CASCADE,
     FOREIGN KEY (aula_id) REFERENCES aulas(id),
-    UNIQUE (gestion_id, turno, numero) -- Impide duplicados del mismo numero en el turno
+    UNIQUE (gestion_id, turno, numero)
 );
 
--- 12. Tabla de Asignaciones de Postulantes a Grupos
+-- Tabla: asignaciones_grupo
+-- Propósito: Asigna a cada postulante a un grupo de estudio único por gestión.
 CREATE TABLE asignaciones_grupo (
     id BIGSERIAL PRIMARY KEY,
     postulante_id BIGINT UNIQUE NOT NULL,
@@ -5406,19 +5915,27 @@ CREATE TABLE asignaciones_grupo (
     FOREIGN KEY (grupo_id) REFERENCES grupos(id) ON DELETE CASCADE
 );
 
--- 13. Tabla de Docentes
+-- ==============================================================================
+-- 5. MÓDULO DE GESTIÓN DE DOCENTES Y ASIGNACIONES DE CÁTEDRA
+-- ==============================================================================
+
+-- Tabla: docentes
+-- Propósito: Perfil profesional del docente contratado para dictar clases en el CUP.
 CREATE TABLE docentes (
     id BIGSERIAL PRIMARY KEY,
     ci VARCHAR(20) UNIQUE NOT NULL,
     nombres VARCHAR(150) NOT NULL,
     apellidos VARCHAR(150) NOT NULL,
     especialidad VARCHAR(100) NOT NULL,
-    grado_academico VARCHAR(100) NOT NULL, -- Requisito: Licenciatura + Maestria/Diplomado
+    grado_academico VARCHAR(100) NOT NULL,
     correo VARCHAR(150) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    user_id BIGINT DEFAULT NULL, -- Vinculación con su cuenta de acceso
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
 );
 
--- 14. Tabla de Asignaciones de Docentes a Grupos y Materias
+-- Tabla: asignaciones_docente
+-- Propósito: Relaciona a un docente con el grupo y la materia que imparte (máximo 4 grupos).
 CREATE TABLE asignaciones_docente (
     id BIGSERIAL PRIMARY KEY,
     docente_id BIGINT NOT NULL,
@@ -5431,7 +5948,12 @@ CREATE TABLE asignaciones_docente (
     UNIQUE (grupo_id, materia_id) -- Un grupo solo tiene un docente por materia
 );
 
--- 15. Tabla de Exámenes Individuales
+-- ==============================================================================
+-- 6. MÓDULO DE EVALUACIÓN ACADÉMICA Y ADMISIÓN MERITOCRÁTICA
+-- ==============================================================================
+
+-- Tabla: examenes
+-- Propósito: Almacena las calificaciones parciales de los 3 exámenes por materia por postulante.
 CREATE TABLE examenes (
     id BIGSERIAL PRIMARY KEY,
     postulante_id BIGINT NOT NULL,
@@ -5441,10 +5963,11 @@ CREATE TABLE examenes (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (postulante_id) REFERENCES postulantes(id) ON DELETE CASCADE,
     FOREIGN KEY (materia_id) REFERENCES materias(id) ON DELETE CASCADE,
-    UNIQUE (postulante_id, materia_id, numero_examen) -- Máximo 3 exámenes por materia por estudiante
+    UNIQUE (postulante_id, materia_id, numero_examen) -- Restringe a 3 exámenes máximos
 );
 
--- 16. Tabla de Notas Finales Consolidadas por Materia
+-- Tabla: notas_finales
+-- Propósito: Almacena el promedio ponderado calculado (30%-30%-40%) y el estado por materia.
 CREATE TABLE notas_finales (
     id BIGSERIAL PRIMARY KEY,
     postulante_id BIGINT NOT NULL,
@@ -5457,29 +5980,77 @@ CREATE TABLE notas_finales (
     UNIQUE (postulante_id, materia_id)
 );
 
--- 17. Tabla de Admisiones (Asignación Definitiva de Carreras)
+-- Tabla: admisiones
+-- Propósito: Registro definitivo de la admisión del postulante a una carrera.
 CREATE TABLE admisiones (
     id BIGSERIAL PRIMARY KEY,
     postulante_id BIGINT UNIQUE NOT NULL,
     carrera_id BIGINT NOT NULL,
-    via VARCHAR(50) NOT NULL CHECK (via IN ('1ra Opción', '2da Opción', 'Reasignación Administrativa')),
+    via VARCHAR(50) NOT NULL CHECK (via IN ('1ra Opcion', '2da Opcion', 'Reasignacion Administrativa')),
     fecha_admision TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (postulante_id) REFERENCES postulantes(id) ON DELETE CASCADE,
     FOREIGN KEY (carrera_id) REFERENCES carreras(id)
 );
 
--- 18. Tabla de Preguntas del Simulacro
+-- Tabla: preguntas_simulacro
+-- Propósito: Banco de preguntas de opción múltiple con respuestas correctas para práctica de postulantes.
 CREATE TABLE preguntas_simulacro (
     id BIGSERIAL PRIMARY KEY,
     materia_id BIGINT NOT NULL,
     enunciado TEXT NOT NULL,
-    opciones TEXT NOT NULL, -- Almacenado como JSON en formato texto
+    opciones TEXT NOT NULL, -- Guardado como formato estructurado JSON en texto
     respuesta_correcta VARCHAR(255) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (materia_id) REFERENCES materias(id) ON DELETE CASCADE
 );
 
--- Índices de Optimización de Consultas (Performance)
+-- ==============================================================================
+-- 7. MÓDULOS DE COMUNICACIÓN Y AUDITORÍA DE CALIFICACIONES (DIFERENCIADORES)
+-- ==============================================================================
+
+-- Tabla: notificaciones
+-- Propósito: Almacena las alertas y mensajes en tiempo real generados por el sistema.
+CREATE TABLE notificaciones (
+    id BIGSERIAL PRIMARY KEY,
+    usuario_id BIGINT NOT NULL,
+    tipo_evento VARCHAR(50) NOT NULL, -- Categoría del mensaje
+    mensaje TEXT NOT NULL,
+    estado VARCHAR(15) DEFAULT 'NO_LEIDA' CHECK (estado IN ('LEIDA', 'NO_LEIDA')),
+    fecha_generacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    fecha_lectura TIMESTAMP,
+    FOREIGN KEY (usuario_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Tabla: conversaciones_chatbot
+-- Propósito: Guarda el historial de interacciones del chatbot con los postulantes.
+CREATE TABLE conversaciones_chatbot (
+    id BIGSERIAL PRIMARY KEY,
+    postulante_id BIGINT NOT NULL,
+    pregunta TEXT NOT NULL,
+    respuesta TEXT,
+    resuelta BOOLEAN DEFAULT FALSE,
+    fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (postulante_id) REFERENCES postulantes(id) ON DELETE CASCADE
+);
+
+-- Tabla: auditoria_notas
+-- Propósito: Bitácora para auditar cambios manuales de notas realizados por el Administrador.
+CREATE TABLE auditoria_notas (
+    id BIGSERIAL PRIMARY KEY,
+    examen_id BIGINT NOT NULL,
+    usuario_modificador_id BIGINT NOT NULL,
+    nota_anterior DECIMAL(5,2),
+    nota_nueva DECIMAL(5,2),
+    motivo TEXT,
+    fecha_modificacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (examen_id) REFERENCES examenes(id) ON DELETE CASCADE,
+    FOREIGN KEY (usuario_modificador_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- ==============================================================================
+-- 8. ÍNDICES DE RENDIMIENTO (OPTIMIZACIÓN DE CONSULTAS)
+-- ==============================================================================
+
 CREATE INDEX idx_postulantes_ci ON postulantes(ci);
 CREATE INDEX idx_postulantes_estado ON postulantes(estado);
 CREATE INDEX idx_postulantes_primera_opcion ON postulantes(primera_opcion_id);
@@ -5488,13 +6059,16 @@ CREATE INDEX idx_examenes_postulante ON examenes(postulante_id);
 CREATE INDEX idx_notas_finales_postulante ON notas_finales(postulante_id);
 CREATE INDEX idx_asignaciones_grupo_postulante ON asignaciones_grupo(postulante_id);
 CREATE INDEX idx_preguntas_simulacro_materia ON preguntas_simulacro(materia_id);
+CREATE INDEX idx_notificaciones_usuario ON notificaciones(usuario_id);
+CREATE INDEX idx_conversaciones_chatbot_postulante ON conversaciones_chatbot(postulante_id);
+CREATE INDEX idx_auditoria_notas_examen ON auditoria_notas(examen_id);
 
 COMMIT;
 ```
 
 ## Población de Datos (Script de Inserción SQL)
 
-El siguiente script inserta datos coherentes y robustos en las 18 tablas diseñadas para simular el proceso de preinscripción, verificación, pago de matrícula, planificación grupal, evaluación y admisión del CUP:
+El siguiente script inserta datos coherentes y robustos en las 21 tablas diseñadas para simular el proceso de preinscripción, verificación, pago de matrícula, planificación grupal, evaluación y admisión del CUP:
 
 ```sql
 -- POBLACIÓN DE DATOS DE PRUEBA (inserts consistentes)
@@ -5534,9 +6108,9 @@ INSERT INTO cupos_gestion (gestion_id, carrera_id, cupo_maximo, cupos_disponible
 
 -- 6. Tabla de Postulantes
 INSERT INTO postulantes (ci, nombres, apellidos, fecha_nacimiento, sexo, email, primera_opcion_id, segunda_opcion_id, turno_preferencia, gestion_id, estado, recurrente) VALUES
-('10203040', 'Maria', 'Lopez', '2007-05-15', 'F', 'maria.lopez@gmail.com', 1, 2, 'Mañana', 1, 'Aprobado', FALSE),
+('10203040', 'Maria', 'Lopez', '2007-05-15', 'F', 'maria.lopez@gmail.com', 1, 2, 'Manana', 1, 'Aprobado', FALSE),
 ('50607080', 'Pedro', 'Ramirez', '2006-11-20', 'M', 'pedro.ramirez@hotmail.com', 2, 1, 'Tarde', 1, 'Reprobado', FALSE),
-('90102030', 'Sofía', 'Espinoza', '2007-01-10', 'F', 'sofia.espinoza@outlook.com', 1, 3, 'Mañana', 1, 'Aprobado', TRUE),
+('90102030', 'Sofía', 'Espinoza', '2007-01-10', 'F', 'sofia.espinoza@outlook.com', 1, 3, 'Manana', 1, 'Aprobado', TRUE),
 ('40302010', 'Lucas', 'Torres', '2006-08-05', 'M', 'lucas.torres@gmail.com', 3, 2, 'Noche', 1, 'Preinscrito', FALSE);
 
 -- 7. Tabla de Requisitos Documentales
@@ -5567,7 +6141,7 @@ INSERT INTO aulas (nombre, capacidad, ubicacion) VALUES
 
 -- 11. Tabla de Grupos Habilitados
 INSERT INTO grupos (numero, gestion_id, turno, aula_id) VALUES
-(1, 1, 'Mañana', 1),
+(1, 1, 'Manana', 1),
 (2, 1, 'Tarde', 2),
 (3, 1, 'Noche', 1);
 
@@ -5625,8 +6199,8 @@ INSERT INTO notas_finales (postulante_id, materia_id, promedio, estado) VALUES
 
 -- 17. Tabla de Admisiones (Asignación Definitiva de Carreras)
 INSERT INTO admisiones (postulante_id, carrera_id, via) VALUES
-(1, 1, '1ra Opción'),
-(3, 1, '1ra Opción');
+(1, 1, '1ra Opcion'),
+(3, 1, '1ra Opcion');
 
 -- 18. Tabla de Preguntas del Simulacro
 INSERT INTO preguntas_simulacro (materia_id, enunciado, opciones, respuesta_correcta) VALUES
@@ -5636,6 +6210,20 @@ INSERT INTO preguntas_simulacro (materia_id, enunciado, opciones, respuesta_corr
 (2, '¿Cuál es el valor de la integral de 1/x dx?', '{"A":"x","B":"ln|x| + C","C":"1/x^2","D":"e^x"}', 'B'),
 (3, '¿Qué significa la palabra "Software"?', '{"A":"Parte dura","B":"Parte lógica y programas","C":"Dispositivo móvil","D":"CPU"}', 'B'),
 (4, '¿Qué fuerza se opone al movimiento relativo de superficies en contacto?', '{"A":"Fuerza normal","B":"Fuerza de fricción","C":"Gravedad","D":"Fuerza centrípeta"}', 'B');
+
+-- 19. Tabla de Notificaciones
+INSERT INTO notificaciones (usuario_id, tipo_evento, mensaje, estado) VALUES
+(5, 'INSCRIPCION', 'Su inscripcion al CUP 1-2026 ha sido verificada exitosamente.', 'NO_LEIDA'),
+(1, 'AUDITORIA', 'Se ha registrado una modificacion de nota en el examen ID 1.', 'NO_LEIDA');
+
+-- 20. Tabla de Conversaciones del Chatbot
+INSERT INTO conversaciones_chatbot (postulante_id, pregunta, respuesta, resuelta) VALUES
+(1, '¿Cuales son los requisitos para la inscripcion?', 'Debes subir tu CI, Certificado de Nacimiento y Titulo de Bachiller.', TRUE),
+(1, '¿Cuando es el primer examen parcial?', 'El primer examen parcial esta programado para el 15 de marzo.', FALSE);
+
+-- 21. Tabla de Auditoría de Notas
+INSERT INTO auditoria_notas (examen_id, usuario_modificador_id, nota_anterior, nota_nueva, motivo) VALUES
+(1, 1, 80.00, 85.00, 'Correccion de error en la transcripcion de la planilla fisica.');
 
 COMMIT;
 ```
@@ -6167,7 +6755,7 @@ M_Admi --> DB : SQL Queries
 *   **Inertia Bridge:** Actúa como el túnel middleware. Resuelve las peticiones enviando las llamadas al enrutador principal de Laravel y cargando de vuelta los componentes React sin recargas completas del navegador.
 *   **Laravel Backend Controller:** Es el despachador de negocio. Recibe las llamadas físicas y delega la ejecución de algoritmos pesados o transaccionales a la Capa de Servicios.
 *   **Laravel Business Services:** Contiene los algoritmos críticos académicos y transacciones financieras (Stripe, SEGIP, distribución equitativa y cálculo meritocrático).
-*   **Eloquent ORM:** Modela en clases orientadas a objetos las 18 tablas relacionales del sistema, gobernando de manera segura las propiedades ACID antes de impactar el motor.
+*   **Eloquent ORM:** Modela en clases orientadas a objetos las 21 tablas relacionales del sistema, gobernando de manera segura las propiedades ACID antes de impactar el motor.
 *   **PostgreSQL 18:** Motor físico que persiste los datos estructurados aplicando restricciones de llaves foráneas y checks relacionales rápidos.
 
 ---
@@ -6206,7 +6794,7 @@ cup-system/
 │       ├── AdmisionService.php                 ← Algoritmo meritocrático de cupos por carrera
 │       └── ReporteIAValidator.php              ← Procesamiento NLP de comandos de voz IA
 ├── database/
-│   ├── migrations/                             ← Creación física de las 18 tablas en PostgreSQL
+│   ├── migrations/                             ← Creación física de las 21 tablas en PostgreSQL
 │   └── seeders/
 │       └── DatabaseSeeder.php                  ← Carga masiva automatizada de prueba
 ├── resources/
@@ -6422,6 +7010,60 @@ M_Simu --> T_Simulacro
 @enduml
 ```
 
+#### 5. Subsistema de Admisión de Carreras (`Paquete_Admision_Carreras`)
+Este subsistema gobierna el procesamiento y ejecución del algoritmo meritocrático de asignación de vacantes y la configuración de cupos de ingreso por carrera:
+
+```plantuml
+@startuml ComponentesAdmisionCarreras
+skinparam backgroundColor #FEFEFE
+skinparam componentStyle uml2
+skinparam roundCorner 8
+
+package "React SPA Frontend" {
+  component "AdmisionPage.jsx" as UI_Admi
+  component "ConfiguracionCuposPage.jsx" as UI_Cupos
+}
+
+package "Laravel Controllers" {
+  component "AdmisionController.php" as C_Admi
+}
+
+package "Laravel Services" {
+  component "AdmisionService.php" as S_Admi
+}
+
+package "Eloquent Models" {
+  component "Admision.php" as M_Admi
+  component "CupoGestion.php" as M_Cupo
+  component "Carrera.php" as M_Carr
+  component "Postulante.php" as M_Post
+}
+
+database "PostgreSQL 18" {
+  [admisiones] as T_Admisiones
+  [cupos_gestion] as T_Cupos
+  [carreras] as T_Carreras
+  [postulantes] as T_Postulantes
+  [bitacora_accesos] as T_Bitacora
+}
+
+' Relaciones de comunicación
+UI_Cupos ..> C_Admi : Configurar cupos
+UI_Admi ..> C_Admi : Disparar algoritmo de admisión
+C_Admi ..> S_Admi : Ejecutar proceso de admisión
+S_Admi ..> M_Post : Obtener aprobados meritocráticamente
+S_Admi ..> M_Cupo : Verificar y descontar vacantes
+S_Admi ..> M_Carr : Asociar carrera
+S_Admi ..> M_Admi : Registrar admisiones
+S_Admi ..> T_Bitacora : Auditoría de asignación
+
+M_Admi --> T_Admisiones
+M_Cupo --> T_Cupos
+M_Carr --> T_Carreras
+M_Post --> T_Postulantes
+@enduml
+```
+
 ---
 
 # 8. CONCLUSIONES
@@ -6434,7 +7076,7 @@ Se cumplió satisfactoriamente con el objetivo general del proyecto al diseñar,
 ### Conclusiones Específicas (Alineación con los 10 Objetivos Específicos)
 1.  **Mapeo de Requisitos de Actores (Objetivo Específico 1):** Mediante la investigación activa de los flujos del CUP, se identificaron y catalogaron de forma exhaustiva los requisitos funcionales y no funcionales del sistema. Se mapearon los perfiles y responsabilidades físicas de los cuatro actores críticos (postulantes, docentes, coordinadores y administradores), garantizando que sus interacciones reales queden fielmente plasmadas en el alcance operativo.
 2.  **Modelado Metodológico y Casos de Uso (Objetivo Específico 2):** Se estructuró formalmente la fase de análisis y diseño arquitectónico bajo los lineamientos de PUDS. La separación estricta de las clases del modelo lógico en clases de frontera (`Frontera`), controladores (`Control`) y entidades de datos (`Entidad`) permitió aislar las complejas reglas de negocio académicas de las consideraciones de la interfaz y la persistencia de datos.
-3.  **Integridad de Datos e Integridad Referencial (Objetivo Específico 3):** Se diseñó un modelo relacional físico en PostgreSQL 18 compuesto por 18 tablas interconectadas. La inyección sistemática de llaves primarias, foráneas e índices optimizados garantiza una trazabilidad absoluta de la información de los postulantes, sus pagos, notas de exámenes, promedios y admisiones, eliminando de raíz las inconsistencias de datos relacionales en la FICCT.
+3.  **Integridad de Datos e Integridad Referencial (Objetivo Específico 3):** Se diseñó un modelo relacional físico en PostgreSQL 18 compuesto por 21 tablas interconectadas. La inyección sistemática de llaves primarias, foráneas e índices optimizados garantiza una trazabilidad absoluta de la información de los postulantes, sus pagos, notas de exámenes, promedios y admisiones, eliminando de raíz las inconsistencias de datos relacionales en la FICCT.
 4.  **Arquitectura Física del Backend Laravel (Objetivo Específico 4):** Se definió con rigor de ingeniería de software la distribución física del servidor y backend sobre PHP 8.4 y Laravel 11. El mapeo en diagramas de componentes detalla la estructura física del proyecto Laravel (`app/`, `Services/`, `Models/`), lo que asegura transacciones ACID a nivel de Eloquent ORM y una lógica modular fácil de mantener y escalar.
 5.  **Capa de Presentación Reactiva (Objetivo Específico 5):** Se diseñó la arquitectura del lado del cliente como una Single Page Application (SPA) responsiva utilizando React 19 y Tailwind CSS. El empleo de componentes UI modulares e interactivos garantiza una experiencia fluida e intuitiva del estudiante, tanto en dispositivos móviles como de escritorio, eliminando la latencia en formularios de preinscripción.
 6.  **Implementación de Algoritmos Académicos (Objetivo Específico 6):** Se especificaron e implementaron en el flujo físico los algoritmos críticos del CUP. La distribución equitativa de aulas limitada estrictamente a 70 postulantes mediante la función techo `CEIL(Total / 70)` y la regla de aprobación ponderada individual por materia (`nota >= 60` por materia) eliminan el error humano y la discrecionalidad en planillas de cálculo tradicionales.
@@ -6452,6 +7094,10 @@ Con el propósito de asegurar el éxito de la implementación de software subsig
 1.  **Adoptar un Enfoque de Pruebas Unitarias Riguroso (TDD):** Se aconseja codificar pruebas automatizadas en Laravel utilizando PHPUnit para los tres algoritmos clave antes de arrancar con el diseño visual del frontend. Específicamente, probar casos límite para el algoritmo de grupos (ej: 70, 71 y 140 estudiantes), probar la regla de aprobación (postulantes con 100/100/100/59 deben marcarse estrictamente como REPROBADOS), y validar que el descuento de cupos de carreras bloquee adecuadamente transacciones concurrentes.
 2.  **Integrar Pruebas de Carga en Base de Datos:** Tomando en cuenta que el CUP de la FICCT maneja lotes masivos de 500 a 1000 estudiantes durante las calificaciones y la asignación final de carreras, se recomienda realizar pruebas de estrés a las consultas SQL generadas por Eloquent, optimizando los índices construidos sobre la tabla de `examenes` y `notas_finales` para mantener el tiempo de respuesta por debajo de los 200 ms.
 3.  **Implementar stripe de forma atómica:** Durante el desarrollo del backend, asegurar que el webhook de Stripe sea la única fuente de verdad para la confirmación de la inscripción (`estado = 'Inscrito'`). El sistema debe ignorar cualquier solicitud de actualización de estado que provenga del frontend del cliente para evitar fraudes en el cobro de la matrícula.
+4.  **Integración Futura con el Sistema de Información y Registro (SIS-UAGRM):** Se aconseja planificar la integración del sistema mediante servicios web tipo REST API seguros con el sistema de registro central de la universidad para transferir de manera inmediata y sin intervención manual los expedientes académicos y de matriculación oficial de los postulantes admitidos en el CUP.
+5.  **Desarrollo de Aplicación Móvil de Consulta Estudiante:** Recomendar para futuras fases de desarrollo una aplicación móvil híbrida (iOS y Android) para los postulantes que les permita consultar de manera directa sus calificaciones, notificaciones de admisión, cronogramas de exámenes y realizar prácticas rápidas en el módulo de simulacro.
+6.  **Implementación de Seguridad Biométrica Facial para los Exámenes:** Para mitigar el riesgo de suplantación de identidad en los laboratorios de examen, se recomienda incorporar autenticación facial mediante modelos de visión computacional ligeros que verifiquen al postulante al iniciar su sesión en el entorno de evaluación.
+7.  **Módulo de Becas e Inclusión Social Académica:** Desarrollar un submódulo de postulación y evaluación automática de becas socioeconómicas integrado con el pago de Stripe, permitiendo exonerar o descontar la matrícula según el nivel socioeconómico validado del bachiller.
 
 ---
 
@@ -6494,5 +7140,39 @@ Escanee el siguiente código QR con cualquier dispositivo móvil para acceder de
 └─────────────────────────────────────────┘
 ```
 
+### Documentación de Anexos Técnicos
+
+1. **Manual del Usuario Digital:** Guía interactiva paso a paso para el postulante y el personal administrativo, detallando los flujos de inscripción, carga masiva de notas y configuración de cupos.
+2. **Diccionario de Datos del Sistema:** Catálogo descriptivo completo de las 21 tablas físicas del esquema PostgreSQL, incluyendo llaves, restricciones (CHECK, UNIQUE) y tipos de datos.
+3. **Especificación Técnica de APIs e Integración:** Documentación Swagger/OpenAPI de los endpoints expuestos por el backend Laravel para comunicación con el frontend React, pasarela Stripe y servicios externos SEGIP/SEDUCA.
+
+### 11.2 Auditoría de Coherencia y Retroalimentación Metodológica
+
+En cumplimiento con el Proceso Unificado de Desarrollo de Software (PUDS) y a solicitud de control de calidad, se presenta la auditoría cruzada de coherencia entre los modelos de análisis (Boundary-Control-Entity), los diagramas lógicos de secuencia (Diseño), los diagramas de componentes (Implementación) y el código fuente real implementado en el proyecto.
+
+#### 1. Mapeo Metodológico y Trazabilidad de Clases (Análisis vs. Diseño vs. Código)
+A continuación se documenta cómo cada abstracción del ciclo de desarrollo se materializa a nivel de diseño y codificación física para los Casos de Uso del **Ciclo 2**:
+
+| Caso de Uso (CU)                            | Clase de Análisis (BCE)                                            | Controlador en Diseño (Secuencia) | Archivo Físico (Componente / Código)               | Justificación de la Trazabilidad                                                                                                                                                                                                     |
+| :------------------------------------------ | :----------------------------------------------------------------- | :-------------------------------- | :------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **CU13, CU14, CU15, CU16** (Calificaciones) | `ControladorEvaluacion` (Control)                                  | `EvaluacionController`            | `AcademicoController.php`                          | Se consolidó la lógica de carga manual, masiva CSV, promedios ponderados y validación individual en un único controlador físico (`AcademicoController.php`) para maximizar la cohesión del módulo académico.                         |
+| **CU17, CU18** (Admisión)                   | `ControladorAsignacionCarrera` / `ControladorAsignacion` (Control) | `AdmisionController`              | `AdmisionController.php`                           | El algoritmo meritocrático de plazas y la configuración de cupos se mapean directamente en `AdmisionController.php` y su servicio de negocio `AdmisionService.php`.                                                                  |
+| **CU19, CU20, CU21, CU22** (Reportes e IA)  | `ControladorReportes` (Control)                                    | `ReporteController`               | `ReporteController.php` / `AdmisionController.php` | Los reportes dinámicos, de voz (NLP) y de llenado de cupos son administrados por el controlador lógico de reportes. Físicamente se implementan en `ReporteController.php` utilizando el servicio cognitivo `ReporteIAValidator.php`. |
+
+#### 2. Coherencia con el Modelo de Datos (DDL)
+Se verificó que las clases de tipo **Entidad (Entity)** representadas en los diagramas de análisis de clases y de secuencia tengan su equivalencia exacta en las tablas de la base de datos de PostgreSQL 18:
+- **`CE_Examen` / `Examen`:** Corresponde a la tabla `examenes`. Almacena la calificación individual de cada parcial por materia.
+- **`CE_NotaFinal` / `NotaFinal`:** Corresponde a la tabla `notas_finales`. Almacena el promedio ponderado consolidado y el estado aprobatorio por materia.
+- **`CE_CupoGestion` / `CupoGestion`:** Corresponde a la tabla `cupos_gestion`. Almacena las plazas habilitadas y disponibles de cada carrera.
+- **`CE_Admision` / `Admision`:** Corresponde a la tabla `admisiones`. Almacena el registro final de asignación meritocrática de carrera.
+- **`CE_BitacoraAcceso` / `BitacoraAcceso`:** Corresponde a la tabla `bitacora_accesos`. Registra de forma inmutable todas las transacciones críticas de notas y admisiones.
+
+#### 3. Trazabilidad con el Código Fuente Real Implementado
+Se realizó un contraste con la estructura de archivos en el repositorio de desarrollo de la facultad, concluyendo lo siguiente:
+- Los modelos relacionales base de Laravel (`Postulante.php`, `Examen.php`, `NotaFinal.php`, `Carrera.php`, `Admision.php`, `CupoGestion.php`, `BitacoraAcceso.php`) están codificados en `app/Models/` y coinciden plenamente con los atributos modelados.
+- Los servicios de negocio del Ciclo 1 como la conformación de grupos con límite de 70 alumnos y la asignación docente se encuentran implementados de forma exitosa en la capa de servicios (`PlanificacionService.php`), concordando con el diseño dinámico establecido.
+- Los controladores y servicios de procesamiento masivo y de inteligencia artificial de este Ciclo 2 se encuentran completamente diseñados y documentados en esta línea base arquitectónica para guiar la codificación subsiguiente del sistema por el equipo de backend de la FICCT.
+
 ---
+
 

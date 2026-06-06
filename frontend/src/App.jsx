@@ -3,6 +3,7 @@ import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
 import LoginPage from './pages/LoginPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import DashboardPage from './pages/DashboardPage';
 import UsersPage from './pages/admin/UsersPage';
 import BusquedaPostulantesPage from './pages/admin/BusquedaPostulantesPage';
@@ -18,6 +19,7 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
           <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
             <Route path="/dashboard" element={<DashboardPage />} />
@@ -36,17 +38,16 @@ export default function App() {
               <ProtectedRoute roles={['Administrador', 'Coordinador']}><DocentesPage /></ProtectedRoute>
             } />
 
-            {/* Postulante */}
-            <Route path="/preinscripcion" element={
-              <ProtectedRoute roles={['Postulante']}><PreinscripcionPage /></ProtectedRoute>
-            } />
-            <Route path="/inscripcion" element={
-              <ProtectedRoute roles={['Postulante']}><InscripcionPage /></ProtectedRoute>
-            } />
+            {/* Postulante (Protegido) */}
             <Route path="/simulacro" element={
               <ProtectedRoute roles={['Postulante']}><SimulacroPage /></ProtectedRoute>
             } />
           </Route>
+
+          {/* Rutas Publicas de Registro y Pago */}
+          <Route path="/preinscripcion" element={<PreinscripcionPage />} />
+          <Route path="/inscripcion" element={<InscripcionPage />} />
+          <Route path="/inscripcion/exitosa" element={<InscripcionPage />} />
 
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>

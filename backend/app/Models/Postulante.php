@@ -10,10 +10,20 @@ class Postulante extends Model
         'ci', 'nombres', 'apellidos', 'fecha_nacimiento', 'sexo',
         'direccion', 'telefono', 'email', 'colegio_procedencia', 'ciudad',
         'titulo_bachiller', 'primera_opcion_id', 'segunda_opcion_id',
-        'turno_preferencia', 'gestion_id', 'estado', 'recurrente',
+        'turno_preferencia', 'gestion_id', 'estado', 'recurrente', 'user_id',
     ];
 
     protected $casts = ['fecha_nacimiento' => 'date', 'recurrente' => 'boolean'];
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function conversacionesChatbot()
+    {
+        return $this->hasMany(ConversacionChatbot::class);
+    }
 
     public function primeraOpcion()
     {

@@ -13,8 +13,6 @@ export default function DashboardPage() {
   ];
 
   const postulanteCards = [
-    { title: 'Preinscripción', desc: 'Formulario de datos personales y validación SEGIP/SEDUCA.', path: '/preinscripcion' },
-    { title: 'Matrícula y Pago', desc: 'Validar documentos y pago de arancel mediante Stripe.', path: '/inscripcion' },
     { title: 'Simulacro de Examen', desc: 'Evaluación de prueba de 40 preguntas (computación, física, matemáticas, lenguaje).', path: '/simulacro' },
   ];
 
@@ -34,7 +32,11 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className={`grid gap-6 ${
+        cards.length === 1 
+          ? 'max-w-md mx-auto grid-cols-1' 
+          : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
+      }`}>
         {cards.map((c, i) => (
           <div 
             key={i} 

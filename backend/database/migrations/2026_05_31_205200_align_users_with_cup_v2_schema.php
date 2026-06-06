@@ -5,20 +5,19 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class extends Migration {
     public function up(): void
     {
-        if (! Schema::hasTable('users')) {
+        if (!Schema::hasTable('users')) {
             return;
         }
 
         Schema::table('users', function (Blueprint $table) {
-            if (! Schema::hasColumn('users', 'role')) {
+            if (!Schema::hasColumn('users', 'role')) {
                 $table->string('role', 50)->default('Postulante')->after('password');
             }
 
-            if (! Schema::hasColumn('users', 'active')) {
+            if (!Schema::hasColumn('users', 'active')) {
                 $table->boolean('active')->default(true)->after('role');
             }
         });
@@ -42,7 +41,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        if (! Schema::hasTable('users')) {
+        if (!Schema::hasTable('users')) {
             return;
         }
 

@@ -22,7 +22,10 @@ class GrupoController extends Controller
      */
     public function asignacionMasiva(): JsonResponse
     {
+        // CU10 - Paso 2: UI -> Ctrl : IniciarAsignacionMasiva()
         $gestion = Gestion::activa()->firstOrFail();
+        
+        // Las cotas y el balanceo físico de aulas se ejecutan dentro del orquestador PlanificacionService
         $resultado = $this->planificacion->ejecutarAsignacionMasiva($gestion->id);
 
         return response()->json($resultado);

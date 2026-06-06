@@ -19,6 +19,8 @@ class PostulanteController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
+        // CU05 - Paso 2: UI -> Ctrl : ProcesarRegistro(datos)
+        // CU08 - Paso 2: UI -> Ctrl : VerificarPostulanteExistente(ci)
         $validated = $request->validate([
             'ci' => 'required|string|min:7|max:20',
             'nombres' => 'required|string|max:150',
@@ -29,9 +31,30 @@ class PostulanteController extends Controller
             'telefono' => 'nullable|string|max:20',
             'email' => 'required|email|max:150',
             'colegio_procedencia' => 'nullable|string|max:150',
+            'ciudad' => 'nullable|string|max:100',
+            'titulo_bachiller' => 'nullable|string|max:255',
             'primera_opcion_id' => 'required|exists:carreras,id',
             'segunda_opcion_id' => 'required|exists:carreras,id|different:primera_opcion_id',
             'turno_preferencia' => 'required|in:Manana,Tarde,Noche',
+        ], [
+            'ci.required' => 'El Carnet de Identidad (CI) es obligatorio.',
+            'ci.min' => 'El Carnet de Identidad (CI) debe tener al menos 7 caracteres.',
+            'ci.max' => 'El Carnet de Identidad (CI) no debe exceder los 20 caracteres.',
+            'nombres.required' => 'El nombre es obligatorio.',
+            'apellidos.required' => 'El apellido es obligatorio.',
+            'fecha_nacimiento.required' => 'La fecha de nacimiento es obligatoria.',
+            'fecha_nacimiento.before' => 'La fecha de nacimiento debe ser anterior a hoy.',
+            'sexo.required' => 'El sexo es obligatorio.',
+            'sexo.in' => 'El sexo seleccionado no es válido.',
+            'email.required' => 'El correo electrónico es obligatorio.',
+            'email.email' => 'El correo electrónico debe tener un formato válido.',
+            'primera_opcion_id.required' => 'La primera opción de carrera es obligatoria.',
+            'primera_opcion_id.exists' => 'La primera opción seleccionada no existe.',
+            'segunda_opcion_id.required' => 'La segunda opción de carrera es obligatoria.',
+            'segunda_opcion_id.different' => 'La segunda opción de carrera debe ser diferente a la primera opción.',
+            'segunda_opcion_id.exists' => 'La segunda opción seleccionada no existe.',
+            'turno_preferencia.required' => 'El turno de preferencia es obligatorio.',
+            'turno_preferencia.in' => 'El turno seleccionado no es válido.',
         ]);
 
         $gestion = Gestion::activa()->first();
@@ -41,11 +64,13 @@ class PostulanteController extends Controller
             ], 422);
         }
 
-        // CU08: Deteccion de postulante recurrente por CI
+        // CU08 - Paso 3: Ctrl -> E_Post : BuscarRegistroAnterior(ci)
+        // CU08 - Paso 4: E_Post --> Ctrl : ResultadoBusqueda
         $existente = Postulante::where('ci', $validated['ci'])->first();
 
         if ($existente) {
-            // Ya participo antes → actualizar datos y marcar recurrente
+            // CU08 - Paso 5 [alt recurrente]: Ctrl --> UI : RetornarDatosRecurrente(datosAnteriores)
+            // Ya participó antes -> actualizar datos y marcar recurrente
             $existente->update(array_merge($validated, [
                 'gestion_id' => $gestion->id,
                 'estado' => 'Preinscrito',
@@ -59,15 +84,18 @@ class PostulanteController extends Controller
             ]);
         }
 
-        // CU05: Nuevo postulante
+        // CU08 - Paso 5 [alt nuevo]: Ctrl --> UI : ConfirmarNuevoPostulante()
+        // CU05 - Paso 3: Ctrl -> E_Post : CrearPerfilPostulante()
         $postulante = Postulante::create(array_merge($validated, [
             'gestion_id' => $gestion->id,
             'estado' => 'Preinscrito',
             'recurrente' => false,
         ]));
 
+        // CU05 - Paso 4: Ctrl -> E_Post : GuardarPreferenciasCarrera()
         RequisitoDocumental::create(['postulante_id' => $postulante->id]);
 
+        // CU05 - Paso 5: Ctrl --> UI : RetornarPostulanteCreado()
         return response()->json([
             'message' => 'Preinscripcion exitosa. Proceda a la verificacion de requisitos.',
             'postulante' => $postulante->load('primeraOpcion', 'segundaOpcion'),
@@ -83,6 +111,7 @@ class PostulanteController extends Controller
      */
     public function verificarRequisitos(Postulante $postulante): JsonResponse
     {
+        // CU06 - Paso 2: UI -> Ctrl : VerificarIdentidad(ci, fecha_nac)
         if ($postulante->estado !== 'Preinscrito') {
             return response()->json([
                 'message' => 'El postulante ya fue verificado previamente.',
@@ -90,12 +119,15 @@ class PostulanteController extends Controller
         }
 
         $service = new VerificacionExternaService();
+        
+        // CU06 - Pasos 3-6 ocurren dentro del servicio de verificación externa (consultar SEGIP y SEDUCA)
         $resultado = $service->verificarCompleto(
             $postulante->ci,
-            $postulante->fecha_nacimiento->format('Y-m-d')
+            \Carbon\Carbon::parse($postulante->fecha_nacimiento)->format('Y-m-d')
         );
 
         if ($resultado['aprobado']) {
+            // CU06 - Paso 7 (alt aprobado): Ctrl -> E_Post : ActualizarEstado(Verificado)
             $postulante->requisitos()->update([
                 'ci_digitalizado' => true,
                 'certificado_nacimiento' => true,
@@ -104,6 +136,10 @@ class PostulanteController extends Controller
                 'verificado_bd_externa' => true,
             ]);
             $postulante->update(['estado' => 'Verificado']);
+
+            // CU06 - Paso 8 (alt aprobado): Ctrl --> UI : ConfirmarVerificacion()
+        } else {
+            // CU06 - Paso 7 (alt no encontrado/verificado): Ctrl --> UI : NotificarErrorVerificacion(...)
         }
 
         return response()->json([
@@ -121,6 +157,9 @@ class PostulanteController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
+        // CU09 - Paso 2: UI -> Ctrl : BuscarPostulantes(criterio)
+        
+        // CU09 - Paso 3: Ctrl -> E_Post : EjecutarConsulta(criterio)
         $query = Postulante::with(['primeraOpcion', 'segundaOpcion', 'gestion']);
 
         if ($request->filled('ci')) {
@@ -155,7 +194,11 @@ class PostulanteController extends Controller
             });
         }
 
-        return response()->json($query->orderBy('apellidos')->paginate(20));
+        // CU09 - Paso 4: E_Post --> Ctrl : ListaResultados
+        $postulantes = $query->orderBy('apellidos')->paginate(20);
+
+        // CU09 - Paso 5: Ctrl --> UI : RetornarResultados(lista)
+        return response()->json($postulantes);
     }
 
     /**
@@ -169,5 +212,27 @@ class PostulanteController extends Controller
                 'requisitos', 'pagos', 'asignacionGrupo.grupo',
             ])
         );
+    }
+
+    /**
+     * Buscar postulante por CI de forma publica para pre-inscripcion y pago
+     */
+    public function buscarPorCi(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'ci' => 'required|string',
+        ]);
+
+        $postulante = Postulante::where('ci', $validated['ci'])
+            ->with(['primeraOpcion', 'segundaOpcion'])
+            ->first();
+
+        if (!$postulante) {
+            return response()->json([
+                'message' => 'Postulante no encontrado.',
+            ], 404);
+        }
+
+        return response()->json($postulante);
     }
 }

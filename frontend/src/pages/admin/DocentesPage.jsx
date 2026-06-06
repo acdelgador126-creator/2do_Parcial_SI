@@ -36,15 +36,25 @@ export default function DocentesPage() {
   const asignarDocente = async (e) => {
     e.preventDefault();
     setMessage('');
+
+    // CU12 - Paso 1: Act -> UI : 1: AsignarDocente(docenteId, grupoId, materiaId)
+    // El administrador ingresa los datos y confirma la vinculación.
+
     try {
+      // CU12 - Paso 2: UI -> Ctrl : 2: VincularDocenteMateria(docenteId, grupoId, materiaId)
       await api.post('/docentes/asignar', {
         docente_id: parseInt(docenteId),
         grupo_id: parseInt(grupoId),
         materia_id: parseInt(materiaId),
       });
+
+      // CU12 - Paso 8: Ctrl --> UI : RetornarExito()
+      // CU12 - Paso 9: UI --> Act : ActualizarMatrizDocentes()
       setMessage('Asignación exitosa.');
       fetchData();
     } catch (err) {
+      // CU12 - Paso 5 (alt carga maxima): Ctrl --> UI : NotificarError(...)
+      // CU12 - Paso 6 (alt carga maxima): UI --> Act : MostrarAlertaCargaMaxima()
       setMessage(err.response?.data?.message || 'Error en la asignación');
     }
   };

@@ -51,6 +51,7 @@ class DocenteController extends Controller
      */
     public function asignar(Request $request): JsonResponse
     {
+        // CU12 - Paso 2: UI -> Ctrl : VincularDocenteMateria(docenteId, grupoId, materiaId)
         $request->validate([
             'docente_id' => 'required|exists:docentes,id',
             'grupo_id' => 'required|exists:grupos,id',
@@ -60,13 +61,18 @@ class DocenteController extends Controller
         $docente = Docente::findOrFail($request->docente_id);
         $materia = Materia::findOrFail($request->materia_id);
 
+        // CU12 - Paso 3: Ctrl -> E_Doc : VerificarCargaHoraria(docenteId)
+        // CU12 - Paso 4: E_Doc --> Ctrl : CargaHorariaActiva
         // Validar carga maxima (4 grupos por docente)
         if (! $docente->tieneCargaDisponible()) {
+            // CU12 - Paso 5 (alt carga maxima): Ctrl --> UI : NotificarError("Docente ya tiene 4...")
             return response()->json([
                 'message' => "El docente {$docente->nombres} {$docente->apellidos} ya tiene 4 grupos asignados (carga maxima).",
             ], 422);
         }
 
+        // CU12 - Paso 5 (alt disponible): Ctrl -> E_Mat : ValidarEspecialidad(docenteId, materiaId)
+        // CU12 - Paso 6: E_Mat --> Ctrl : EspecialidadValida
         // Validar especialidad docente vs materia (string matching flexible)
         $especialidadNorm = mb_strtolower($docente->especialidad);
         $materiaNorm = mb_strtolower($materia->nombre);
@@ -87,12 +93,14 @@ class DocenteController extends Controller
             ], 422);
         }
 
+        // CU12 - Paso 7: Ctrl -> E_Grup : RegistrarAsignacionMateria(docenteId, materiaId)
         $asignacion = AsignacionDocente::create([
             'docente_id' => $request->docente_id,
             'grupo_id' => $request->grupo_id,
             'materia_id' => $request->materia_id,
         ]);
 
+        // CU12 - Paso 8: Ctrl --> UI : RetornarExito()
         return response()->json([
             'message' => 'Docente asignado exitosamente.',
             'asignacion' => $asignacion->load(['docente', 'grupo', 'materia']),

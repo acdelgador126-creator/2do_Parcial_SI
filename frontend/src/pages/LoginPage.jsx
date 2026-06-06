@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 export default function LoginPage() {
@@ -14,10 +14,21 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
     setLoading(true);
+
+    // CU01 - Paso 1: Act -> UI : 1: Ingresar email y password
+    // El usuario ingresa las credenciales en el formulario y lo envía.
+
     try {
+      // CU01 - Paso 2: UI -> Ctrl : 2: login(email, password)
+      // Delegamos el inicio de sesión a la API (CTR_Auth) a través del AuthContext
       await login(email, password);
+
+      // CU01 - Paso 6 (alt validas): Ctrl --> UI : 6: Redirigir a Home
+      // CU01 - Paso 7 (alt validas): UI --> Act : 7: MostrarHome()
       navigate('/dashboard');
     } catch (err) {
+      // CU01 - Paso 6 (alt invalidas): Ctrl --> UI : 6: NotificarError("Credenciales incorrectas")
+      // CU01 - Paso 7 (alt invalidas): UI --> Act : 7: MostrarMensajeError()
       setError(err.response?.data?.message || 'Credenciales invalidas');
     } finally {
       setLoading(false);
@@ -64,7 +75,7 @@ export default function LoginPage() {
           <div className="mb-6">
             <div className="flex justify-between items-center mb-2">
               <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Contrasena</label>
-              <a href="#" className="text-xs text-blue-400 hover:text-blue-300 transition-colors">¿Recuperar?</a>
+              <Link to="/forgot-password" className="text-xs text-blue-400 hover:text-blue-300 transition-colors">¿Recuperar?</Link>
             </div>
             <input 
               type="password" 
@@ -83,6 +94,19 @@ export default function LoginPage() {
           >
             {loading ? 'Validando credenciales...' : 'Ingresar al sistema'}
           </button>
+
+          <div className="relative flex py-4 items-center">
+            <div className="flex-grow border-t border-slate-850"></div>
+            <span className="flex-shrink mx-4 text-[10px] text-slate-500 font-bold uppercase tracking-wider">¿Nuevo postulante?</span>
+            <div className="flex-grow border-t border-slate-850"></div>
+          </div>
+
+          <Link
+            to="/preinscripcion"
+            className="w-full block text-center bg-slate-900/60 border border-slate-850 hover:bg-slate-900 hover:border-slate-700 text-slate-300 hover:text-white py-3 rounded-xl font-semibold transition-all duration-300 shadow-md cursor-pointer text-sm"
+          >
+            Iniciar Registro
+          </Link>
         </form>
 
         <p className="text-center text-xs text-slate-500 mt-6">

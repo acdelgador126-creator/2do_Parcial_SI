@@ -27,6 +27,7 @@ return new class extends Migration
             $table->foreignId('gestion_id')->constrained('gestiones');
             $table->string('estado', 50)->default('Preinscrito');
             $table->boolean('recurrente')->default(false);
+            $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
         });
     }

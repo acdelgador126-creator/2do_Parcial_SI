@@ -20,6 +20,7 @@ Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 
 // Registro y verificacion (acceso publico para formulario de preinscripcion)
 Route::post('/postulantes', [PostulanteController::class, 'store']);
+Route::get('/postulantes/buscar-ci', [PostulanteController::class, 'buscarPorCi']);
 Route::post('/postulantes/{postulante}/verificar', [PostulanteController::class, 'verificarRequisitos']);
 
 // Pago Stripe

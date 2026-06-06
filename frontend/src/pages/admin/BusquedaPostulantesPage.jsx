@@ -8,11 +8,15 @@ export default function BusquedaPostulantesPage() {
   const [loading, setLoading] = useState(false);
 
   const fetchPostulantes = async () => {
+    // CU09 - Paso 1: Act -> UI : 1: IngresarFiltros(criterio)
     setLoading(true);
     try {
+      // CU09 - Paso 2: UI -> Ctrl : 2: BuscarPostulantes(criterio)
       const { data } = await api.get('/postulantes', {
         params: { search, estado }
       });
+
+      // CU09 - Paso 6: UI --> Act : 6: RenderizarGrillaResultados()
       setPostulantes(data.data || []);
     } catch (e) {
       console.error(e);

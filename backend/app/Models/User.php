@@ -49,4 +49,24 @@ class User extends Authenticatable
             'active' => 'boolean',
         ];
     }
+
+    public function postulante()
+    {
+        return $this->hasOne(Postulante::class);
+    }
+
+    public function docente()
+    {
+        return $this->hasOne(Docente::class);
+    }
+
+    public function notificaciones()
+    {
+        return $this->hasMany(Notificacion::class, 'usuario_id');
+    }
+
+    public function auditoriaNotas()
+    {
+        return $this->hasMany(AuditoriaNota::class, 'usuario_modificador_id');
+    }
 }

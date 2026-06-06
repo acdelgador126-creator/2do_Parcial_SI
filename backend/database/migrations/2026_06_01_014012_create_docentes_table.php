@@ -16,6 +16,7 @@ return new class extends Migration
             $table->string('especialidad', 100);
             $table->string('grado_academico', 100);
             $table->string('correo', 150);
+            $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamp('created_at')->useCurrent();
         });
     }

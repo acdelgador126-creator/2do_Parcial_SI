@@ -1,0 +1,264 @@
+
+================================================================================
+DIAGRAM #129: Com_CU01 (Package: 6)
+Notes: Collaboration Diagram
+Objects:
+  - ID: 695 | Name: CE_BitacoraAcceso | Type: Object | Stereotype: None | Rect: (750, -300, 840, -380)
+  - ID: 694 | Name: CE_Usuario | Type: Object | Stereotype: None | Rect: (750, -150, 840, -230)
+  - ID: 693 | Name: CTR_Auth | Type: Object | Stereotype: None | Rect: (500, -300, 590, -380)
+  - ID: 692 | Name: IU_Login | Type: Object | Stereotype: None | Rect: (300, -300, 390, -380)
+  - ID: 691 | Name: Usuario | Type: Actor | Stereotype: None | Rect: (100, -300, 190, -380)
+Connectors (Messages):
+  - ID: 955 | Type: Sequence | From: Usuario -> To: IU_Login | Message: 1: + Ingresar email y password | SeqNo: 1
+  - ID: 956 | Type: Sequence | From: IU_Login -> To: CTR_Auth | Message: 2: + login(email, password) | SeqNo: 2
+  - ID: 957 | Type: Sequence | From: CTR_Auth -> To: CE_Usuario | Message: 3: + select_where(email) | SeqNo: 3
+  - ID: 958 | Type: Sequence | From: CE_Usuario -> To: CTR_Auth | Message: 4: + Datos y Hash | SeqNo: 4
+  - ID: 959 | Type: Sequence | From: CTR_Auth -> To: CE_BitacoraAcceso | Message: 5: + RegistrarLoginExitoso() | SeqNo: 5
+  - ID: 960 | Type: Sequence | From: CE_BitacoraAcceso -> To: CTR_Auth | Message: 6: + Confirmación | SeqNo: 6
+  - ID: 961 | Type: Sequence | From: CTR_Auth -> To: IU_Login | Message: 7: + Redirigir a Home | SeqNo: 7
+  - ID: 962 | Type: Sequence | From: IU_Login -> To: Usuario | Message: 8: + MostrarHome() | SeqNo: 8
+
+================================================================================
+DIAGRAM #130: Com_CU02 (Package: 6)
+Notes: Collaboration Diagram
+Objects:
+  - ID: 699 | Name: CE_BitacoraAcceso | Type: Object | Stereotype: None | Rect: (750, -300, 840, -380)
+  - ID: 698 | Name: CTR_Auth | Type: Object | Stereotype: None | Rect: (500, -300, 590, -380)
+  - ID: 697 | Name: IU_Principal | Type: Object | Stereotype: None | Rect: (300, -300, 390, -380)
+  - ID: 696 | Name: Usuario | Type: Actor | Stereotype: None | Rect: (100, -300, 190, -380)
+Connectors (Messages):
+  - ID: 963 | Type: Sequence | From: Usuario -> To: IU_Principal | Message: 1: + SolicitarCerrarSesion() | SeqNo: 1
+  - ID: 964 | Type: Sequence | From: IU_Principal -> To: CTR_Auth | Message: 2: + InvalidarSesion(token) | SeqNo: 2
+  - ID: 965 | Type: Sequence | From: CTR_Auth -> To: CE_BitacoraAcceso | Message: 3: + RegistrarLogout() | SeqNo: 3
+  - ID: 966 | Type: Sequence | From: CE_BitacoraAcceso -> To: CTR_Auth | Message: 4: + Confirmación | SeqNo: 4
+  - ID: 967 | Type: Sequence | From: CTR_Auth -> To: IU_Principal | Message: 5: + ConfirmarCierre() | SeqNo: 5
+  - ID: 968 | Type: Sequence | From: IU_Principal -> To: Usuario | Message: 6: + MostrarPantallaLogin() | SeqNo: 6
+
+================================================================================
+DIAGRAM #131: Com_CU03 (Package: 6)
+Notes: Collaboration Diagram
+Objects:
+  - ID: 703 | Name: CE_Usuario | Type: Object | Stereotype: None | Rect: (750, -300, 840, -380)
+  - ID: 702 | Name: CTR_Auth | Type: Object | Stereotype: None | Rect: (500, -300, 590, -380)
+  - ID: 701 | Name: IU_Recuperacion | Type: Object | Stereotype: None | Rect: (300, -300, 390, -380)
+  - ID: 700 | Name: Usuario | Type: Actor | Stereotype: None | Rect: (100, -300, 190, -380)
+Connectors (Messages):
+  - ID: 969 | Type: Sequence | From: Usuario -> To: IU_Recuperacion | Message: 1: + IngresarCorreo(correo) | SeqNo: 1
+  - ID: 970 | Type: Sequence | From: IU_Recuperacion -> To: CTR_Auth | Message: 2: + GenerarTokenRecuperacion(correo) | SeqNo: 2
+  - ID: 971 | Type: Sequence | From: CTR_Auth -> To: CE_Usuario | Message: 3: + ValidarExistenciaCorreo(correo) | SeqNo: 3
+  - ID: 972 | Type: Sequence | From: CE_Usuario -> To: CTR_Auth | Message: 4: + DatosExistencia | SeqNo: 4
+  - ID: 973 | Type: Sequence | From: CTR_Auth -> To: CTR_Auth | Message: 5: + EnviarEmailRecuperacion() | SeqNo: 5
+  - ID: 974 | Type: Sequence | From: CTR_Auth -> To: IU_Recuperacion | Message: 6: + ConfirmarEnvio() | SeqNo: 6
+  - ID: 975 | Type: Sequence | From: IU_Recuperacion -> To: Usuario | Message: 7: + MostrarMensajeExito() | SeqNo: 7
+
+================================================================================
+DIAGRAM #132: Com_CU04 (Package: 6)
+Notes: Collaboration Diagram
+Objects:
+  - ID: 708 | Name: CE_BitacoraAcceso | Type: Object | Stereotype: None | Rect: (750, -300, 840, -380)
+  - ID: 707 | Name: CE_Usuario | Type: Object | Stereotype: None | Rect: (750, -150, 840, -230)
+  - ID: 706 | Name: CTR_Usuarios | Type: Object | Stereotype: None | Rect: (500, -300, 590, -380)
+  - ID: 705 | Name: IU_Usuarios | Type: Object | Stereotype: None | Rect: (300, -300, 390, -380)
+  - ID: 704 | Name: Administrador | Type: Actor | Stereotype: None | Rect: (100, -300, 190, -380)
+Connectors (Messages):
+  - ID: 976 | Type: Sequence | From: Administrador -> To: IU_Usuarios | Message: 1: + RegistrarNuevoUsuario(datos) | SeqNo: 1
+  - ID: 977 | Type: Sequence | From: IU_Usuarios -> To: CTR_Usuarios | Message: 2: + CrearUsuario(datos) | SeqNo: 2
+  - ID: 978 | Type: Sequence | From: CTR_Usuarios -> To: CE_Usuario | Message: 3: + ValidarNoDuplicado(correo) | SeqNo: 3
+  - ID: 979 | Type: Sequence | From: CE_Usuario -> To: CTR_Usuarios | Message: 4: + ResultadoValidacion | SeqNo: 4
+  - ID: 980 | Type: Sequence | From: CTR_Usuarios -> To: CE_Usuario | Message: 5: + GuardarNuevoUsuario() | SeqNo: 5
+  - ID: 981 | Type: Sequence | From: CE_Usuario -> To: CTR_Usuarios | Message: 6: + Confirmación | SeqNo: 6
+  - ID: 982 | Type: Sequence | From: CTR_Usuarios -> To: CE_BitacoraAcceso | Message: 7: + RegistrarAccionAdmin() | SeqNo: 7
+  - ID: 983 | Type: Sequence | From: CE_BitacoraAcceso -> To: CTR_Usuarios | Message: 8: + Confirmación | SeqNo: 8
+  - ID: 984 | Type: Sequence | From: CTR_Usuarios -> To: IU_Usuarios | Message: 9: + RetornarExito() | SeqNo: 9
+  - ID: 985 | Type: Sequence | From: IU_Usuarios -> To: Administrador | Message: 10: + ActualizarListaUsuarios() | SeqNo: 10
+
+================================================================================
+DIAGRAM #133: Com_CU05 (Package: 7)
+Notes: Collaboration Diagram
+Objects:
+  - ID: 712 | Name: CE_Postulante | Type: Object | Stereotype: None | Rect: (750, -300, 840, -380)
+  - ID: 711 | Name: CTR_Preinscripcion | Type: Object | Stereotype: None | Rect: (500, -300, 590, -380)
+  - ID: 710 | Name: IU_Preinscripcion | Type: Object | Stereotype: None | Rect: (300, -300, 390, -380)
+  - ID: 709 | Name: Postulante | Type: Actor | Stereotype: None | Rect: (100, -300, 190, -380)
+Connectors (Messages):
+  - ID: 986 | Type: Sequence | From: Postulante -> To: IU_Preinscripcion | Message: 1: + CompletarFormularioRegistro(datos) | SeqNo: 1
+  - ID: 987 | Type: Sequence | From: IU_Preinscripcion -> To: CTR_Preinscripcion | Message: 2: + ProcesarRegistro(datos) | SeqNo: 2
+  - ID: 988 | Type: Sequence | From: CTR_Preinscripcion -> To: CE_Postulante | Message: 3: + CrearPerfilPostulante() | SeqNo: 3
+  - ID: 989 | Type: Sequence | From: CE_Postulante -> To: CTR_Preinscripcion | Message: 4: + Confirmación | SeqNo: 4
+  - ID: 990 | Type: Sequence | From: CTR_Preinscripcion -> To: CE_Postulante | Message: 5: + GuardarPreferenciasCarrera() | SeqNo: 5
+  - ID: 991 | Type: Sequence | From: CE_Postulante -> To: CTR_Preinscripcion | Message: 6: + Confirmación | SeqNo: 6
+  - ID: 992 | Type: Sequence | From: CTR_Preinscripcion -> To: IU_Preinscripcion | Message: 7: + RetornarPostulanteCreado() | SeqNo: 7
+  - ID: 993 | Type: Sequence | From: IU_Preinscripcion -> To: Postulante | Message: 8: + MostrarPasosSiguientes() | SeqNo: 8
+
+================================================================================
+DIAGRAM #134: Com_CU06 (Package: 7)
+Notes: Collaboration Diagram
+Objects:
+  - ID: 717 | Name: API SEDUCA | Type: Object | Stereotype: None | Rect: (750, -300, 840, -380)
+  - ID: 716 | Name: API SEGIP | Type: Object | Stereotype: None | Rect: (750, -150, 840, -230)
+  - ID: 718 | Name: CE_Postulante | Type: Object | Stereotype: None | Rect: (750, -450, 840, -530)
+  - ID: 715 | Name: CTR_Preinscripcion | Type: Object | Stereotype: None | Rect: (500, -300, 590, -380)
+  - ID: 714 | Name: IU_Preinscripcion | Type: Object | Stereotype: None | Rect: (300, -300, 390, -380)
+  - ID: 713 | Name: Sistema | Type: Actor | Stereotype: None | Rect: (100, -300, 190, -380)
+Connectors (Messages):
+  - ID: 994 | Type: Sequence | From: Sistema -> To: IU_Preinscripcion | Message: 1: + IniciarVerificacionAutomatica() | SeqNo: 1
+  - ID: 995 | Type: Sequence | From: IU_Preinscripcion -> To: CTR_Preinscripcion | Message: 2: + VerificarIdentidad(ci, fecha_nac) | SeqNo: 2
+  - ID: 996 | Type: Sequence | From: CTR_Preinscripcion -> To: API SEGIP | Message: 3: + ConsultarIdentidad(ci) | SeqNo: 3
+  - ID: 997 | Type: Sequence | From: API SEGIP -> To: CTR_Preinscripcion | Message: 4: + ConfirmacionIdentidad | SeqNo: 4
+  - ID: 998 | Type: Sequence | From: CTR_Preinscripcion -> To: API SEDUCA | Message: 5: + ConsultarBachiller(ci) | SeqNo: 5
+  - ID: 999 | Type: Sequence | From: API SEDUCA -> To: CTR_Preinscripcion | Message: 6: + ConfirmacionBachiller | SeqNo: 6
+  - ID: 1000 | Type: Sequence | From: CTR_Preinscripcion -> To: CE_Postulante | Message: 7: + ActualizarEstado(Verificado) | SeqNo: 7
+  - ID: 1001 | Type: Sequence | From: CE_Postulante -> To: CTR_Preinscripcion | Message: 8: + Confirmación | SeqNo: 8
+  - ID: 1002 | Type: Sequence | From: CTR_Preinscripcion -> To: IU_Preinscripcion | Message: 9: + ConfirmarVerificacion() | SeqNo: 9
+  - ID: 1003 | Type: Sequence | From: IU_Preinscripcion -> To: Sistema | Message: 10: + NotificarVerificacionCompleta() | SeqNo: 10
+
+================================================================================
+DIAGRAM #135: Com_CU07 (Package: 7)
+Notes: Collaboration Diagram
+Objects:
+  - ID: 723 | Name: CE_Pago | Type: Object | Stereotype: None | Rect: (750, -300, 840, -380)
+  - ID: 724 | Name: CE_Postulante | Type: Object | Stereotype: None | Rect: (750, -450, 840, -530)
+  - ID: 721 | Name: CTR_Inscripcion | Type: Object | Stereotype: None | Rect: (500, -300, 590, -380)
+  - ID: 720 | Name: IU_Inscripcion | Type: Object | Stereotype: None | Rect: (300, -300, 390, -380)
+  - ID: 722 | Name: PasarelaStripe | Type: Object | Stereotype: None | Rect: (750, -150, 840, -230)
+  - ID: 719 | Name: Postulante | Type: Actor | Stereotype: None | Rect: (100, -300, 190, -380)
+Connectors (Messages):
+  - ID: 1004 | Type: Sequence | From: Postulante -> To: IU_Inscripcion | Message: 1: + Solicitar pago de matrícula() | SeqNo: 1
+  - ID: 1005 | Type: Sequence | From: IU_Inscripcion -> To: CTR_Inscripcion | Message: 2: + IniciarProcesoPago(postulanteId) | SeqNo: 2
+  - ID: 1006 | Type: Sequence | From: CTR_Inscripcion -> To: PasarelaStripe | Message: 3: + CrearSesionPago(monto) | SeqNo: 3
+  - ID: 1007 | Type: Sequence | From: PasarelaStripe -> To: CTR_Inscripcion | Message: 4: + UrlRedireccionSesion | SeqNo: 4
+  - ID: 1008 | Type: Sequence | From: CTR_Inscripcion -> To: IU_Inscripcion | Message: 5: + RedirigirAPasarela() | SeqNo: 5
+  - ID: 1009 | Type: Sequence | From: IU_Inscripcion -> To: Postulante | Message: 6: + MostrarFormularioPagoStripe() | SeqNo: 6
+  - ID: 1010 | Type: Sequence | From: Postulante -> To: PasarelaStripe | Message: 7: + ConfirmarDatosTarjeta() | SeqNo: 7
+  - ID: 1011 | Type: Sequence | From: PasarelaStripe -> To: CTR_Inscripcion | Message: 8: + NotificarPagoExitoso(StripeWebhook) | SeqNo: 8
+  - ID: 1012 | Type: Sequence | From: CTR_Inscripcion -> To: CE_Pago | Message: 9: + CrearRegistroPago(monto, transaccionId) | SeqNo: 9
+  - ID: 1013 | Type: Sequence | From: CE_Pago -> To: CTR_Inscripcion | Message: 10: + Confirmación | SeqNo: 10
+  - ID: 1014 | Type: Sequence | From: CTR_Inscripcion -> To: CE_Postulante | Message: 11: + ActualizarEstado("Inscrito") | SeqNo: 11
+  - ID: 1015 | Type: Sequence | From: CE_Postulante -> To: CTR_Inscripcion | Message: 12: + Confirmación | SeqNo: 12
+
+================================================================================
+DIAGRAM #136: Com_CU08 (Package: 7)
+Notes: Collaboration Diagram
+Objects:
+  - ID: 728 | Name: CE_Postulante | Type: Object | Stereotype: None | Rect: (750, -300, 840, -380)
+  - ID: 727 | Name: CTR_Preinscripcion | Type: Object | Stereotype: None | Rect: (500, -300, 590, -380)
+  - ID: 726 | Name: IU_Preinscripcion | Type: Object | Stereotype: None | Rect: (300, -300, 390, -380)
+  - ID: 725 | Name: Postulante | Type: Actor | Stereotype: None | Rect: (100, -300, 190, -380)
+Connectors (Messages):
+  - ID: 1016 | Type: Sequence | From: Postulante -> To: IU_Preinscripcion | Message: 1: + IngresarCI(ci) | SeqNo: 1
+  - ID: 1017 | Type: Sequence | From: IU_Preinscripcion -> To: CTR_Preinscripcion | Message: 2: + VerificarPostulanteExistente(ci) | SeqNo: 2
+  - ID: 1018 | Type: Sequence | From: CTR_Preinscripcion -> To: CE_Postulante | Message: 3: + BuscarRegistroAnterior(ci) | SeqNo: 3
+  - ID: 1019 | Type: Sequence | From: CE_Postulante -> To: CTR_Preinscripcion | Message: 4: + RegistroAnterior | SeqNo: 4
+  - ID: 1020 | Type: Sequence | From: CTR_Preinscripcion -> To: IU_Preinscripcion | Message: 5: + RetornarEstadoDuplicado(true) | SeqNo: 5
+  - ID: 1021 | Type: Sequence | From: IU_Preinscripcion -> To: Postulante | Message: 6: + MostrarAlertaRecurrente() | SeqNo: 6
+
+================================================================================
+DIAGRAM #137: Com_CU09 (Package: 7)
+Notes: Collaboration Diagram
+Objects:
+  - ID: 732 | Name: CE_Postulante | Type: Object | Stereotype: None | Rect: (750, -300, 840, -380)
+  - ID: 731 | Name: CTR_Busqueda | Type: Object | Stereotype: None | Rect: (500, -300, 590, -380)
+  - ID: 730 | Name: IU_Busqueda | Type: Object | Stereotype: None | Rect: (300, -300, 390, -380)
+  - ID: 729 | Name: Administrador | Type: Actor | Stereotype: None | Rect: (100, -300, 190, -380)
+Connectors (Messages):
+  - ID: 1022 | Type: Sequence | From: Administrador -> To: IU_Busqueda | Message: 1: + IngresarFiltros(criterio) | SeqNo: 1
+  - ID: 1023 | Type: Sequence | From: IU_Busqueda -> To: CTR_Busqueda | Message: 2: + BuscarPostulantes(criterio) | SeqNo: 2
+  - ID: 1024 | Type: Sequence | From: CTR_Busqueda -> To: CE_Postulante | Message: 3: + EjecutarConsulta(criterio) | SeqNo: 3
+  - ID: 1025 | Type: Sequence | From: CE_Postulante -> To: CTR_Busqueda | Message: 4: + ListaResultados | SeqNo: 4
+  - ID: 1026 | Type: Sequence | From: CTR_Busqueda -> To: IU_Busqueda | Message: 5: + RetornarResultados(lista) | SeqNo: 5
+  - ID: 1027 | Type: Sequence | From: IU_Busqueda -> To: Administrador | Message: 6: + RenderizarGrillaResultados() | SeqNo: 6
+
+================================================================================
+DIAGRAM #138: Com_CU10 (Package: 8)
+Notes: Collaboration Diagram
+Objects:
+  - ID: 739 | Name: CE_AsignacionGrupo | Type: Object | Stereotype: None | Rect: (750, -600, 840, -680)
+  - ID: 737 | Name: CE_Aula | Type: Object | Stereotype: None | Rect: (750, -300, 840, -380)
+  - ID: 738 | Name: CE_Grupo | Type: Object | Stereotype: None | Rect: (750, -450, 840, -530)
+  - ID: 736 | Name: CE_Postulante | Type: Object | Stereotype: None | Rect: (750, -150, 840, -230)
+  - ID: 735 | Name: CTR_Planificacion | Type: Object | Stereotype: None | Rect: (500, -300, 590, -380)
+  - ID: 734 | Name: IU_Grupos | Type: Object | Stereotype: None | Rect: (300, -300, 390, -380)
+  - ID: 733 | Name: Administrador | Type: Actor | Stereotype: None | Rect: (100, -300, 190, -380)
+Connectors (Messages):
+  - ID: 1028 | Type: Sequence | From: Administrador -> To: IU_Grupos | Message: 1: + EjecutarCalculoAsignacion() | SeqNo: 1
+  - ID: 1029 | Type: Sequence | From: IU_Grupos -> To: CTR_Planificacion | Message: 2: + IniciarAsignacionMasiva() | SeqNo: 2
+  - ID: 1030 | Type: Sequence | From: CTR_Planificacion -> To: CE_Postulante | Message: 3: + ObtenerPostulantesInscritosSinGrupo() | SeqNo: 3
+  - ID: 1031 | Type: Sequence | From: CE_Postulante -> To: CTR_Planificacion | Message: 4: + ListaPostulantes | SeqNo: 4
+  - ID: 1032 | Type: Sequence | From: CTR_Planificacion -> To: CTR_Planificacion | Message: 5: + CalcularGruposNecesarios(CEIL(Total/70)) | SeqNo: 5
+  - ID: 1033 | Type: Sequence | From: CTR_Planificacion -> To: CE_Aula | Message: 6: + VerificarDisponibilidadAulas() | SeqNo: 6
+  - ID: 1034 | Type: Sequence | From: CE_Aula -> To: CTR_Planificacion | Message: 7: + AulasDisponibles | SeqNo: 7
+  - ID: 1035 | Type: Sequence | From: CTR_Planificacion -> To: CE_Grupo | Message: 8: + CrearNuevosGrupos(cantidad, horarios) | SeqNo: 8
+  - ID: 1036 | Type: Sequence | From: CE_Grupo -> To: CTR_Planificacion | Message: 9: + Confirmación | SeqNo: 9
+  - ID: 1037 | Type: Sequence | From: CTR_Planificacion -> To: CTR_Planificacion | Message: 10: + CalcularDistribucionEquitativa() | SeqNo: 10
+  - ID: 1038 | Type: Sequence | From: CTR_Planificacion -> To: CE_AsignacionGrupo | Message: 11: + VincularPostulanteAGrupo(postulanteId, grupoId) | SeqNo: 11
+  - ID: 1039 | Type: Sequence | From: CE_AsignacionGrupo -> To: CTR_Planificacion | Message: 12: + Confirmación | SeqNo: 12
+  - ID: 1040 | Type: Sequence | From: CTR_Planificacion -> To: CE_Postulante | Message: 13: + ActualizarEstado("En Evaluación") | SeqNo: 13
+  - ID: 1041 | Type: Sequence | From: CE_Postulante -> To: CTR_Planificacion | Message: 14: + Confirmación | SeqNo: 14
+  - ID: 1042 | Type: Sequence | From: CTR_Planificacion -> To: IU_Grupos | Message: 15: + ConfirmarAsignacionExitosa() | SeqNo: 15
+  - ID: 1043 | Type: Sequence | From: IU_Grupos -> To: Administrador | Message: 16: + MostrarGruposConPostulantes() | SeqNo: 16
+
+================================================================================
+DIAGRAM #139: Com_CU11 (Package: 8)
+Notes: Collaboration Diagram
+Objects:
+  - ID: 745 | Name: CE_AsignacionGrupo | Type: Object | Stereotype: None | Rect: (750, -450, 840, -530)
+  - ID: 744 | Name: CE_Grupo | Type: Object | Stereotype: None | Rect: (750, -300, 840, -380)
+  - ID: 743 | Name: CE_Postulante | Type: Object | Stereotype: None | Rect: (750, -150, 840, -230)
+  - ID: 742 | Name: CTR_Planificacion | Type: Object | Stereotype: None | Rect: (500, -300, 590, -380)
+  - ID: 741 | Name: IU_Grupos | Type: Object | Stereotype: None | Rect: (300, -300, 390, -380)
+  - ID: 740 | Name: Administrador | Type: Actor | Stereotype: None | Rect: (100, -300, 190, -380)
+Connectors (Messages):
+  - ID: 1044 | Type: Sequence | From: Administrador -> To: IU_Grupos | Message: 1: + SolicitarAjusteGrupo(postulanteId, nuevoGrupoId) | SeqNo: 1
+  - ID: 1045 | Type: Sequence | From: IU_Grupos -> To: CTR_Planificacion | Message: 2: + ReasignarPostulante(postulanteId, nuevoGrupoId) | SeqNo: 2
+  - ID: 1046 | Type: Sequence | From: CTR_Planificacion -> To: CE_Postulante | Message: 3: + ObtenerPostulante(postulanteId) | SeqNo: 3
+  - ID: 1047 | Type: Sequence | From: CE_Postulante -> To: CTR_Planificacion | Message: 4: + DatosPostulante | SeqNo: 4
+  - ID: 1048 | Type: Sequence | From: CTR_Planificacion -> To: CE_Grupo | Message: 5: + VerificarCapacidad(nuevoGrupoId) | SeqNo: 5
+  - ID: 1049 | Type: Sequence | From: CE_Grupo -> To: CTR_Planificacion | Message: 6: + CapacidadDisponible | SeqNo: 6
+  - ID: 1050 | Type: Sequence | From: CTR_Planificacion -> To: CE_AsignacionGrupo | Message: 7: + ActualizarVinculoGrupo() | SeqNo: 7
+  - ID: 1051 | Type: Sequence | From: CE_AsignacionGrupo -> To: CTR_Planificacion | Message: 8: + Confirmación | SeqNo: 8
+  - ID: 1052 | Type: Sequence | From: CTR_Planificacion -> To: IU_Grupos | Message: 9: + RetornarExito() | SeqNo: 9
+  - ID: 1053 | Type: Sequence | From: IU_Grupos -> To: Administrador | Message: 10: + ActualizarListaGrupo() | SeqNo: 10
+
+================================================================================
+DIAGRAM #140: Com_CU12 (Package: 8)
+Notes: Collaboration Diagram
+Objects:
+  - ID: 749 | Name: CE_Docente | Type: Object | Stereotype: None | Rect: (750, -150, 840, -230)
+  - ID: 751 | Name: CE_Grupo | Type: Object | Stereotype: None | Rect: (750, -450, 840, -530)
+  - ID: 750 | Name: CE_Materia | Type: Object | Stereotype: None | Rect: (750, -300, 840, -380)
+  - ID: 748 | Name: CTR_Planificacion | Type: Object | Stereotype: None | Rect: (500, -300, 590, -380)
+  - ID: 747 | Name: IU_Docentes | Type: Object | Stereotype: None | Rect: (300, -300, 390, -380)
+  - ID: 746 | Name: Administrador | Type: Actor | Stereotype: None | Rect: (100, -300, 190, -380)
+Connectors (Messages):
+  - ID: 1054 | Type: Sequence | From: Administrador -> To: IU_Docentes | Message: 1: + AsignarDocente(docenteId, grupoId, materiaId) | SeqNo: 1
+  - ID: 1055 | Type: Sequence | From: IU_Docentes -> To: CTR_Planificacion | Message: 2: + VincularDocenteMateria(docenteId, grupoId, materiaId) | SeqNo: 2
+  - ID: 1056 | Type: Sequence | From: CTR_Planificacion -> To: CE_Docente | Message: 3: + VerificarCargaHoraria(docenteId) | SeqNo: 3
+  - ID: 1057 | Type: Sequence | From: CE_Docente -> To: CTR_Planificacion | Message: 4: + CargaHorariaActiva (grupos <= 4) | SeqNo: 4
+  - ID: 1058 | Type: Sequence | From: CTR_Planificacion -> To: CE_Materia | Message: 5: + ValidarEspecialidad(docenteId, materiaId) | SeqNo: 5
+  - ID: 1059 | Type: Sequence | From: CE_Materia -> To: CTR_Planificacion | Message: 6: + EspecialidadValida | SeqNo: 6
+  - ID: 1060 | Type: Sequence | From: CTR_Planificacion -> To: CE_Grupo | Message: 7: + RegistrarAsignacionMateria(docenteId, materiaId) | SeqNo: 7
+  - ID: 1061 | Type: Sequence | From: CE_Grupo -> To: CTR_Planificacion | Message: 8: + Confirmación | SeqNo: 8
+  - ID: 1062 | Type: Sequence | From: CTR_Planificacion -> To: IU_Docentes | Message: 9: + RetornarExito() | SeqNo: 9
+  - ID: 1063 | Type: Sequence | From: IU_Docentes -> To: Administrador | Message: 10: + ActualizarMatrizDocentes() | SeqNo: 10
+
+================================================================================
+DIAGRAM #141: Com_CU23 (Package: 8)
+Notes: Collaboration Diagram
+Objects:
+  - ID: 755 | Name: CE_PreguntaSimulacro | Type: Object | Stereotype: None | Rect: (750, -300, 840, -380)
+  - ID: 754 | Name: CTR_Simulacro | Type: Object | Stereotype: None | Rect: (500, -300, 590, -380)
+  - ID: 753 | Name: IU_Simulacro | Type: Object | Stereotype: None | Rect: (300, -300, 390, -380)
+  - ID: 752 | Name: Postulante | Type: Actor | Stereotype: None | Rect: (100, -300, 190, -380)
+Connectors (Messages):
+  - ID: 1064 | Type: Sequence | From: Postulante -> To: IU_Simulacro | Message: 1: + IniciarSimulacro() | SeqNo: 1
+  - ID: 1065 | Type: Sequence | From: IU_Simulacro -> To: CTR_Simulacro | Message: 2: + generarPreguntasSimulacro() | SeqNo: 2
+  - ID: 1066 | Type: Sequence | From: CTR_Simulacro -> To: CE_PreguntaSimulacro | Message: 3: + obtenerBancoPreguntas() | SeqNo: 3
+  - ID: 1067 | Type: Sequence | From: CE_PreguntaSimulacro -> To: CTR_Simulacro | Message: 4: + BancoPreguntas | SeqNo: 4
+  - ID: 1068 | Type: Sequence | From: CTR_Simulacro -> To: CTR_Simulacro | Message: 5: + SeleccionarPreguntasAleatorias() | SeqNo: 5
+  - ID: 1069 | Type: Sequence | From: CTR_Simulacro -> To: IU_Simulacro | Message: 6: + ListaPreguntasGeneradas | SeqNo: 6
+  - ID: 1070 | Type: Sequence | From: IU_Simulacro -> To: Postulante | Message: 7: + mostrarTemporizadorYPreguntas() | SeqNo: 7
+  - ID: 1071 | Type: Sequence | From: Postulante -> To: IU_Simulacro | Message: 8: + enviarRespuestas(respuestas) | SeqNo: 8
+  - ID: 1072 | Type: Sequence | From: IU_Simulacro -> To: CTR_Simulacro | Message: 9: + calificarSimulacro(respuestas) | SeqNo: 9
+  - ID: 1073 | Type: Sequence | From: CTR_Simulacro -> To: CTR_Simulacro | Message: 10: + CalcularNotaSimulacro() | SeqNo: 10
+  - ID: 1074 | Type: Sequence | From: CTR_Simulacro -> To: IU_Simulacro | Message: 11: + retornarNotaSimulacro(nota) | SeqNo: 11
+  - ID: 1075 | Type: Sequence | From: IU_Simulacro -> To: Postulante | Message: 12: + mostrarResultadosSimulacro() | SeqNo: 12

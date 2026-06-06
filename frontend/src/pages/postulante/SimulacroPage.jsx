@@ -25,12 +25,19 @@ export default function SimulacroPage() {
   }, [tiempo, fase]);
 
   const iniciarSimulacro = async () => {
+    // CU23 - Paso 1: Act -> UI : IniciarSimulacro()
+    // El postulante inicia la práctica.
     setLoading(true);
     setError('');
     try {
+      // CU23 - Paso 2: UI -> Ctrl : generarPreguntasSimulacro()
       const { data } = await api.get('/simulacro/generar');
+      
+      // CU23 - Paso 6: Ctrl --> UI : ListaPreguntasGeneradas
       setPreguntas(data.preguntas);
       setTiempo(data.simulacro.tiempo_limite_minutos * 60);
+
+      // CU23 - Paso 7: UI --> Act : mostrarTemporizadorYPreguntas()
       setFase('examen');
     } catch (err) {
       setError(err.response?.data?.message || 'Error al generar simulacro');
@@ -44,6 +51,8 @@ export default function SimulacroPage() {
   };
 
   const enviarRespuestas = async () => {
+    // CU23 - Paso 8: Act -> UI : enviarRespuestas(respuestas)
+    // El postulante envía el examen completado.
     setLoading(true);
     const payload = Object.entries(respuestas).map(([pregunta_id, respuesta]) => ({
       pregunta_id: parseInt(pregunta_id),
@@ -51,8 +60,13 @@ export default function SimulacroPage() {
     }));
 
     try {
+      // CU23 - Paso 9: UI -> Ctrl : calificarSimulacro(respuestas)
       const { data } = await api.post('/simulacro/calificar', { respuestas: payload });
+      
+      // CU23 - Paso 11: Ctrl --> UI : retornarNotaSimulacro(nota)
       setResultado(data);
+
+      // CU23 - Paso 12: UI --> Act : mostrarResultadosSimulacro()
       setFase('resultado');
     } catch (err) {
       setError(err.response?.data?.message || 'Error al calificar');

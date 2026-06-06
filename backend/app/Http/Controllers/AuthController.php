@@ -21,13 +21,16 @@ class AuthController extends Controller
      */
     public function login(Request $request): JsonResponse
     {
+        // CU01 - Paso 2: UI -> Ctrl : login(email, password)
         $request->validate([
             'email' => 'required|email',
             'password' => 'required|string',
         ]);
 
+        // CU01 - Paso 3: Ctrl -> E_Usu : select_where(email)
         $user = User::where('email', $request->email)->first();
 
+        // CU01 - Paso 4: E_Usu --> Ctrl : Datos y Hash
         if (! $user) {
             throw ValidationException::withMessages([
                 'email' => ['Credenciales incorrectas.'],
@@ -41,6 +44,8 @@ class AuthController extends Controller
         }
 
         if (! Hash::check($request->password, $user->password)) {
+            // CU01 - Paso 5 (alt invalidas): Ctrl -> E_Usu : IncrementarIntentosFallidos()
+            // Registramos el intento fallido en la bitácora y bloqueamos la cuenta si supera el límite de 3
             BitacoraAcceso::create([
                 'user_id' => $user->id,
                 'ip_address' => $request->ip(),
@@ -59,11 +64,13 @@ class AuthController extends Controller
                 ], 423);
             }
 
+            // CU01 - Paso 6 (alt invalidas): Ctrl --> UI : NotificarError("Credenciales incorrectas")
             throw ValidationException::withMessages([
                 'email' => ['Credenciales incorrectas.'],
             ]);
         }
 
+        // CU01 - Paso 5 (alt validas): Ctrl -> E_Bit : RegistrarLoginExitoso()
         $token = $user->createToken('cup-session')->plainTextToken;
 
         BitacoraAcceso::create([
@@ -72,6 +79,7 @@ class AuthController extends Controller
             'action' => 'LOGIN_EXITOSO',
         ]);
 
+        // CU01 - Paso 6 (alt validas): Ctrl --> UI : Redirigir a Home (retorna token de sesión exitoso)
         return response()->json([
             'token' => $token,
             'user' => [
@@ -91,6 +99,10 @@ class AuthController extends Controller
      */
     public function logout(Request $request): JsonResponse
     {
+        // CU02 - Paso 2: UI -> Ctrl : InvalidarSesion(token)
+        // Se llama al controlador en el backend para cerrar la sesión
+
+        // CU02 - Paso 3: Ctrl -> E_Bit : RegistrarLogout()
         BitacoraAcceso::create([
             'user_id' => $request->user()->id,
             'ip_address' => $request->ip(),
@@ -99,6 +111,7 @@ class AuthController extends Controller
 
         $request->user()->currentAccessToken()->delete();
 
+        // CU02 - Paso 4: Ctrl -> UI : ConfirmarCierre()
         return response()->json(['message' => 'Sesion cerrada exitosamente.']);
     }
 
@@ -110,8 +123,15 @@ class AuthController extends Controller
      */
     public function forgotPassword(Request $request): JsonResponse
     {
+        // CU03 - Paso 2: UI -> Ctrl : GenerarTokenRecuperacion(correo)
         $request->validate(['email' => 'required|email']);
 
+        // Laravel's Password broker processes the remaining sequence:
+        // CU03 - Paso 3: Ctrl -> E_Usu : ValidarExistenciaCorreo(correo)
+        // CU03 - Paso 4: E_Usu --> Ctrl : DatosExistencia
+        // CU03 - Paso 5 [alt existe]: GenerarTokenYEnviarEmail()
+        // CU03 - Paso 6 [alt existe]: ConfirmarEnvio()
+        // CU03 - Paso 5 [alt no existe]: MostrarMensajeGenerico()
         Password::sendResetLink($request->only('email'));
 
         return response()->json([

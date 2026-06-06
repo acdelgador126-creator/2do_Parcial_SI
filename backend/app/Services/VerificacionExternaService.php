@@ -35,8 +35,10 @@ class VerificacionExternaService
 
     public function verificarCompleto(string $ci, string $fechaNacimiento): array
     {
+        // CU06 - Paso 3: Ctrl -> API SEGIP : ConsultarIdentidad(ci)
         $segip = $this->verificarSEGIP($ci, $fechaNacimiento);
 
+        // CU06 - Paso 4: API SEGIP --> Ctrl : ResultadoVerificacion
         if (! $segip['verificado']) {
             return [
                 'aprobado' => false,
@@ -46,8 +48,10 @@ class VerificacionExternaService
             ];
         }
 
+        // CU06 - Paso 5 (alt verificado): Ctrl -> API SEDUCA : ConsultarBachiller(ci)
         $seduca = $this->verificarSEDUCA($ci);
 
+        // CU06 - Paso 6 (alt verificado): API SEDUCA --> Ctrl : ResultadoBachiller
         return [
             'aprobado' => $segip['verificado'] && $seduca['verificado'],
             'segip' => $segip,

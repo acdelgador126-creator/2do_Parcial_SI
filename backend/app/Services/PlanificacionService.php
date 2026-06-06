@@ -14,17 +14,12 @@ class PlanificacionService
 
     /**
      * CU10: Calculo automatico de grupos + asignacion masiva.
-     *
-     * Algoritmo del diagrama de secuencia:
-     * 1. Obtener postulantes con estado "Inscrito" sin grupo asignado
-     * 2. Agrupar por turno_preferencia
-     * 3. Por cada turno: cantidadGrupos = CEIL(total / 70)
-     * 4. Crear grupos y asignar aula
-     * 5. LOOP: asignar cada postulante a un grupo → estado = "En Evaluacion"
      */
     public function ejecutarAsignacionMasiva(int $gestionId): array
     {
         return DB::transaction(function () use ($gestionId) {
+            // CU10 - Paso 3: Ctrl -> E_Post : ObtenerPostulantesInscritosSinGrupo()
+            // CU10 - Paso 4: E_Post --> Ctrl : ListaPostulantes
             $postulantes = Postulante::where('gestion_id', $gestionId)
                 ->where('estado', 'Inscrito')
                 ->whereDoesntHave('asignacionGrupo')
@@ -43,15 +38,20 @@ class PlanificacionService
             $porTurno = $postulantes->groupBy('turno_preferencia');
             $gruposCreados = 0;
             $postulantesAsignados = 0;
+
+            // CU10 - Paso 6: Ctrl -> E_Aula : VerificarDisponibilidadAulas()
+            // CU10 - Paso 7: E_Aula --> Ctrl : AulasDisponibles
             $aulas = Aula::where('capacidad', '>=', self::MAX_POR_GRUPO)->get();
             $aulaIndex = 0;
 
             foreach ($porTurno as $turno => $listaPostulantes) {
+                // CU10 - Paso 5: Ctrl -> Ctrl : CalcularGruposNecesarios(CEIL(Total/70))
                 $cantGrupos = (int) ceil($listaPostulantes->count() / self::MAX_POR_GRUPO);
                 $ultimoNumero = Grupo::where('gestion_id', $gestionId)
                     ->where('turno', $turno)
                     ->max('numero') ?? 0;
 
+                // CU10 - Paso 8: Ctrl -> E_Grupo : CrearNuevosGrupos(cantidad, horarios)
                 $gruposNuevos = [];
                 for ($i = 1; $i <= $cantGrupos; $i++) {
                     $aula = $aulas[$aulaIndex % $aulas->count()];
@@ -66,21 +66,28 @@ class PlanificacionService
                 }
                 $gruposCreados += $cantGrupos;
 
-                // Distribuir equitativamente
+                // CU10 - Paso 9: Ctrl -> Ctrl : CalcularDistribucionEquitativa()
+                // Distribuir equitativamente en chunks
                 $chunks = $listaPostulantes->values()->chunk(self::MAX_POR_GRUPO);
                 foreach ($chunks as $idx => $chunk) {
                     $grupo = $gruposNuevos[$idx];
+                    
+                    // CU10 - [LOOP] Para cada postulante inscrito sin grupo
                     foreach ($chunk as $postulante) {
+                        // CU10 - Paso 10: Ctrl -> E_Asig : VincularPostulanteAGrupo(postulanteId, grupoId)
                         AsignacionGrupo::create([
                             'postulante_id' => $postulante->id,
                             'grupo_id' => $grupo->id,
                         ]);
+                        
+                        // CU10 - Paso 11: Ctrl -> E_Post : ActualizarEstado("En Evaluación")
                         $postulante->update(['estado' => 'En Evaluacion']);
                         $postulantesAsignados++;
                     }
                 }
             }
 
+            // CU10 - Paso 12: Ctrl --> UI : ConfirmarAsignacionExitosa()
             return [
                 'success' => true,
                 'message' => 'Asignacion masiva completada exitosamente.',
@@ -93,21 +100,24 @@ class PlanificacionService
 
     /**
      * CU11: Reasignar postulante a otro grupo.
-     *
-     * Diagrama: Admin selecciona postulante → selecciona nuevo grupo
-     *   → ALT [capacidad < 70]: reasignar | [capacidad = 70]: rechazar
      */
     public function reasignarPostulante(int $postulanteId, int $nuevoGrupoId): array
     {
+        // CU11 - Paso 3: Ctrl -> E_Post : ObtenerPostulante(postulanteId)
+        // CU11 - Paso 4: E_Post --> Ctrl : DatosPostulante
+        // CU11 - Paso 5: Ctrl -> E_Grupo : VerificarCapacidad(nuevoGrupoId)
+        // CU11 - Paso 6: E_Grupo --> Ctrl : CapacidadDisponible
         $grupo = Grupo::findOrFail($nuevoGrupoId);
 
         if (! $grupo->tieneCapacidad()) {
+            // CU11 - Paso 7 (alt lleno): Ctrl --> UI : NotificarError("Grupo lleno...")
             return [
                 'success' => false,
                 'message' => "Grupo #{$grupo->numero} (turno {$grupo->turno}) esta lleno. Capacidad maxima: " . self::MAX_POR_GRUPO,
             ];
         }
 
+        // CU11 - Paso 7 (alt disponible): Ctrl -> E_Asig : ActualizarVinculoGrupo()
         AsignacionGrupo::where('postulante_id', $postulanteId)->delete();
 
         AsignacionGrupo::create([

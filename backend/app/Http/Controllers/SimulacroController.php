@@ -19,6 +19,7 @@ class SimulacroController extends Controller
      */
     public function generar(): JsonResponse
     {
+        // CU23 - Paso 2: UI -> Ctrl : generarPreguntasSimulacro()
         $materias = Materia::all();
 
         if ($materias->count() < 4) {
@@ -31,6 +32,8 @@ class SimulacroController extends Controller
         $materiasFaltantes = [];
 
         foreach ($materias as $materia) {
+            // CU23 - Paso 3: Ctrl -> E_Preg : obtenerBancoPreguntas()
+            // CU23 - Paso 4: E_Preg --> Ctrl : BancoPreguntas
             $preguntasMateria = PreguntaSimulacro::where('materia_id', $materia->id)
                 ->inRandomOrder()
                 ->take(self::PREGUNTAS_POR_MATERIA)
@@ -41,6 +44,7 @@ class SimulacroController extends Controller
                 continue;
             }
 
+            // CU23 - Paso 5: Ctrl -> Ctrl : SeleccionarPreguntasAleatorias()
             // Mapear sin revelar respuesta_correcta
             $preguntasFormateadas = $preguntasMateria->map(function ($p) use ($materia) {
                 return [
@@ -61,6 +65,7 @@ class SimulacroController extends Controller
             ], 422);
         }
 
+        // CU23 - Paso 6: Ctrl --> UI : ListaPreguntasGeneradas
         return response()->json([
             'simulacro' => [
                 'total_preguntas' => $preguntas->count(),
@@ -80,6 +85,7 @@ class SimulacroController extends Controller
      */
     public function calificar(Request $request): JsonResponse
     {
+        // CU23 - Paso 9: UI -> Ctrl : calificarSimulacro(respuestas)
         $request->validate([
             'respuestas' => 'required|array|min:1|max:40',
             'respuestas.*.pregunta_id' => 'required|integer|exists:preguntas_simulacro,id',
@@ -94,6 +100,7 @@ class SimulacroController extends Controller
             ->get()
             ->keyBy('id');
 
+        // CU23 - Paso 10: Ctrl -> Ctrl : CalcularNotaSimulacro()
         $aciertos = 0;
         $errores = 0;
         $sinResponder = 0;
@@ -147,6 +154,7 @@ class SimulacroController extends Controller
             ];
         }
 
+        // CU23 - Paso 11: Ctrl --> UI : retornarNotaSimulacro(nota)
         return response()->json([
             'resultado' => [
                 'nota_sobre_100' => $nota,
