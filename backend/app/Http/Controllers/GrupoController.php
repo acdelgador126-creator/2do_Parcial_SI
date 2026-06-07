@@ -22,7 +22,7 @@ class GrupoController extends Controller
      */
     public function asignacionMasiva(): JsonResponse
     {
-        // CU10 - Paso 2: UI -> Ctrl : IniciarAsignacionMasiva()
+        // CU10 - Paso 2: B_Grup -> C_Plan : + asignacionMasiva()
         $gestion = Gestion::activa()->firstOrFail();
         
         // Las cotas y el balanceo físico de aulas se ejecutan dentro del orquestador PlanificacionService
@@ -36,8 +36,9 @@ class GrupoController extends Controller
      */
     public function reasignar(Request $request): JsonResponse
     {
+        // CU11 - Paso 2: B_Int -> C_Ctrl : + reasignar(request)
         $request->validate([
-            'postulante_id' => 'required|exists:postulantes,id',
+            'postulante_id' => 'required', // Se valida y busca por ID o CI en el servicio
             'grupo_id' => 'required|exists:grupos,id',
         ]);
 

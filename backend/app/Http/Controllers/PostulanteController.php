@@ -19,8 +19,8 @@ class PostulanteController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
-        // CU05 - Paso 2: UI -> Ctrl : ProcesarRegistro(datos)
-        // CU08 - Paso 2: UI -> Ctrl : VerificarPostulanteExistente(ci)
+        // CU05 - Paso 6b: B_Int -> C_Ctrl : + store(request)
+        // CU08 - Paso 2: B_Int -> C_Ctrl : + buscarPorCi(request)
         $validated = $request->validate([
             'ci' => 'required|string|min:7|max:20',
             'nombres' => 'required|string|max:150',
@@ -85,18 +85,17 @@ class PostulanteController extends Controller
             ]);
         }
 
-        // CU08 - Paso 5 [alt nuevo]: Ctrl --> UI : ConfirmarNuevoPostulante()
-        // CU05 - Paso 3: Ctrl -> E_Post : CrearPerfilPostulante()
+        // CU05 - Paso 7b: C_Ctrl -> E_Post : + create(datos)
         $postulante = Postulante::create(array_merge($validated, [
             'gestion_id' => $gestion->id,
             'estado' => 'Preinscrito',
             'recurrente' => false,
         ]));
 
-        // CU05 - Paso 4: Ctrl -> E_Post : GuardarPreferenciasCarrera()
+        // CU05 - Paso 8b: C_Ctrl -> E_Req : + create(['postulante_id' => id])
         RequisitoDocumental::create(['postulante_id' => $postulante->id]);
 
-        // CU05 - Paso 5: Ctrl --> UI : RetornarPostulanteCreado()
+        // CU05 - Paso 9b: C_Ctrl --> B_Int : + RetornarExitoYRedirigirPago()
         return response()->json([
             'message' => 'Preinscripcion exitosa. Proceda a la verificacion de requisitos.',
             'postulante' => $postulante->load('primeraOpcion', 'segundaOpcion'),
@@ -112,7 +111,7 @@ class PostulanteController extends Controller
      */
     public function verificarRequisitos(Postulante $postulante): JsonResponse
     {
-        // CU06 - Paso 2: UI -> Ctrl : VerificarIdentidad(ci, fecha_nac)
+        // CU06 - Paso 1: B_Int -> C_Ctrl : + verificarRequisitos(postulante)
         if ($postulante->estado !== 'Preinscrito') {
             return response()->json([
                 'message' => 'El postulante ya fue verificado previamente.',
@@ -128,7 +127,8 @@ class PostulanteController extends Controller
         );
 
         if ($resultado['aprobado']) {
-            // CU06 - Paso 7 (alt aprobado): Ctrl -> E_Post : ActualizarEstado(Verificado)
+            // CU06 - Paso 6: C_Ctrl -> E_Post : + update(['estado' => 'Verificado'])
+            // CU06 - Paso 7: C_Ctrl -> E_Req : + update(requisitos)
             $postulante->requisitos()->update([
                 'ci_digitalizado' => true,
                 'certificado_nacimiento' => true,
@@ -138,7 +138,7 @@ class PostulanteController extends Controller
             ]);
             $postulante->update(['estado' => 'Verificado']);
 
-            // CU06 - Paso 8 (alt aprobado): Ctrl --> UI : ConfirmarVerificacion()
+            // CU06 - Paso 8: C_Ctrl --> B_Int : + ConfirmarVerificacion()
         } else {
             // CU06 - Paso 7 (alt no encontrado/verificado): Ctrl --> UI : NotificarErrorVerificacion(...)
         }
@@ -158,9 +158,9 @@ class PostulanteController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        // CU09 - Paso 2: UI -> Ctrl : BuscarPostulantes(criterio)
+        // CU09 - Paso 2: B_Int -> C_Ctrl : + index(request)
         
-        // CU09 - Paso 3: Ctrl -> E_Post : EjecutarConsulta(criterio)
+        // CU09 - Paso 3: C_Ctrl -> E_Post : + paginate()
         $query = Postulante::with(['primeraOpcion', 'segundaOpcion', 'gestion']);
 
         if ($request->filled('ci')) {
@@ -195,10 +195,10 @@ class PostulanteController extends Controller
             });
         }
 
-        // CU09 - Paso 4: E_Post --> Ctrl : ListaResultados
+        // CU09 - Paso 4: E_Post --> C_Ctrl : + ListaResultados
         $postulantes = $query->orderBy('apellidos')->paginate(20);
 
-        // CU09 - Paso 5: Ctrl --> UI : RetornarResultados(lista)
+        // CU09 - Paso 5: C_Ctrl --> B_Int : + RetornarResultados(lista)
         return response()->json($postulantes);
     }
 
@@ -207,10 +207,17 @@ class PostulanteController extends Controller
      */
     public function show(Postulante $postulante): JsonResponse
     {
+        // Validar acceso: si el usuario autenticado tiene rol 'Postulante', sólo puede ver su propio registro
+        $user = auth()->user();
+        if ($user && $user->role === 'Postulante' && $postulante->user_id !== $user->id) {
+            abort(403, 'No tiene permiso para acceder a esta información.');
+        }
+
         return response()->json(
             $postulante->load([
                 'primeraOpcion', 'segundaOpcion', 'gestion',
                 'requisitos', 'pagos', 'asignacionGrupo.grupo',
+                'examenes.materia', 'notasFinales.materia',
             ])
         );
     }
@@ -264,10 +271,13 @@ class PostulanteController extends Controller
      */
     public function buscarPorCi(Request $request): JsonResponse
     {
+        // CU08 - Paso 2: B_Int -> C_Ctrl : + buscarPorCi(request)
         $validated = $request->validate([
             'ci' => 'required|string',
         ]);
 
+        // CU08 - Paso 3: C_Ctrl -> E_Post : + where('ci', ci)
+        // CU08 - Paso 4: E_Post --> C_Ctrl : + RegistroAnterior
         $postulante = Postulante::where('ci', $validated['ci'])
             ->with(['primeraOpcion', 'segundaOpcion'])
             ->first();
@@ -277,6 +287,8 @@ class PostulanteController extends Controller
                 'message' => 'Postulante no encontrado.',
             ], 404);
         }
+
+        // CU08 - Paso 5: C_Ctrl --> B_Int : + RetornarEstadoDuplicado(true) (retorna postulante recurrente)
 
         return response()->json($postulante);
     }

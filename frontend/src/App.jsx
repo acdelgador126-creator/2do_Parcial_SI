@@ -9,6 +9,9 @@ import UsersPage from './pages/admin/UsersPage';
 import BusquedaPostulantesPage from './pages/admin/BusquedaPostulantesPage';
 import GruposPage from './pages/admin/GruposPage';
 import DocentesPage from './pages/admin/DocentesPage';
+import NotasAdminPage from './pages/admin/NotasAdminPage';
+import AdmisionesPage from './pages/admin/AdmisionesPage';
+import ReportesPage from './pages/admin/ReportesPage';
 import PreinscripcionPage from './pages/postulante/PreinscripcionPage';
 import InscripcionPage from './pages/postulante/InscripcionPage';
 import SimulacroPage from './pages/postulante/SimulacroPage';
@@ -39,6 +42,15 @@ export default function App() {
             } />
             <Route path="/admin/docentes" element={
               <ProtectedRoute roles={['Administrador', 'Coordinador']}><DocentesPage /></ProtectedRoute>
+            } />
+            <Route path="/admin/notas" element={
+              <ProtectedRoute roles={['Administrador']}><NotasAdminPage /></ProtectedRoute>
+            } />
+            <Route path="/admin/admisiones" element={
+              <ProtectedRoute roles={['Administrador', 'Coordinador']}><AdmisionesPage /></ProtectedRoute>
+            } />
+            <Route path="/admin/reportes" element={
+              <ProtectedRoute roles={['Administrador', 'Coordinador']}><ReportesPage /></ProtectedRoute>
             } />
 
             {/* Postulante (Protegido) */}

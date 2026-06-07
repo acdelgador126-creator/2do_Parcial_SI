@@ -25,6 +25,7 @@ class CatalogosSeeder extends Seeder
             ['nombre' => 'Ingenieria Informatica', 'codigo' => 'INF'],
             ['nombre' => 'Ingenieria de Sistemas', 'codigo' => 'SIS'],
             ['nombre' => 'Ingenieria en Redes y Telecomunicaciones', 'codigo' => 'RED'],
+            ['nombre' => 'Ingenieria en Robotica', 'codigo' => 'ROB'],
         ];
         foreach ($carreras as $c) {
             Carrera::create($c);
@@ -32,10 +33,10 @@ class CatalogosSeeder extends Seeder
 
         // Materias CUP
         $materias = [
+            ['nombre' => 'Computacion', 'codigo' => 'COM'],
             ['nombre' => 'Matematicas', 'codigo' => 'MAT'],
             ['nombre' => 'Fisica', 'codigo' => 'FIS'],
-            ['nombre' => 'Quimica', 'codigo' => 'QUI'],
-            ['nombre' => 'Lenguaje', 'codigo' => 'LEN'],
+            ['nombre' => 'Ingles', 'codigo' => 'ING'],
         ];
         foreach ($materias as $m) {
             Materia::create($m);

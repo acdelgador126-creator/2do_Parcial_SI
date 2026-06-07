@@ -52,11 +52,13 @@ export default function InscripcionPage() {
   };
 
   const verificarPagoSession = async (sid) => {
+    // CU07 - Paso 13: B_Stripe -> B_Insc : + retornarExito()
     setLoading(true);
     setMessage('');
     try {
       const { data } = await api.post('/pagos/verificar', { session_id: sid });
       if (data.pagado) {
+        // CU07 - Paso 14: B_Insc --> Act : + mostrarMensajeConfirmacion()
         setPagoVerificado(true);
         setPostulante(data.postulante);
       } else {
@@ -92,14 +94,14 @@ export default function InscripcionPage() {
   };
 
   const iniciarPago = async () => {
-    // CU07 - Paso 1: Postulante (Act) -> UI : 1: Solicitar pago de matrícula()
+    // CU07 - Paso 1: Act -> B_Insc : + Solicitar pago de matrícula()
     setLoading(true);
     try {
-      // CU07 - Paso 2: UI -> Ctrl : 2: IniciarProcesoPago(postulanteId)
+      // CU07 - Paso 2: B_Insc -> C_Insc : + crearSesion(postulante)
       const { data } = await api.post(`/postulantes/${postulante.id}/pago`);
       
-      // CU07 - Paso 5: Ctrl --> UI : 5: RedirigirAPasarela()
-      // CU07 - Paso 6: UI --> Act : 6: MostrarFormularioPagoStripe()
+      // CU07 - Paso 5: C_Insc --> B_Insc : + RedirigirAPasarela()
+      // CU07 - Paso 6: B_Insc --> Act : + MostrarFormularioPagoStripe()
       if (data.checkout_url) {
         window.location.href = data.checkout_url;
       }
@@ -219,7 +221,7 @@ export default function InscripcionPage() {
                 </div>
                 <div className="flex justify-between pt-1">
                   <span className="text-xs font-semibold text-slate-400 uppercase">Arancel de Matrícula</span>
-                  <span className="text-sm font-bold text-slate-100">350.00 BOB</span>
+                  <span className="text-sm font-bold text-slate-100">700.00 BOB</span>
                 </div>
               </div>
               

@@ -47,10 +47,9 @@ class UserController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
-        // CU04 - Paso 2: UI -> Ctrl : CrearUsuario(datos)
-        // El controlador valida que el correo no esté duplicado
-        // CU04 - Paso 3: Ctrl -> E_Usu : ValidarNoDuplicado(correo)
-        // CU04 - Paso 4: E_Usu --> Ctrl : ResultadoValidacion
+        // CU04 - Paso 2: B_Int -> C_Ctrl : + store(request)
+        // CU04 - Paso 3: C_Ctrl -> E_Usu : + where('email', email)
+        // CU04 - Paso 4: E_Usu --> C_Ctrl : + ResultadoValidacion
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
@@ -59,7 +58,7 @@ class UserController extends Controller
 
         $tempPassword = Str::random(10);
 
-        // CU04 - Paso 5 (alt no duplicado): Ctrl -> E_Usu : GuardarNuevoUsuario()
+        // CU04 - Paso 5: C_Ctrl -> E_Usu : + create(datos)
         $user = User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
@@ -68,14 +67,14 @@ class UserController extends Controller
             'active' => true,
         ]);
 
-        // CU04 - Paso 6 (alt no duplicado): Ctrl -> E_Bit : RegistrarAccionAdmin()
+        // CU04 - Paso 6: C_Ctrl -> E_Bit : + create(log)
         BitacoraAcceso::create([
             'user_id' => $request->user()->id,
             'ip_address' => $request->ip(),
             'action' => "CREAR_USUARIO:{$user->id}:{$user->email}",
         ]);
 
-        // CU04 - Paso 7 (alt no duplicado): Ctrl --> UI : RetornarExito()
+        // CU04 - Paso 7: C_Ctrl --> B_Int : + RetornarExito()
         return response()->json([
             'message' => 'Usuario creado exitosamente.',
             'user' => $user,

@@ -5,10 +5,10 @@ export default function DocentesPage() {
   const [docentes, setDocentes] = useState([]);
   const [grupos, setGrupos] = useState([]);
   const [materias, setMaterias] = useState([
-    { id: 1, nombre: 'Matematicas' },
-    { id: 2, nombre: 'Fisica' },
-    { id: 3, nombre: 'Quimica' },
-    { id: 4, nombre: 'Lenguaje' },
+    { id: 1, nombre: 'Computacion' },
+    { id: 2, nombre: 'Matematicas' },
+    { id: 3, nombre: 'Fisica' },
+    { id: 4, nombre: 'Ingles' },
   ]);
   
   const [docenteId, setDocenteId] = useState('');
@@ -37,24 +37,22 @@ export default function DocentesPage() {
     e.preventDefault();
     setMessage('');
 
-    // CU12 - Paso 1: Act -> UI : 1: AsignarDocente(docenteId, grupoId, materiaId)
+    // CU12 - Paso 1: Act -> B_Int : + AsignarDocente(docenteId, grupoId, materiaId)
     // El administrador ingresa los datos y confirma la vinculación.
 
     try {
-      // CU12 - Paso 2: UI -> Ctrl : 2: VincularDocenteMateria(docenteId, grupoId, materiaId)
+      // CU12 - Paso 2: B_Int -> C_Ctrl : + asignar(request)
       await api.post('/docentes/asignar', {
         docente_id: parseInt(docenteId),
         grupo_id: parseInt(grupoId),
         materia_id: parseInt(materiaId),
       });
 
-      // CU12 - Paso 8: Ctrl --> UI : RetornarExito()
-      // CU12 - Paso 9: UI --> Act : ActualizarMatrizDocentes()
+      // CU12 - Paso 10: C_Ctrl --> B_Int : + RetornarExito()
       setMessage('Asignación exitosa.');
+      // CU12 - Paso 11: B_Int --> Act : + ActualizarMatrizDocente()
       fetchData();
     } catch (err) {
-      // CU12 - Paso 5 (alt carga maxima): Ctrl --> UI : NotificarError(...)
-      // CU12 - Paso 6 (alt carga maxima): UI --> Act : MostrarAlertaCargaMaxima()
       setMessage(err.response?.data?.message || 'Error en la asignación');
     }
   };

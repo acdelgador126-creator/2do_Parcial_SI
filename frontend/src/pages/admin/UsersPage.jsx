@@ -66,22 +66,17 @@ export default function UsersPage() {
     fetchUsers();
   };
 
-  // CU04 - Paso 1: Act -> UI : 1: RegistrarNuevoUsuario(datos)
+  // CU04 - Paso 1: Act -> B_Int : + RegistrarNuevoUsuario(datos)
   const handleCreateSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setSuccess('');
 
     try {
-      // CU04 - Paso 2: UI -> Ctrl : 2: CrearUsuario(datos)
-      // Pasos 3-6 ocurren en UserController.store() y la entidad CE_Usuario
-      // Paso 3: Ctrl -> E_Usu : ValidarNoDuplicado(correo)
-      // Paso 4: E_Usu --> Ctrl : ResultadoValidacion
-      // Paso 5 [alt no duplicado]: GuardarNuevoUsuario()
-      // Paso 6 [alt no duplicado]: RegistrarAccionAdmin()
+      // CU04 - Paso 2: B_Int -> C_Ctrl : + store(request)
       const response = await api.post('/users', { name, email, role });
 
-      // CU04 - Paso 7: Ctrl --> UI : 7: RetornarExito()
+      // CU04 - Paso 7: C_Ctrl --> B_Int : + RetornarExito()
       setSuccess('Usuario creado exitosamente.');
       setCreatedPassword(response.data.temp_password);
       setCreatedEmail(response.data.user.email);
@@ -92,7 +87,7 @@ export default function UsersPage() {
       setRole('Coordinador');
       setIsCreateOpen(false);
 
-      // CU04 - Paso 8: UI -> Act : 8: ActualizarListaUsuarios()
+      // CU04 - Paso 8: B_Int --> Act : + ActualizarListaUsuarios()
       fetchUsers();
     } catch (err) {
       // CU04 - Paso 5 [alt duplicado]: NotificarErrorDuplicado("El correo ya existe")

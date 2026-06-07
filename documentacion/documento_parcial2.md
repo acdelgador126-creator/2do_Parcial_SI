@@ -279,7 +279,7 @@ Centraliza el registro, cálculo y control de las evaluaciones del CUP. Cada pos
 - Carga masiva de notas mediante archivo CSV/Excel (para procesar lotes de 500-1000 estudiantes)
 - Cálculo automático del promedio ponderado por materia
 - Determinación automática del estado del postulante (APROBADO/REPROBADO)
-- Visualización de notas por postulante, por materia y por grupo
+- Visualización de notas por postulante (el cual podrá consultar de manera individual sus calificaciones de los 3 exámenes y su promedio final por materia desde su dashboard de forma de solo lectura), por materia y por grupo
 - Generación aleatoria de notas de prueba (mediante seed) para demostración del sistema con datos realistas
 - Edición de notas con registro en bitácora de auditoría (quién modificó, cuándo, valor anterior y nuevo)
 
@@ -1083,7 +1083,7 @@ Los cinco diagramas de actividad presentados evidencian las siguientes **fallas 
 
 4. **Postulante (Aspirante al CUP):**
    - *Rol Sistémico:* Beneficiario y usuario final del proceso de admisión.
-   - *Impacto en Vida Real:* Se registra en el sistema proporcionando sus datos personales, documentación requerida y preferencias de carrera (1ª y 2ª opción). Tras la verificación de requisitos documentales, realiza el pago de inscripción mediante la pasarela Stripe. Una vez inscrito, puede consultar su grupo asignado, horario, notas publicadas y resultado final de admisión. Interactúa con el chatbot para resolver dudas y recibe notificaciones en tiempo real sobre el avance de su trámite.
+   - *Impacto en Vida Real:* Se registra en el sistema proporcionando sus datos personales, documentación requerida y preferencias de carrera (1ª y 2ª opción). Tras la verificación de requisitos documentales, realiza el pago de inscripción mediante la pasarela Stripe. Una vez inscrito, puede consultar su grupo asignado, horario, visualizar detalladamente en su dashboard las calificaciones individuales obtenidas en los tres exámenes de cada materia junto con su promedio final, y el resultado final de admisión. Interactúa con el chatbot para resolver dudas y recibe notificaciones en tiempo real sobre el avance de su trámite.
 
 #### B) Actores Externos (Entidades de soporte)
 
@@ -2032,14 +2032,15 @@ CU22 ..> WS : <<include>>
 | Campo               | Descripción                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **CASO DE USO**     | CU22 — Consultar Dashboard Estadístico en Tiempo Real.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| **PROPÓSITO**       | Proporcionar a las autoridades de la facultad una vista consolidada e interactiva de los indicadores más relevantes del proceso de admisión del CUP.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| **DESCRIPCIÓN**     | El dashboard presenta tarjetas de indicadores (KPI cards), gráficos circulares, de barras y de líneas que se actualizan en tiempo real mediante WebSockets. Incluye: total inscritos, aprobados, reprobados, porcentajes, grupos habilitados, distribución por carrera, ranking de grupos por tasa de aprobación, evolución histórica por gestión, estado de cupos y alertas activas.                                                                                                                                                                                                                                                                                    |
-| **ACTORES**         | Tablas de BD (todas las tablas transaccionales), WebSockets.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| **ACTOR INICIADOR** | Administrador, Coordinador, Docente (con vista restringida de sus grupos asignados).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| **PRECONDICIÓN**    | El actor debe estar autenticado con rol de Administrador, Coordinador o Docente.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| **FLUJO PRINCIPAL** | 1. El actor ingresa al módulo "Dashboard". 2. El sistema carga los indicadores calculados en tiempo real desde la BD. 3. El dashboard muestra: Total inscritos (con variación vs gestión anterior), Total evaluados, Total aprobados y % aprobación, Total reprobados y % reprobación, Grupos habilitados (con indicador de ocupación), Distribución por carrera (gráfico circular), Carrera con mayor demanda (destacada), Ranking de grupos por tasa de aprobación, Evolución histórica por gestión (gráfico de líneas), Estado de cupos por carrera (barra de progreso). 4. Los datos se actualizan en tiempo real sin necesidad de refrescar la página (WebSockets). |
-| **POST CONDICIÓN**  | Operación de solo lectura. Los indicadores reflejan el estado actual del CUP.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| **EXCEPCIONES**     | *E1: Sin datos para la gestión actual.* El dashboard muestra los indicadores en cero con el mensaje: "No hay datos registrados para la gestión actual".                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| **PROPÓSITO**       | Proporcionar a las autoridades de la facultad una vista consolidada e interactiva de los indicadores más relevantes del proceso de admisión del CUP, y a los postulantes una vista de sus calificaciones individuales y promedio final por materia.                                                                                                                                                                                                                                                          |
+| **DESCRIPCIÓN**     | El dashboard presenta tarjetas de indicadores (KPI cards), gráficos circulares, de barras y de líneas que se actualizan en tiempo real mediante WebSockets (para administradores y coordinadores), y una tabla consolidada con el detalle de notas de los tres exámenes y nota final por materia (para postulantes).                                                                                                                                                                                                                      |
+| **ACTORES**         | Tablas de BD (todas las tablas transaccionales), WebSockets.                                                                                                                                                                                                                                                                                       |
+| **ACTOR INICIADOR** | Administrador, Coordinador, Docente (con vista restringida de sus grupos asignados), Postulante (con vista de sus calificaciones individuales).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| **PRECONDICIÓN**    | El actor debe estar autenticado con rol de Administrador, Coordinador, Docente o Postulante.                                                                                                                                                                                                                                                                                                                     |
+| **FLUJO PRINCIPAL** | 1. El actor ingresa al módulo "Dashboard". <br>2. El sistema determina el rol del actor autenticado:<br>&nbsp;&nbsp;&nbsp;&nbsp;- **Si el actor es Administrador o Coordinador:** El sistema carga las métricas agregadas globales (Total inscritos, aprobados, reprobados, grupos habilitados, gráficos de distribución por carrera y materias, etc.).<br>&nbsp;&nbsp;&nbsp;&nbsp;- **Si el actor es Docente:** El sistema carga los indicadores de rendimiento de sus grupos asignados.<br>&nbsp;&nbsp;&nbsp;&nbsp;- **Si el actor es Postulante:** El sistema carga los datos académicos del postulante (grupo y horario asignado) y recupera para cada materia las notas individuales de sus 3 exámenes (Parcial 1, Parcial 2, Examen Final) y el promedio final.<br>3. El sistema renderiza la interfaz correspondiente al rol del usuario en la pantalla (Gráficos/KPIs para administradores o la tabla de calificaciones de solo lectura para el postulante).<br>4. Para administradores y coordinadores, los datos se actualizan en tiempo real sin necesidad de refrescar la página (WebSockets). |
+| **POST CONDICIÓN**  | Operación de solo lectura. Los indicadores reflejan el estado actual del CUP o las calificaciones del postulante logueado.                                                                                                                                                                                                                                                        |
+| **EXCEPCIONES**     | *E1: Sin datos para la gestión actual.* El dashboard muestra los indicadores en cero con el mensaje: "No hay datos registrados para la gestión actual". <br>*E2: Notas pendientes de publicación.* Si el postulante no cuenta con exámenes cargados, la tabla muestra guiones (-) o valores en cero con la leyenda "Calificaciones pendientes de publicación". |
+
 ## 4.4 Prototipos de Interfaz de Usuario
 
 > **Nota:** Los prototipos de interfaz de usuario se desarrollarán de forma iterativa acompañando la implementación de cada caso de uso. Se utilizarán herramientas de generación de mockups (Figma, Draw.io o herramientas con IA) para diseñar las interfaces antes de su implementación en código. A continuación se presentan las directrices de diseño para los prototipos principales.
@@ -3173,7 +3174,7 @@ B_Admi --> Act : 12: + MostrarResultadosYAlertas()
 #### Realización de Análisis para CU22: Consultar Dashboard Estadístico en Tiempo Real
 
 **Descripción detallada de la colaboración y dinámica:**
-El *Coordinador* accede a la `InterfazDashboard` para monitorear el preuniversitario en vivo. La interfaz solicita la actualización inmediata de métricas al `ControladorReportes`. Este controlador ejecuta consultas agregadas optimizadas sobre la entidad `Postulante` (para contar inscritos por sexo y colegio), sobre `NotaFinal` (para obtener promedios por grupo y porcentajes de aprobación) y sobre `CupoGestion` (para calcular el avance visual de llenado de carreras). El controlador envía la estructura consolidada a la interfaz, la cual renderiza de forma elegante gráficos circulares y de barras. Además, el controlador establece una suscripción activa de WebSocket con la frontera, transmitiendo eventos de fluctuación en vivo a medida que los docentes registran notas o el algoritmo asigna carreras, manteniendo el dashboard actualizado sin requerir recargas de página.
+El *Coordinador* o el *Postulante* acceden a la `InterfazDashboard` para abrir su panel correspondiente. Si el actor es el Coordinador, la interfaz solicita la actualización de métricas agregadas al `ControladorReportes`, el cual extrae los datos de `Postulante`, `NotaFinal` y `CupoGestion`, y los transmite por WebSockets en tiempo real a la interfaz para renderizar los gráficos de barras y circulares. Si el actor es el Postulante, la interfaz solicita sus notas individuales al `ControladorReportes`, el cual consulta su expediente (`Postulante`), sus notas por examen (`Examen` y su relación a `Materia`) y sus promedios calculados (`NotaFinal`), retornándolos para renderizar una tabla de solo lectura con el desglose de los 3 exámenes y el promedio por materia.
 
 ```plantuml
 @startuml Com_CU22
@@ -3182,11 +3183,13 @@ skinparam actorStyle awesome
 skinparam backgroundColor transparent
 
 actor "Coordinador" as Act
+actor "Postulante" as PostAct
 boundary "IU_Dashboard" as B_Dash
 control "CTR_Reportes" as C_Rep
 entity "CE_Postulante" as E_Post
 entity "CE_NotaFinal" as E_Nota
 entity "CE_CupoGestion" as E_Cupo
+entity "CE_Examen" as E_Exam
 
 Act --> B_Dash : 1: + AbrirDashboard()
 B_Dash --> C_Rep : 2: + getEstadisticas()
@@ -3199,6 +3202,17 @@ E_Cupo --> C_Rep : 8: + LlenadoCupos
 C_Rep --> B_Dash : 9: + EnviarDatosEstadisticos()
 B_Dash --> Act : 10: + RenderizarGraficosYTarjetasKPI()
 C_Rep --> B_Dash : 11: + TransmitirActualizacionesWebSocket(evento)
+
+PostAct --> B_Dash : 1.1: + AbrirDashboard()
+B_Dash --> C_Rep : 2.1: + getNotasIndividuales(postulanteId)
+C_Rep --> E_Post : 3.1: + find(postulanteId)
+E_Post --> C_Rep : 4.1: + datosPostulante
+C_Rep --> E_Exam : 5.1: + getExamenes(postulanteId)
+E_Exam --> C_Rep : 6.1: + notasExamenes
+C_Rep --> E_Nota : 7.1: + getNotasFinales(postulanteId)
+E_Nota --> C_Rep : 8.1: + promediosFinales
+C_Rep --> B_Dash : 9.1: + EnviarNotasIndividuales()
+B_Dash --> PostAct : 10.1: + RenderizarTablaNotas()
 @enduml
 ```
 ## 5.3 Análisis de Clases 
@@ -4363,6 +4377,7 @@ left to right direction
 skinparam classAttributeIconSize 0
 
 actor "Coordinador" as ActorCoordinador
+actor "Postulante" as ActorPostulante
 
 class InterfazDashboard <<Boundary>> {
   --
@@ -4371,6 +4386,7 @@ class InterfazDashboard <<Boundary>> {
   +actualizarGraficos(datos)
   +filtrarPorGestion(gestionId)
   +RenderizarGraficosYTarjetasKPI()
+  +RenderizarTablaNotas()
 }
 
 class ControladorReportes <<Control>> {
@@ -4378,6 +4394,7 @@ class ControladorReportes <<Control>> {
   +getEstadisticas()
   +transmitirActualizacion(evento)
   +calcularKpisAdmision()
+  +getNotasIndividuales(postulanteId)
 }
 
 class Postulante <<Entity>> {
@@ -4404,11 +4421,21 @@ class CupoGestion <<Entity>> {
   +cupos_disponibles
 }
 
+class Examen <<Entity>> {
+  +id
+  +postulante_id
+  +materia_id
+  +numero_examen
+  +nota
+}
+
 ActorCoordinador - InterfazDashboard
+ActorPostulante - InterfazDashboard
 InterfazDashboard - ControladorReportes
 ControladorReportes - Postulante
 ControladorReportes - NotaFinal
 ControladorReportes - CupoGestion
+ControladorReportes - Examen
 @enduml
 ```
 
@@ -5416,6 +5443,7 @@ deactivate B_Int
 skinparam actorStyle awesome
 skinparam backgroundColor transparent
 
+alt Caso A: Coordinador consulta Estadísticas Generales
 actor "Coordinador" as Act
 participant "IU_Dashboard" as B_Dash
 participant "CTR_Reportes" as C_Rep
@@ -5446,6 +5474,36 @@ C_Rep -> B_Dash : 11: + TransmitirActualizacionesWebSocket(evento)
 activate B_Dash
 deactivate B_Dash
 deactivate C_Rep
+
+else Caso B: Postulante consulta sus Notas Individuales
+actor "Postulante" as PostAct
+participant "IU_Dashboard" as B_Dash
+participant "CTR_Reportes" as C_Rep
+participant "CE_Postulante" as E_Post
+participant "CE_Examen" as E_Exam
+participant "CE_NotaFinal" as E_Nota
+
+PostAct -> B_Dash : 1: + AbrirDashboard()
+activate B_Dash
+B_Dash -> C_Rep : 2: + getNotasIndividuales(postulanteId)
+activate C_Rep
+C_Rep -> E_Post : 3: + find(postulanteId)
+activate E_Post
+E_Post --> C_Rep : 4: + datosPostulante
+deactivate E_Post
+C_Rep -> E_Exam : 5: + getExamenes(postulanteId)
+activate E_Exam
+E_Exam --> C_Rep : 6: + notasExamenes
+deactivate E_Exam
+C_Rep -> E_Nota : 7: + getNotasFinales(postulanteId)
+activate E_Nota
+E_Nota --> C_Rep : 8: + promediosFinales
+deactivate E_Nota
+C_Rep --> B_Dash : 9: + EnviarNotasIndividuales()
+B_Dash --> PostAct : 10: + RenderizarTablaNotas()
+deactivate B_Dash
+deactivate C_Rep
+end
 @enduml
 ```
 

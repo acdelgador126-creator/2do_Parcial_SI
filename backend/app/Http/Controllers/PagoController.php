@@ -29,7 +29,7 @@ class PagoController extends Controller
             $postulante = Postulante::findOrFail($postulante);
         }
 
-        // CU07 - Paso 2: UI -> Ctrl : IniciarProcesoPago(postulanteId)
+        // CU07 - Paso 2: B_Insc -> C_Insc : + crearSesion(postulante)
         if ($postulante->estado !== 'Verificado') {
             return response()->json([
                 'message' => 'El postulante debe estar verificado antes de pagar. Estado actual: ' . $postulante->estado,
@@ -52,8 +52,7 @@ class PagoController extends Controller
         }
 
         // =========================================================================
-        // STRIPE PAGOS ACTIVADO
-        // =========================================================================
+        // CU07 - Paso 3: C_Insc -> B_Stripe : + crearSesionStripe()
         Stripe::setApiKey(config('services.stripe.secret'));
 
         $postulante->load('gestion');
@@ -85,6 +84,7 @@ class PagoController extends Controller
 
         $session = StripeSession::create($checkoutParams);
 
+        // CU07 - Paso 5: C_Insc --> B_Insc : + RedirigirAPasarela()
         return response()->json([
             'checkout_url' => $session->url,
             'session_id' => $session->id,
@@ -102,7 +102,7 @@ class PagoController extends Controller
      */
     public function webhook(Request $request): JsonResponse
     {
-        // CU07 - Paso 8: Stripe (Pasarela) --> Ctrl : NotificarPagoExitoso(StripeWebhook)
+        // CU07 - Paso 8: B_Stripe -> C_Insc : + webhook(request)
         $payload = $request->getContent();
         $signature = $request->header('Stripe-Signature');
 
@@ -138,7 +138,7 @@ class PagoController extends Controller
                 return;
             }
 
-            // CU07 - Paso 9: Ctrl -> CE_Pago : CrearRegistroPago(monto, transaccionId)
+            // CU07 - Paso 9: C_Insc -> E_Pago : + create(datosPago)
             Pago::create([
                 'postulante_id' => $postulanteId,
                 'stripe_checkout_id' => $session->id,
@@ -146,11 +146,12 @@ class PagoController extends Controller
                 'estado_pago' => 'Succeeded',
             ]);
 
-            // CU07 - Paso 10: Ctrl -> CE_Postulante : ActualizarEstado("Inscrito")
+            // CU07 - Paso 10: C_Insc -> E_Post : + update(['estado' => 'Inscrito'])
             $postulante = Postulante::find($postulanteId);
             if ($postulante) {
                 $postulante->update(['estado' => 'Inscrito']);
 
+                // CU07 - Paso 11: C_Insc -> E_Usu : + create(datosUsuario)
                 // Crear automáticamente la cuenta de usuario para el postulante con la nueva fórmula de contraseña
                 $user = \App\Models\User::where('email', $postulante->email)->first();
                 if (!$user) {
@@ -175,6 +176,7 @@ class PagoController extends Controller
                         'active' => true,
                     ]);
 
+                    // CU07 - Paso 12: C_Insc -> C_Insc : + enviarCorreo()
                     // Enviar correo con las credenciales de acceso creadas (se escribirá en log por MAIL_MAILER=log)
                     try {
                         \Illuminate\Support\Facades\Mail::raw(

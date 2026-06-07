@@ -54,21 +54,27 @@ export default function PreinscripcionPage() {
   // PASO 1: Validar formulario y pasar a revisión
   const handleFormSubmit = (e) => {
     e.preventDefault();
+    // CU05 - Paso 1: Act -> B_Int : + CompletarFormulario(datos)
+    // CU05 - Paso 2: Act -> B_Int : + ClicIniciarRegistro()
     if (primeraOpcion === segundaOpcion) {
       setError('La primera y segunda opción de carrera deben ser diferentes.');
       return;
     }
     setError('');
+    // CU05 - Paso 3: B_Int --> Act : + MostrarVerificacionDatos(resumen)
     setStep('verification');
   };
 
   // PASO 2: Proceder con verificación civil, registro y redirección a pago
   const handleVerifyAndRegister = async () => {
+    // CU05 - Paso 4b: Act -> B_Int : + ClicSiguiente()
+    // CU05 - Paso 5b: B_Int --> Act : + MostrarPantallaCarga("Verificando datos...")
     setStep('validating');
     setLoading(true);
     setError('');
 
     try {
+      // CU05 - Paso 6b: B_Int -> C_Ctrl : + store(request)
       // 1. Registrar postulante en BD
       const { data: regData } = await api.post('/postulantes', {
         ci,
@@ -114,6 +120,7 @@ export default function PreinscripcionPage() {
 
       if (pagoData.checkout_url) {
         console.log('🔗 Redirigiendo a Stripe URL:', pagoData.checkout_url);
+        // CU05 - Paso 9b: C_Ctrl --> B_Int : + RetornarExitoYRedirigirPago()
         // Redirigir a Stripe - el usuario debe pagar
         window.location.href = pagoData.checkout_url;
       } else {
@@ -128,6 +135,26 @@ export default function PreinscripcionPage() {
         'Error en el proceso de verificación/registro o inicio de pago.'
       );
       setStep('verification');
+      setLoading(false);
+    }
+  };
+
+  // CU05 - Paso Alternativo: 1. Act -> UI: SolicitarEliminarRegistroAnterior() y 2. UI -> Ctrl: deleteByEmail(email)
+  const handleDeleteAndRetry = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const { data } = await api.post('/postulantes/delete-by-email', { email });
+      setError('');
+      alert(data.message || 'Registro anterior eliminado exitosamente. Procediendo a registrar nuevamente.');
+      // Reintentar registro de forma automática
+      await handleVerifyAndRegister();
+    } catch (err) {
+      console.error(err);
+      setError(
+        err.response?.data?.message ||
+        'Error al eliminar el registro anterior. Por favor, verifique el correo o contacte a soporte.'
+      );
       setLoading(false);
     }
   };

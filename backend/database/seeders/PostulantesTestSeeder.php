@@ -40,13 +40,13 @@ class PostulantesTestSeeder extends Seeder
             Pago::create([
                 'postulante_id' => $p->id,
                 'stripe_checkout_id' => "cs_test_{$i}",
-                'monto' => 350,
+                'monto' => 700,
                 'estado_pago' => 'Succeeded',
             ]);
         }
 
         // Crear docentes
-        $especialidades = ['Matematicas', 'Fisica', 'Quimica', 'Lenguaje'];
+        $especialidades = ['Computacion', 'Matematicas', 'Fisica', 'Ingles'];
         foreach ($especialidades as $idx => $esp) {
             Docente::create([
                 'ci' => '500000' . ($idx + 1),

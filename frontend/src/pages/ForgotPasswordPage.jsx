@@ -19,22 +19,15 @@ export default function ForgotPasswordPage() {
     setMessage('');
     setLoading(true);
 
-    // CU03 - Paso 1: Act -> UI : 1: IngresarCorreo(correo)
+    // CU03 - Paso 1: Act -> B_Int : + IngresarCorreo(correo)
     // El usuario ingresa el correo y envía el formulario.
 
     try {
-      // CU03 - Paso 2: UI -> Ctrl : 2: GenerarTokenRecuperacion(correo)
+      // CU03 - Paso 2: B_Int -> C_Ctrl : + forgotPassword(email)
       // La IU delega la solicitud de recuperación al controlador en el backend
       const response = await api.post('/forgot-password', { email });
 
-      // CU03 - Pasos 3-6 se procesan en el controlador (CTR_Auth y CE_Usuario)
-      // Paso 3: Ctrl -> E_Usu : ValidarExistenciaCorreo(correo)
-      // Paso 4: E_Usu --> Ctrl : DatosExistencia
-      // Paso 5 [alt existe]: GenerarTokenYEnviarEmail()
-      // Paso 6 [alt existe]: ConfirmarEnvio()
-      // Paso 5 [alt no existe]: MostrarMensajeGenerico()
-
-      // CU03 - Paso 7 (exito / generico): UI -> Act : MostrarMensaje("Si el correo existe, recibirá un enlace")
+      // CU03 - Paso 7: B_Int --> Act : + MostrarMensajeExito()
       setMessage(response.data.message || 'Si el correo existe, recibirá un enlace de recuperación.');
     } catch (err) {
       setError(err.response?.data?.message || 'Ocurrió un error al procesar la solicitud.');

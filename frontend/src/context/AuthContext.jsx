@@ -19,13 +19,13 @@ export function AuthProvider({ children }) {
   };
 
   const logout = async () => {
-    // CU02 - Paso 2: UI -> Ctrl : InvalidarSesion(token)
+    // CU02 - Paso 2: B_Int -> C_Ctrl : + logout()
     // El frontend llama al backend pasando el token actual de autenticación
     try {
       await api.post('/logout');
     } catch (e) {}
 
-    // CU02 - Paso 5: UI --> Act : MostrarPantallaLogin()
+    // CU02 - Paso 5: B_Int --> Act : + MostrarPantallaLogin()
     // El frontend destruye localmente los tokens y limpia el estado de sesión del usuario
     localStorage.removeItem('token');
     localStorage.removeItem('user');

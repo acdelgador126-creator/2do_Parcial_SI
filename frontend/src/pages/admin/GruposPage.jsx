@@ -39,21 +39,23 @@ export default function GruposPage() {
 
   // CU10 - Iniciar Asignación Masiva
   const ejecutarAsignacion = async () => {
+    // CU10 - Paso 1: Act -> B_Grup : + EjecutarCalculoAsignacion()
     setMessage('');
     setErrorMessage('');
     try {
-      // CU10 - Paso 2: UI -> Ctrl : IniciarAsignacionMasiva()
+      // CU10 - Paso 2: B_Grup -> C_Plan : + asignacionMasiva()
       const { data } = await api.post('/grupos/asignacion-masiva');
       
-      // CU10 - Paso 12 y 13: Ctrl -> UI -> Act : Confirmación y recarga
+      // CU10 - Paso 12: C_Plan --> B_Grup : + ConfirmarAsignacionExitosa()
       setMessage(data.message + ` (${data.grupos_creados} grupos creados, ${data.postulantes_assigned ?? data.postulantes_asignados} asignados)`);
+      // CU10 - Paso 13: B_Grup --> Act : + MostrarGruposConPostulantes()
       fetchGrupos();
     } catch (e) {
       setErrorMessage(e.response?.data?.message || 'Error en la asignación masiva.');
     }
   };
 
-  // CU11 - Paso 1: Act -> UI : 1: SolicitarAjusteGrupo(postulanteId, nuevoGrupoId)
+  // CU11 - Paso 1: Act -> B_Int : + SolicitarAjusteGrupo(postulanteId, nuevoGrupoId)
   const handleReasignarSubmit = async (e) => {
     e.preventDefault();
     setMessage('');
@@ -67,27 +69,19 @@ export default function GruposPage() {
     setSubmittingReasignar(true);
 
     try {
-      // CU11 - Paso 2: UI -> Ctrl : 2: ReasignarPostulante(postulanteId, nuevoGrupoId)
-      // Pasos 3-7 ocurren en backend (PlanificacionService y entidades CE_Postulante, CE_Grupo, CE_AsignacionGrupo)
-      // Paso 3: Ctrl -> E_Post : ObtenerPostulante(postulanteId)
-      // Paso 4: E_Post --> Ctrl : DatosPostulante
-      // Paso 5: Ctrl -> E_Grupo : VerificarCapacidad(nuevoGrupoId)
-      // Paso 6: E_Grupo --> Ctrl : CapacidadDisponible
-      // Paso 7 [alt capacidad]: Ctrl -> E_Asig : ActualizarVinculoGrupo()
+      // CU11 - Paso 2: B_Int -> C_Ctrl : + reasignar(request)
       const response = await api.post('/grupos/reasignar', {
         postulante_id: parseInt(postulanteId, 10),
         grupo_id: parseInt(nuevoGrupoId, 10)
       });
 
-      // CU11 - Paso 8: Ctrl --> UI : 8: RetornarExito()
+      // CU11 - Paso 8: C_Ctrl --> B_Int : + RetornarExito()
       setMessage(response.data.message || 'Postulante reasignado correctamente.');
       setPostulanteId('');
 
-      // CU11 - Paso 9: UI --> Act : 9: ActualizarListaGrupo()
+      // CU11 - Paso 9: B_Int --> Act : + ActualizarListaGrupo()
       fetchGrupos();
     } catch (err) {
-      // CU11 - Paso 7 [alt lleno]: Ctrl --> UI : NotificarError("Grupo lleno...")
-      // CU11 - Paso 8: UI --> Act : MostrarMensajeError()
       setErrorMessage(err.response?.data?.message || 'Error al reasignar postulante. Verifique si el postulante existe y tiene pago aprobado.');
     } finally {
       setSubmittingReasignar(false);

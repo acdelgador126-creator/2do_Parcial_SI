@@ -15,16 +15,16 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
 
-    // CU01 - Paso 1: Act -> UI : 1: Ingresar email y password
+    // CU01 - Paso 1: Act -> B_Int : + Ingresar email y password
     // El usuario ingresa las credenciales en el formulario y lo envía.
 
     try {
-      // CU01 - Paso 2: UI -> Ctrl : 2: login(email, password)
+      // CU01 - Paso 2: B_Int -> C_Ctrl : + login(email, password)
       // Delegamos el inicio de sesión a la API (CTR_Auth) a través del AuthContext
       await login(email, password);
 
-      // CU01 - Paso 6 (alt validas): Ctrl --> UI : 6: Redirigir a Home
-      // CU01 - Paso 7 (alt validas): UI --> Act : 7: MostrarHome()
+      // CU01 - Paso 6 (alt validas): C_Ctrl --> B_Int : + Redirigir a Home
+      // CU01 - Paso 7 (alt validas): B_Int --> Act : + MostrarHome()
       navigate('/dashboard');
     } catch (err) {
       // CU01 - Paso 6 (alt invalidas): Ctrl --> UI : 6: NotificarError("Credenciales incorrectas")

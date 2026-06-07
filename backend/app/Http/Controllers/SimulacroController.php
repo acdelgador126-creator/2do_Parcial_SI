@@ -19,7 +19,7 @@ class SimulacroController extends Controller
      */
     public function generar(): JsonResponse
     {
-        // CU23 - Paso 2: UI -> Ctrl : generarPreguntasSimulacro()
+        // CU23 - Paso 2: B_Int -> C_Ctrl : + generar()
         $materias = Materia::all();
 
         if ($materias->count() < 4) {
@@ -32,8 +32,8 @@ class SimulacroController extends Controller
         $materiasFaltantes = [];
 
         foreach ($materias as $materia) {
-            // CU23 - Paso 3: Ctrl -> E_Preg : obtenerBancoPreguntas()
-            // CU23 - Paso 4: E_Preg --> Ctrl : BancoPreguntas
+            // CU23 - Paso 3: C_Ctrl -> E_Preg : + ObtenerBancoPreguntas()
+            // CU23 - Paso 4: E_Preg --> C_Ctrl : + ListaPreguntas
             $preguntasMateria = PreguntaSimulacro::where('materia_id', $materia->id)
                 ->inRandomOrder()
                 ->take(self::PREGUNTAS_POR_MATERIA)
@@ -44,7 +44,6 @@ class SimulacroController extends Controller
                 continue;
             }
 
-            // CU23 - Paso 5: Ctrl -> Ctrl : SeleccionarPreguntasAleatorias()
             // Mapear sin revelar respuesta_correcta
             $preguntasFormateadas = $preguntasMateria->map(function ($p) use ($materia) {
                 return [
@@ -65,7 +64,7 @@ class SimulacroController extends Controller
             ], 422);
         }
 
-        // CU23 - Paso 6: Ctrl --> UI : ListaPreguntasGeneradas
+        // CU23 - Paso 5: C_Ctrl --> B_Int : + RetornarPreguntas()
         return response()->json([
             'simulacro' => [
                 'total_preguntas' => $preguntas->count(),
@@ -85,7 +84,7 @@ class SimulacroController extends Controller
      */
     public function calificar(Request $request): JsonResponse
     {
-        // CU23 - Paso 9: UI -> Ctrl : calificarSimulacro(respuestas)
+        // CU23 - Paso 8: B_Int -> C_Ctrl : + calificar(request)
         $request->validate([
             'respuestas' => 'required|array|min:1|max:40',
             'respuestas.*.pregunta_id' => 'required|integer|exists:preguntas_simulacro,id',
@@ -100,7 +99,7 @@ class SimulacroController extends Controller
             ->get()
             ->keyBy('id');
 
-        // CU23 - Paso 10: Ctrl -> Ctrl : CalcularNotaSimulacro()
+        // CU23 - Paso 10: C_Ctrl -> C_Ctrl : + CalcularNotaSimulacro()
         $aciertos = 0;
         $errores = 0;
         $sinResponder = 0;
@@ -154,7 +153,7 @@ class SimulacroController extends Controller
             ];
         }
 
-        // CU23 - Paso 11: Ctrl --> UI : retornarNotaSimulacro(nota)
+        // CU23 - Paso 9: C_Ctrl --> B_Int : + RetornarNotaSimulacro()
         return response()->json([
             'resultado' => [
                 'nota_sobre_100' => $nota,

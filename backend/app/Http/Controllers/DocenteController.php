@@ -51,28 +51,31 @@ class DocenteController extends Controller
      */
     public function asignar(Request $request): JsonResponse
     {
-        // CU12 - Paso 2: UI -> Ctrl : VincularDocenteMateria(docenteId, grupoId, materiaId)
+        // CU12 - Paso 2: B_Int -> C_Ctrl : + asignar(request)
         $request->validate([
             'docente_id' => 'required|exists:docentes,id',
             'grupo_id' => 'required|exists:grupos,id',
             'materia_id' => 'required|exists:materias,id',
         ]);
 
+        // CU12 - Paso 3: C_Ctrl -> E_Doc : + findOrFail(docente_id)
         $docente = Docente::findOrFail($request->docente_id);
-        $materia = Materia::findOrFail($request->materia_id);
 
-        // CU12 - Paso 3: Ctrl -> E_Doc : VerificarCargaHoraria(docenteId)
-        // CU12 - Paso 4: E_Doc --> Ctrl : CargaHorariaActiva
+        // CU12 - Paso 4: E_Doc --> C_Ctrl : + CargaHorariaValida
         // Validar carga maxima (4 grupos por docente)
         if (! $docente->tieneCargaDisponible()) {
-            // CU12 - Paso 5 (alt carga maxima): Ctrl --> UI : NotificarError("Docente ya tiene 4...")
             return response()->json([
                 'message' => "El docente {$docente->nombres} {$docente->apellidos} ya tiene 4 grupos asignados (carga maxima).",
             ], 422);
         }
 
-        // CU12 - Paso 5 (alt disponible): Ctrl -> E_Mat : ValidarEspecialidad(docenteId, materiaId)
-        // CU12 - Paso 6: E_Mat --> Ctrl : EspecialidadValida
+        // CU12 - Paso 5: C_Ctrl -> E_Grupo : + findOrFail(grupo_id)
+        // CU12 - Paso 6: E_Grupo --> C_Ctrl : + DatosGrupo
+        // CU12 - Paso 7: C_Ctrl -> E_Mat : + findOrFail(materia_id)
+        // CU12 - Paso 8: E_Mat --> C_Ctrl : + DatosMateria
+        $materia = Materia::findOrFail($request->materia_id);
+
+        // CU12 - Paso 8.1: C_Ctrl -> C_Ctrl : + ValidarCoincidenciaEspecialidad(docente.especialidad, materia.nombre)
         // Validar especialidad docente vs materia (string matching flexible)
         $especialidadNorm = mb_strtolower($docente->especialidad);
         $materiaNorm = mb_strtolower($materia->nombre);
@@ -93,14 +96,14 @@ class DocenteController extends Controller
             ], 422);
         }
 
-        // CU12 - Paso 7: Ctrl -> E_Grup : RegistrarAsignacionMateria(docenteId, materiaId)
+        // CU12 - Paso 9: C_Ctrl -> E_AsigDoc : + create(datos)
         $asignacion = AsignacionDocente::create([
             'docente_id' => $request->docente_id,
             'grupo_id' => $request->grupo_id,
             'materia_id' => $request->materia_id,
         ]);
 
-        // CU12 - Paso 8: Ctrl --> UI : RetornarExito()
+        // CU12 - Paso 10: C_Ctrl --> B_Int : + RetornarExito()
         return response()->json([
             'message' => 'Docente asignado exitosamente.',
             'asignacion' => $asignacion->load(['docente', 'grupo', 'materia']),

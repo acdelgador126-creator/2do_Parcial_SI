@@ -41,48 +41,42 @@ class PreguntasSimulacroSeeder extends Seeder
                 ['Frecuencia se mide en?', ['Segundos', 'Hertz', 'Metros', 'Newton'], 'Hertz'],
                 ['Trabajo = Fuerza x ?', ['Tiempo', 'Distancia', 'Masa', 'Velocidad'], 'Distancia'],
             ],
-            'Quimica' => [
-                ['Simbolo del sodio?', ['S', 'Na', 'So', 'Sd'], 'Na'],
-                ['Numero atomico del carbono?', ['4', '6', '8', '12'], '6'],
-                ['Formula del agua?', ['HO', 'H2O', 'H2O2', 'OH'], 'H2O'],
-                ['Gas noble mas ligero?', ['Neon', 'Helio', 'Argon', 'Kripton'], 'Helio'],
-                ['pH neutro?', ['0', '7', '14', '1'], '7'],
-                ['Tabla periodica la creo?', ['Newton', 'Mendeleiev', 'Bohr', 'Dalton'], 'Mendeleiev'],
-                ['Enlace ionico se forma entre?', ['No metales', 'Metal y no metal', 'Metales', 'Gases'], 'Metal y no metal'],
-                ['Numero de Avogadro?', ['6.02x10^23', '3.14x10^8', '9.8x10^2', '1.6x10^-19'], '6.02x10^23'],
-                ['Acido con pH menor a?', ['7', '14', '0', '10'], '7'],
-                ['Elemento mas abundante en la Tierra?', ['Carbono', 'Oxigeno', 'Hidrogeno', 'Nitrogeno'], 'Oxigeno'],
-                ['Sal comun formula?', ['NaOH', 'NaCl', 'KCl', 'CaCl'], 'NaCl'],
-                ['Estado de la materia a temperatura ambiente del mercurio?', ['Solido', 'Liquido', 'Gas', 'Plasma'], 'Liquido'],
+            'Computacion' => [
+                ['¿Qué significa CPU?', ['Central Processing Unit', 'Computer Personal Unit', 'Central Program Utility', 'Control Process Unit'], 'Central Processing Unit'],
+                ['¿Cuál de los siguientes es un lenguaje de programación?', ['HTML', 'CSS', 'Python', 'HTTP'], 'Python'],
+                ['¿Qué protocolo se utiliza para transferir páginas web de forma segura?', ['FTP', 'HTTP', 'HTTPS', 'SMTP'], 'HTTPS'],
+                ['¿Qué significa RAM?', ['Read Access Memory', 'Random Access Memory', 'Run Active Memory', 'Read Active Media'], 'Random Access Memory'],
+                ['¿Qué comando en Linux muestra los archivos de un directorio?', ['cd', 'ls', 'dir', 'pwd'], 'ls'],
+                ['¿Cuál es la base numérica del sistema octal?', ['2', '8', '10', '16'], '8'],
+                ['¿Qué tipo de software es Linux?', ['Sistema Operativo', 'Procesador de Texto', 'Base de Datos', 'Navegador Web'], 'Sistema Operativo'],
+                ['¿Cuál de las siguientes es una base de datos relacional?', ['MongoDB', 'PostgreSQL', 'Redis', 'Cassandra'], 'PostgreSQL'],
+                ['¿Qué etiqueta HTML define el título de una página?', ['<title>', '<h1>', '<head>', '<meta>'], '<title>'],
+                ['¿Qué significa SQL?', ['Simple Query Language', 'Structured Query Language', 'Sequential Query Logic', 'System Query Layout'], 'Structured Query Language'],
             ],
-            'Lenguaje' => [
-                ['Sujeto y predicado forman una?', ['Oracion', 'Parrafo', 'Texto', 'Silaba'], 'Oracion'],
-                ['Sinonimo de "efimero"?', ['Eterno', 'Pasajero', 'Solido', 'Grande'], 'Pasajero'],
-                ['Antonimo de "benevolo"?', ['Generoso', 'Malvado', 'Amable', 'Cruel'], 'Cruel'],
-                ['Verbo en preterito de "cantar", yo?', ['Canto', 'Cante', 'Cantare', 'Cantaba'], 'Cante'],
-                ['Tipo de palabra: "rapidamente"?', ['Adjetivo', 'Sustantivo', 'Adverbio', 'Verbo'], 'Adverbio'],
-                ['Genero literario de "El Quijote"?', ['Lirico', 'Narrativo', 'Dramatico', 'Ensayo'], 'Narrativo'],
-                ['Figura literaria: "sus ojos son soles"?', ['Simil', 'Metafora', 'Hiperbole', 'Anafora'], 'Metafora'],
-                ['Silaba tonica de "telefono"?', ['te', 'le', 'fo', 'no'], 'le'],
-                ['Palabra aguda lleva tilde cuando termina en?', ['Consonante', 'N, S o vocal', 'Vocal cerrada', 'Cualquier vocal'], 'N, S o vocal'],
-                ['Que es un diptongo?', ['Dos vocales fuertes juntas', 'Vocal fuerte + debil en misma silaba', 'Tres vocales juntas', 'Vocal sola'], 'Vocal fuerte + debil en misma silaba'],
-                ['Sujeto de: "El gato duerme"?', ['duerme', 'El gato', 'gato', 'El'], 'El gato'],
-                ['Plural de "analisis"?', ['Analisises', 'Analisis', 'Analisiss', 'Analises'], 'Analisis'],
+            'Ingles' => [
+                ['Choose the correct form: She ___ to the store yesterday.', ['go', 'goes', 'went', 'going'], 'went'],
+                ['What is the plural of "child"?', ['childs', 'children', 'childrens', 'childes'], 'children'],
+                ['Identify the adjective: "The blue car drove fast."', ['blue', 'car', 'drove', 'fast'], 'blue'],
+                ['What is the antonym of "difficult"?', ['hard', 'easy', 'simple', 'complex'], 'easy'],
+                ['Which word is a pronoun?', ['house', 'he', 'happy', 'here'], 'he'],
+                ['Complete: If it rains, I ___ stay home.', ['will', 'would', 'am', 'was'], 'will'],
+                ['Synonym of "beautiful"?', ['ugly', 'pretty', 'bad', 'sad'], 'pretty'],
+                ['Complete: They ___ playing soccer now.', ['is', 'am', 'are', 'was'], 'are'],
+                ['What is the past participle of "write"?', ['wrote', 'writed', 'written', 'writing'], 'written'],
+                ['Which of these is a modal verb?', ['run', 'can', 'eat', 'sleep'], 'can'],
             ],
         ];
 
         foreach ($materias as $materia) {
-            // Nota: En CatalogosSeeder, sembramos "Lenguaje" pero el skill de base dice "Lenguaje".
-            // Para asegurar el emparejamiento, usaremos un mapeo robusto:
             $nombreMateria = $materia->nombre;
-            if ($nombreMateria === 'Quimica') {
-                $preguntas = $banco['Quimica'] ?? [];
+            if ($nombreMateria === 'Computacion') {
+                $preguntas = $banco['Computacion'] ?? [];
             } elseif ($nombreMateria === 'Matematicas') {
                 $preguntas = $banco['Matematicas'] ?? [];
             } elseif ($nombreMateria === 'Fisica') {
                 $preguntas = $banco['Fisica'] ?? [];
-            } elseif ($nombreMateria === 'Lenguaje') {
-                $preguntas = $banco['Lenguaje'] ?? [];
+            } elseif ($nombreMateria === 'Ingles') {
+                $preguntas = $banco['Ingles'] ?? [];
             } else {
                 $preguntas = [];
             }

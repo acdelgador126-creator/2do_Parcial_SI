@@ -25,19 +25,19 @@ export default function SimulacroPage() {
   }, [tiempo, fase]);
 
   const iniciarSimulacro = async () => {
-    // CU23 - Paso 1: Act -> UI : IniciarSimulacro()
+    // CU23 - Paso 1: Act -> B_Int : + IniciarSimulacro()
     // El postulante inicia la práctica.
     setLoading(true);
     setError('');
     try {
-      // CU23 - Paso 2: UI -> Ctrl : generarPreguntasSimulacro()
+      // CU23 - Paso 2: B_Int -> C_Ctrl : + generar()
       const { data } = await api.get('/simulacro/generar');
       
-      // CU23 - Paso 6: Ctrl --> UI : ListaPreguntasGeneradas
+      // CU23 - Paso 5: C_Ctrl --> B_Int : + RetornarPreguntas()
       setPreguntas(data.preguntas);
       setTiempo(data.simulacro.tiempo_limite_minutos * 60);
 
-      // CU23 - Paso 7: UI --> Act : mostrarTemporizadorYPreguntas()
+      // CU23 - Paso 6: B_Int --> Act : + MostrarTemporizadorYPreguntas()
       setFase('examen');
     } catch (err) {
       setError(err.response?.data?.message || 'Error al generar simulacro');
@@ -51,7 +51,7 @@ export default function SimulacroPage() {
   };
 
   const enviarRespuestas = async () => {
-    // CU23 - Paso 8: Act -> UI : enviarRespuestas(respuestas)
+    // CU23 - Paso 7: Act -> B_Int : + EnviarRespuestas(respuestas)
     // El postulante envía el examen completado.
     setLoading(true);
     const payload = Object.entries(respuestas).map(([pregunta_id, respuesta]) => ({
@@ -60,13 +60,13 @@ export default function SimulacroPage() {
     }));
 
     try {
-      // CU23 - Paso 9: UI -> Ctrl : calificarSimulacro(respuestas)
+      // CU23 - Paso 8: B_Int -> C_Ctrl : + calificar(request)
       const { data } = await api.post('/simulacro/calificar', { respuestas: payload });
       
-      // CU23 - Paso 11: Ctrl --> UI : retornarNotaSimulacro(nota)
+      // CU23 - Paso 9: C_Ctrl --> B_Int : + RetornarNotaSimulacro()
       setResultado(data);
 
-      // CU23 - Paso 12: UI --> Act : mostrarResultadosSimulacro()
+      // CU23 - Paso 10: B_Int --> Act : + MostrarResultadosSimulacro()
       setFase('resultado');
     } catch (err) {
       setError(err.response?.data?.message || 'Error al calificar');
@@ -107,7 +107,7 @@ export default function SimulacroPage() {
             </div>
             <div className="flex justify-between items-center pb-3">
               <span className="text-slate-400 text-sm">Materias evaluadas</span>
-              <span className="font-semibold text-blue-400">Computación, Física, Matemática, Lenguaje</span>
+              <span className="font-semibold text-blue-400">Computación, Matemáticas, Física, Inglés</span>
             </div>
           </div>
 
