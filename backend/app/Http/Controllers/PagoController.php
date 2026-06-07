@@ -52,78 +52,8 @@ class PagoController extends Controller
         }
 
         // =========================================================================
-        // MOCK / SIMULADOR DE STRIPE DESACTIVADO PARA PRUEBAS
+        // STRIPE PAGOS ACTIVADO
         // =========================================================================
-        // Para usar el Stripe real, por favor consulta el archivo COMO_ACTIVAR_STRIPE.md
-        // en la raíz del proyecto. El siguiente código simula el pago exitoso de inmediato.
-
-        $mockSessionId = 'cs_test_' . uniqid();
-        $mockCheckoutUrl = config('app.frontend_url', env('FRONTEND_URL', 'http://localhost:5173'))
-            . '/inscripcion/exitosa?session_id=' . $mockSessionId;
-
-        // 1. Crear el registro de Pago de forma inmediata como Succeeded
-        Pago::create([
-            'postulante_id' => $postulante->id,
-            'stripe_checkout_id' => $mockSessionId,
-            'monto' => config('services.stripe.monto_matricula', 350),
-            'estado_pago' => 'Succeeded',
-        ]);
-
-        // 2. Cambiar el estado del postulante a Inscrito
-        $postulante->update(['estado' => 'Inscrito']);
-
-        // 3. Generar la cuenta del postulante con la contraseña estructurada
-        $user = \App\Models\User::where('email', $postulante->email)->first();
-        if (!$user) {
-            // Obtener primera letra del primer nombre en mayúscula
-            $nombresArr = explode(' ', trim($postulante->nombres));
-            $primerNombre = reset($nombresArr);
-            $letraNombre = mb_strtoupper(mb_substr($primerNombre, 0, 1, 'UTF-8'));
-
-            // Obtener primera letra del primer apellido en minúscula
-            $apellidosArr = explode(' ', trim($postulante->apellidos));
-            $primerApellido = reset($apellidosArr);
-            $letraApellido = mb_strtolower(mb_substr($primerApellido, 0, 1, 'UTF-8'));
-
-            // Contraseña: CI + letraNombre + letraApellido
-            $contrasenaGenerada = trim($postulante->ci) . $letraNombre . $letraApellido;
-
-            \App\Models\User::create([
-                'name' => $postulante->nombres . ' ' . $postulante->apellidos,
-                'email' => $postulante->email,
-                'password' => \Illuminate\Support\Facades\Hash::make($contrasenaGenerada),
-                'role' => 'Postulante',
-                'active' => true,
-            ]);
-
-            // Enviar correo real a Gmail
-            try {
-                \Illuminate\Support\Facades\Mail::raw(
-                    "¡Felicidades " . $postulante->nombres . " " . $postulante->apellidos . "! Tu pago ha sido procesado con éxito.\n\n" .
-                    "Se ha creado tu cuenta de acceso para el portal CUP-FICCT:\n" .
-                    "- Usuario (Correo): " . $postulante->email . "\n" .
-                    "- Contraseña: " . $contrasenaGenerada . "\n\n" .
-                    "Puedes ingresar al sistema en el siguiente enlace: " . config('app.frontend_url', env('FRONTEND_URL', 'http://localhost:5173')) . "\n\n" .
-                    "¡Mucho éxito en tu proceso de admisión!",
-                    function ($message) use ($postulante) {
-                        $message->to($postulante->email)
-                            ->subject('Tus credenciales de acceso - CUP FICCT');
-                    }
-                );
-            } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::error("Error al enviar correo de credenciales: " . $e->getMessage());
-            }
-        }
-
-        return response()->json([
-            'checkout_url' => $mockCheckoutUrl,
-            'session_id' => $mockSessionId,
-        ]);
-        // =========================================================================
-        // FIN DEL MOCK / SIMULADOR DE STRIPE
-        // =========================================================================
-
-        /* -- CÓDIGO STRIPE ORIGINAL DESACTIVADO (Ver COMO_ACTIVAR_STRIPE.md) --
         Stripe::setApiKey(config('services.stripe.secret'));
 
         $postulante->load('gestion');
@@ -136,8 +66,9 @@ class PagoController extends Controller
                     'currency' => 'bob',
                     'product_data' => [
                         'name' => 'Matricula CUP FICCT - Gestion ' . $gestionCodigo,
+                        'description' => 'Inscripción al proceso de admisión FICCT',
                     ],
-                    'unit_amount' => (int) (config('services.stripe.monto_matricula', 350) * 100),
+                    'unit_amount' => (int) (config('services.stripe.monto_matricula', 700) * 100),
                 ],
                 'quantity' => 1,
             ]],
@@ -158,7 +89,9 @@ class PagoController extends Controller
             'checkout_url' => $session->url,
             'session_id' => $session->id,
         ]);
-        ------------------------------------------------------------- */
+        // =========================================================================
+        // FIN STRIPE PAGOS
+        // ========================================================================
     }
 
     /**
@@ -185,69 +118,83 @@ class PagoController extends Controller
 
         if ($event->type === 'checkout.session.completed') {
             $session = $event->data->object;
-            $postulanteId = $session->metadata->postulante_id ?? null;
+            $this->procesarPagoExitoso($session);
+        }
 
-            if ($postulanteId) {
-                // CU07 - Paso 9: Ctrl -> CE_Pago : CrearRegistroPago(monto, transaccionId)
-                Pago::create([
-                    'postulante_id' => $postulanteId,
-                    'stripe_checkout_id' => $session->id,
-                    'monto' => $session->amount_total / 100,
-                    'estado_pago' => 'Succeeded',
-                ]);
+        return response()->json(['received' => true]);
+    }
 
-                // CU07 - Paso 10: Ctrl -> CE_Postulante : ActualizarEstado("Inscrito")
-                $postulante = Postulante::find($postulanteId);
-                if ($postulante) {
-                    $postulante->update(['estado' => 'Inscrito']);
+    /**
+     * Procesa un pago exitoso y registra la inscripcion
+     */
+    private function procesarPagoExitoso($session): void
+    {
+        $postulanteId = $session->metadata->postulante_id ?? null;
 
-                    // Crear automáticamente la cuenta de usuario para el postulante con la nueva fórmula de contraseña
-                    $user = \App\Models\User::where('email', $postulante->email)->first();
-                    if (!$user) {
-                        // Obtener primera letra del primer nombre en mayúscula
-                        $nombresArr = explode(' ', trim($postulante->nombres));
-                        $primerNombre = reset($nombresArr);
-                        $letraNombre = mb_strtoupper(mb_substr($primerNombre, 0, 1, 'UTF-8'));
+        if ($postulanteId) {
+            // Evitar procesar duplicados
+            $pagoExistente = Pago::where('stripe_checkout_id', $session->id)->first();
+            if ($pagoExistente) {
+                return;
+            }
 
-                        // Obtener primera letra del primer apellido en minúscula
-                        $apellidosArr = explode(' ', trim($postulante->apellidos));
-                        $primerApellido = reset($apellidosArr);
-                        $letraApellido = mb_strtolower(mb_substr($primerApellido, 0, 1, 'UTF-8'));
+            // CU07 - Paso 9: Ctrl -> CE_Pago : CrearRegistroPago(monto, transaccionId)
+            Pago::create([
+                'postulante_id' => $postulanteId,
+                'stripe_checkout_id' => $session->id,
+                'monto' => $session->amount_total / 100,
+                'estado_pago' => 'Succeeded',
+            ]);
 
-                        // Generar contraseña: CI + letraNombre + letraApellido
-                        $contrasenaGenerada = trim($postulante->ci) . $letraNombre . $letraApellido;
+            // CU07 - Paso 10: Ctrl -> CE_Postulante : ActualizarEstado("Inscrito")
+            $postulante = Postulante::find($postulanteId);
+            if ($postulante) {
+                $postulante->update(['estado' => 'Inscrito']);
 
-                        \App\Models\User::create([
-                            'name' => $postulante->nombres . ' ' . $postulante->apellidos,
-                            'email' => $postulante->email,
-                            'password' => \Illuminate\Support\Facades\Hash::make($contrasenaGenerada),
-                            'role' => 'Postulante',
-                            'active' => true,
-                        ]);
+                // Crear automáticamente la cuenta de usuario para el postulante con la nueva fórmula de contraseña
+                $user = \App\Models\User::where('email', $postulante->email)->first();
+                if (!$user) {
+                    // Obtener primera letra del primer nombre en mayúscula
+                    $nombresArr = explode(' ', trim($postulante->nombres));
+                    $primerNombre = reset($nombresArr);
+                    $letraNombre = mb_strtoupper(mb_substr($primerNombre, 0, 1, 'UTF-8'));
 
-                        // Enviar correo con las credenciales de acceso creadas (se escribirá en log por MAIL_MAILER=log)
-                        try {
-                            \Illuminate\Support\Facades\Mail::raw(
-                                "¡Felicidades " . $postulante->nombres . " " . $postulante->apellidos . "! Tu pago ha sido procesado con éxito.\n\n" .
-                                "Se ha creado tu cuenta de acceso para el portal CUP-FICCT:\n" .
-                                "- Usuario (Correo): " . $postulante->email . "\n" .
-                                "- Contraseña: " . $contrasenaGenerada . "\n\n" .
-                                "Puedes ingresar al sistema en el siguiente enlace: " . config('app.frontend_url', 'http://localhost:5173') . "\n\n" .
-                                "¡Mucho éxito en tu proceso de admisión!",
-                                function ($message) use ($postulante) {
-                                    $message->to($postulante->email)
-                                        ->subject('Tus credenciales de acceso - CUP FICCT');
-                                }
-                            );
-                        } catch (\Exception $e) {
-                            \Illuminate\Support\Facades\Log::error("Error al enviar correo de credenciales: " . $e->getMessage());
-                        }
+                    // Obtener primera letra del primer apellido en minúscula
+                    $apellidosArr = explode(' ', trim($postulante->apellidos));
+                    $primerApellido = reset($apellidosArr);
+                    $letraApellido = mb_strtolower(mb_substr($primerApellido, 0, 1, 'UTF-8'));
+
+                    // Generar contraseña: CI + letraNombre + letraApellido
+                    $contrasenaGenerada = trim($postulante->ci) . $letraNombre . $letraApellido;
+
+                    \App\Models\User::create([
+                        'name' => $postulante->nombres . ' ' . $postulante->apellidos,
+                        'email' => $postulante->email,
+                        'password' => \Illuminate\Support\Facades\Hash::make($contrasenaGenerada),
+                        'role' => 'Postulante',
+                        'active' => true,
+                    ]);
+
+                    // Enviar correo con las credenciales de acceso creadas (se escribirá en log por MAIL_MAILER=log)
+                    try {
+                        \Illuminate\Support\Facades\Mail::raw(
+                            "¡Felicidades " . $postulante->nombres . " " . $postulante->apellidos . "! Tu pago ha sido procesado con éxito.\n\n" .
+                            "Se ha creado tu cuenta de acceso para el portal CUP-FICCT:\n" .
+                            "- Usuario (Correo): " . $postulante->email . "\n" .
+                            "- Contraseña: " . $contrasenaGenerada . "\n\n" .
+                            "Puedes ingresar al sistema en el siguiente enlace: " . config('app.frontend_url', 'http://localhost:5173') . "\n\n" .
+                            "¡Mucho éxito en tu proceso de admisión!",
+                            function ($message) use ($postulante) {
+                                $message->to($postulante->email)
+                                    ->subject('Tus credenciales de acceso - CUP FICCT');
+                            }
+                        );
+                    } catch (\Exception $e) {
+                        \Illuminate\Support\Facades\Log::error("Error al enviar correo de credenciales: " . $e->getMessage());
                     }
                 }
             }
         }
-
-        return response()->json(['received' => true]);
     }
 
     /**
@@ -260,7 +207,22 @@ class PagoController extends Controller
         $pago = Pago::where('stripe_checkout_id', $request->session_id)->first();
 
         if (! $pago) {
-            return response()->json(['pagado' => false, 'message' => 'Pago no encontrado o pendiente.']);
+            // Intento de verificacion directa con Stripe por si el webhook no llego o estamos en local
+            try {
+                \Stripe\Stripe::setApiKey(config('services.stripe.secret'));
+                $session = \Stripe\Checkout\Session::retrieve($request->session_id);
+                
+                if ($session && $session->payment_status === 'paid') {
+                    $this->procesarPagoExitoso($session);
+                    $pago = Pago::where('stripe_checkout_id', $request->session_id)->first();
+                }
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error("Error al verificar sesion en Stripe: " . $e->getMessage());
+            }
+
+            if (! $pago) {
+                return response()->json(['pagado' => false, 'message' => 'Pago no encontrado o pendiente.']);
+            }
         }
 
         return response()->json([

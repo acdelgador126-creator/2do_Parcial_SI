@@ -12,6 +12,9 @@ import DocentesPage from './pages/admin/DocentesPage';
 import PreinscripcionPage from './pages/postulante/PreinscripcionPage';
 import InscripcionPage from './pages/postulante/InscripcionPage';
 import SimulacroPage from './pages/postulante/SimulacroPage';
+import Pago from './pages/Pago';
+import PagoExitoso from './pages/PagoExitoso';
+import PagoCancelado from './pages/PagoCancelado';
 
 export default function App() {
   return (
@@ -47,7 +50,9 @@ export default function App() {
           {/* Rutas Publicas de Registro y Pago */}
           <Route path="/preinscripcion" element={<PreinscripcionPage />} />
           <Route path="/inscripcion" element={<InscripcionPage />} />
-          <Route path="/inscripcion/exitosa" element={<InscripcionPage />} />
+          <Route path="/inscripcion/pago/:postulanteId" element={<Pago />} />
+          <Route path="/inscripcion/exitosa" element={<PagoExitoso />} />
+          <Route path="/inscripcion/cancelada" element={<PagoCancelado />} />
 
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>

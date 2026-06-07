@@ -29,7 +29,7 @@ class PostulanteController extends Controller
             'sexo' => 'required|in:M,F',
             'direccion' => 'nullable|string|max:255',
             'telefono' => 'nullable|string|max:20',
-            'email' => 'required|email|max:150',
+            'email' => 'required|email|max:150|unique:postulantes,email',
             'colegio_procedencia' => 'nullable|string|max:150',
             'ciudad' => 'nullable|string|max:100',
             'titulo_bachiller' => 'nullable|string|max:255',
@@ -48,6 +48,7 @@ class PostulanteController extends Controller
             'sexo.in' => 'El sexo seleccionado no es válido.',
             'email.required' => 'El correo electrónico es obligatorio.',
             'email.email' => 'El correo electrónico debe tener un formato válido.',
+            'email.unique' => 'Este correo electrónico ya está registrado en el sistema.',
             'primera_opcion_id.required' => 'La primera opción de carrera es obligatoria.',
             'primera_opcion_id.exists' => 'La primera opción seleccionada no existe.',
             'segunda_opcion_id.required' => 'La segunda opción de carrera es obligatoria.',
@@ -212,6 +213,50 @@ class PostulanteController extends Controller
                 'requisitos', 'pagos', 'asignacionGrupo.grupo',
             ])
         );
+    }
+
+    /**
+     * Eliminar registro de postulante por email para permitir re-registro
+     * Endpoint para que un usuario pueda "comenzar de nuevo"
+     */
+    public function deleteByEmail(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'email' => 'required|email|max:150',
+        ]);
+
+        $postulante = Postulante::where('email', $validated['email'])->first();
+
+        if (!$postulante) {
+            return response()->json([
+                'message' => 'No existe registro con este correo electrónico.',
+            ], 404);
+        }
+
+        // Eliminar usuario asociado si existe
+        $user = \App\Models\User::where('email', $validated['email'])->first();
+        if ($user) {
+            $user->delete();
+        }
+
+        // Eliminar requisitos documentales
+        RequisitoDocumental::where('postulante_id', $postulante->id)->delete();
+
+        // Eliminar pagos
+        \App\Models\Pago::where('postulante_id', $postulante->id)->delete();
+
+        // Eliminar asignaciones de grupo
+        \App\Models\AsignacionGrupo::where('postulante_id', $postulante->id)->delete();
+
+        // Eliminar notificaciones
+        \App\Models\Notificacion::where('postulante_id', $postulante->id)->delete();
+
+        // Finalmente eliminar el postulante
+        $postulante->delete();
+
+        return response()->json([
+            'message' => 'Registro eliminado correctamente. Puedes volver a registrarte con el mismo correo electrónico.',
+        ]);
     }
 
     /**

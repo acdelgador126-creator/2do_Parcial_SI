@@ -28,6 +28,19 @@ Route::post('/postulantes/{postulante}/pago', [PagoController::class, 'crearSesi
 Route::post('/stripe/webhook', [PagoController::class, 'webhook']);
 Route::post('/pagos/verificar', [PagoController::class, 'verificarPago']);
 
+// Diagnóstico (solo para debug)
+Route::get('/diagnostico', function () {
+    return response()->json([
+        'stripe_configured' => !empty(env('STRIPE_SECRET_KEY')),
+        'stripe_secret_key' => substr(env('STRIPE_SECRET_KEY'), 0, 20) . '...',
+        'mail_configured' => env('MAIL_MAILER') === 'smtp',
+        'mail_from' => env('MAIL_FROM_ADDRESS'),
+        'api_url' => config('app.url'),
+        'frontend_url' => env('FRONTEND_URL', 'http://localhost:5173'),
+        'environment' => app()->environment(),
+    ]);
+});
+
 /*
 |--------------------------------------------------------------------------
 | Rutas Protegidas (requieren token Sanctum)
