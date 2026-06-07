@@ -588,14 +588,14 @@ PostgreSQL soporta además funciones almacenadas (PL/pgSQL), triggers para audit
 
 El sistema será desplegado en infraestructura cloud para garantizar accesibilidad 24/7, escalabilidad y tolerancia a fallos. La arquitectura de despliegue contempla:
 
-- **Servidor de Aplicaciones:** Servicio de hosting cloud para la aplicación Laravel (Railway, Render o equivalente)
+- **Servidor de Aplicaciones:** Servicio de hosting cloud para la aplicación Laravel (Laravel Cloud)
 - **Servidor de Base de Datos:** Instancia de PostgreSQL en la nube (Supabase, ElephantSQL o equivalente)
 - **CDN y Frontend:** Distribución del frontend React mediante Content Delivery Network
 - **Almacenamiento de Archivos:** Servicio de storage para documentos subidos por los postulantes
 
 ### 2.3.5 Inteligencia Artificial para Procesamiento de Lenguaje Natural
 
-El módulo de reportes por voz y el chatbot utilizan servicios de IA para el procesamiento de lenguaje natural (NLP). La **Web Speech API** del navegador captura el audio del usuario y lo convierte a texto. Este texto se envía a un servicio de IA (OpenAI API o similar) que interpreta la intención del usuario, extrae los parámetros de la consulta (gestión, carrera, estado) y genera la consulta SQL correspondiente para obtener los datos solicitados.
+El módulo de reportes por voz y el chatbot utilizan servicios de IA para el procesamiento de lenguaje natural (NLP). La **Web Speech API** del navegador captura el audio del usuario y lo convierte a texto. Este texto se envía a través del backend al servicio de IA (OpenAI API o similar) que interpreta la intención del usuario, extrae los parámetros de la consulta (gestión, carrera, estado) y genera la consulta SQL correspondiente para obtener los datos solicitados.
 
 ### 2.3.6 WebSockets para Comunicación en Tiempo Real
 
@@ -2506,9 +2506,6 @@ La **Vista de Casos de Uso** (Use Case View) en el Proceso Unificado de Desarrol
 4.  **`CU22: Consultar Dashboard Estadístico en Tiempo Real`:** Demanda comunicación persistente y bidireccional de alto rendimiento. En lugar de un modelo tradicional de consulta-respuesta que sobrecargaría el servidor de base de datos, implementa una arquitectura basada en eventos mediante WebSockets en tiempo real que sincroniza las fluctuaciones de calificaciones e inscritos directamente con la interfaz del Coordinador.
 
 ---
--- LOS VISTA DE CASO DE USO ASUMIMOS LO CREAMOS LA IA TIENEE ERRORES AL GENERARLO CON PLANT TEXT Y SE ME ACABARON LOS TOKENS PE 
-
-
 
 ## 5.2 Casos de Uso (Diagramas de Comunicación)
 
@@ -2548,7 +2545,7 @@ B_Int --> Act : 7: + MostrarHome()
 #### Realización de Análisis para CU02: Cerrar Sesión
 
 **Descripción detallada de la colaboración y dinámica:**
-El flujo inicia cuando el actor *Usuario* interactúa con la `InterfazPrincipal`. La frontera solicita la acción al controlador correspondiente, el cual orquesta la lógica de negocio, consulta o actualiza las entidades involucradas y devuelve el resultado a la interfaz para informar al usuario.
+El *Usuario* autenticado solicita el cierre de sesión desde la `InterfazPrincipal`. La frontera transfiere la solicitud al `ControladorAuth`, quien invalida el token de sesión activo del usuario. Antes de completar el cierre, el controlador registra un evento de tipo "LOGOUT" en la entidad `BitacoraAcceso` con la IP y fecha, garantizando la trazabilidad inmutable de la actividad. Una vez confirmado el registro de auditoría, el controlador confirma el cierre y la interfaz redirige al actor a la pantalla de login.
 
 ```plantuml
 @startuml Com_CU02
@@ -2572,7 +2569,7 @@ B_Int --> Act : 5: + MostrarPantallaLogin()
 #### Realización de Análisis para CU03: Recuperar Contraseña
 
 **Descripción detallada de la colaboración y dinámica:**
-El flujo inicia cuando el actor *Usuario* interactúa con la `InterfazRecuperacion`. La frontera solicita la acción al controlador correspondiente, el cual orquesta la lógica de negocio, consulta o actualiza las entidades involucradas y devuelve el resultado a la interfaz para informar al usuario.
+El *Usuario* que ha olvidado su contraseña ingresa su correo electrónico en la `InterfazRecuperacion`. La frontera envía la solicitud al `ControladorAuth`, quien consulta en la entidad `Usuario` si existe una cuenta registrada con ese correo. Si el correo existe, el controlador genera internamente un token de restablecimiento y envía un enlace de recuperación al correo del usuario mediante un auto-mensaje (`sendResetLink`). Por seguridad, independientemente de si el correo existe o no, la interfaz muestra un mensaje genérico de confirmación para evitar la enumeración de cuentas.
 
 ```plantuml
 @startuml Com_CU03
@@ -2598,7 +2595,7 @@ B_Int --> Act : 7: + MostrarMensajeExito()
 #### Realización de Análisis para CU04: Gestionar Perfiles de Usuario
 
 **Descripción detallada de la colaboración y dinámica:**
-El flujo inicia cuando el actor *Administrador* interactúa con la `InterfazUsuarios`. La frontera solicita la acción al controlador correspondiente, el cual orquesta la lógica de negocio, consulta o actualiza las entidades involucradas y devuelve el resultado a la interfaz para informar al usuario.
+El *Administrador* accede a la `InterfazUsuarios` para registrar un nuevo perfil de usuario del sistema. La frontera delega al `ControladorUsuarios`, quien primero valida en la entidad `Usuario` que el correo electrónico no se encuentre duplicado en la base de datos. Si la validación es exitosa, el controlador crea el nuevo registro con la contraseña temporal encriptada (hash Bcrypt) y el rol asignado (Docente, Coordinador, etc.). Finalmente, registra la operación de creación en la entidad `BitacoraAcceso` para mantener la auditoría completa de cambios administrativos.
 
 ```plantuml
 @startuml Com_CU04
@@ -2644,11 +2641,11 @@ Act --> B_Int : 1: + CompletarFormulario(datos)
 Act --> B_Int : 2: + ClicIniciarRegistro()
 B_Int --> Act : 3: + MostrarVerificacionDatos(resumen)
 
-note over B_Int: Si el postulante cancela
+note top of B_Int : Si el postulante cancela
 Act --> B_Int : 4a: + ClicCancelar()
 B_Int --> Act : 5a: + RedirigirLogin()
 
-note over B_Int: Si el postulante confirma
+note bottom of B_Int : Si el postulante confirma
 Act --> B_Int : 4b: + ClicSiguiente()
 B_Int --> Act : 5b: + MostrarPantallaCarga("Verificando datos...")
 B_Int --> C_Ctrl : 6b: + store(request)
@@ -2690,7 +2687,7 @@ C_Ctrl --> B_Int : 8: + ConfirmarVerificacion()
 #### Realización de Análisis para CU08: Detectar Postulante Recurrente
 
 **Descripción detallada de la colaboración y dinámica:**
-El flujo inicia cuando el actor *Postulante* interactúa con la `InterfazPreinscripcion`. La frontera solicita la acción al controlador correspondiente, el cual orquesta la lógica de negocio, consulta o actualiza las entidades involucradas y devuelve el resultado a la interfaz para informar al usuario.
+El *Postulante* ingresa su número de Cédula de Identidad (CI) en la `InterfazPreinscripcion` como primer campo del formulario de registro. La frontera delega al `ControladorPreinscripcion`, el cual ejecuta una búsqueda exacta por CI en la entidad `Postulante` para determinar si el estudiante ya se registró en una gestión anterior. Si se encuentra un registro previo, el controlador retorna los datos históricos y marca el flag `recurrente = true`, y la interfaz muestra una alerta visual al postulante indicando que es un estudiante recurrente con datos precargados.
 
 ```plantuml
 @startuml Com_CU08
@@ -2793,7 +2790,8 @@ E_Doc --> C_Ctrl : 4: + CargaHorariaValida
 C_Ctrl --> E_Grupo : 5: + findOrFail(grupo_id)
 E_Grupo --> C_Ctrl : 6: + DatosGrupo
 C_Ctrl --> E_Mat : 7: + findOrFail(materia_id)
-E_Mat --> C_Ctrl : 8: + EspecialidadValida
+E_Mat --> C_Ctrl : 8: + DatosMateria
+C_Ctrl --> C_Ctrl : 8.1: + ValidarCoincidenciaEspecialidad(docente.especialidad, materia.nombre)
 C_Ctrl --> E_AsigDoc : 9: + create(datos)
 C_Ctrl --> B_Int : 10: + RetornarExito()
 B_Int --> Act : 11: + ActualizarMatrizDocente()
@@ -2992,7 +2990,7 @@ B_Console --> Act : 8: + MostrarResumenConsola()
 #### Realización de Análisis para CU18: Configurar Cupos por Carrera
 
 **Descripción detallada de la colaboración y dinámica:**
-El flujo inicia cuando el actor *Administrador* interactúa con la `InterfazConfiguracion`. La frontera solicita la acción al controlador correspondiente, el cual orquesta la lógica de negocio, consulta o actualiza las entidades involucradas y devuelve el resultado a la interfaz para informar al usuario.
+El *Administrador* accede a la `InterfazConfiguracion` para establecer el límite máximo de vacantes por carrera en la gestión académica vigente. La frontera envía los cupos definidos al `ControladorAsignacion`, el cual ejecuta una operación `updateOrCreate` en la entidad `CupoGestion` que crea o actualiza el registro de cupo máximo y cupos disponibles para cada carrera en la gestión seleccionada. El controlador confirma el guardado exitoso y la interfaz muestra un mensaje de confirmación al administrador.
 
 ```plantuml
 @startuml Com_CU18
@@ -3016,7 +3014,7 @@ B_Int --> Act : 5: + MostrarMensajeGuardado()
 #### Realización de Análisis para CU19: Generar Reporte Estructurado
 
 **Descripción detallada de la colaboración y dinámica:**
-El flujo inicia cuando el actor *Coordinador* interactúa con la `InterfazReportes`. La frontera solicita la acción al controlador correspondiente, el cual orquesta la lógica de negocio, consulta o actualiza las entidades involucradas y devuelve el resultado a la interfaz para informar al usuario.
+El *Coordinador* selecciona una plantilla predefinida de reporte (lista de admitidos, rendimiento académico, estadísticas por carrera) desde la `InterfazReportes`. La frontera delega al `ControladorReportes`, el cual consulta los datos de la entidad `Admision` para obtener el histórico de asignaciones y de la entidad `Postulante` para extraer la información personal y académica. Con los datos consolidados, el controlador ejecuta internamente el formateo del documento PDF utilizando la plantilla seleccionada y retorna el archivo generado a la interfaz para su previsualización.
 
 ```plantuml
 @startuml Com_CU19
@@ -3045,7 +3043,7 @@ B_Int --> Act : 9: + MostrarPrevisualizacionPDF()
 #### Realización de Análisis para CU20: Generar Reporte Dinámico
 
 **Descripción detallada de la colaboración y dinámica:**
-El flujo inicia cuando el actor *Coordinador* interactúa con la `InterfazReportesDinamicos`. La frontera solicita la acción al controlador correspondiente, el cual orquesta la lógica de negocio, consulta o actualiza las entidades involucradas y devuelve el resultado a la interfaz para informar al usuario.
+El *Coordinador* configura filtros dinámicos (campos, dimensiones, períodos) en la `InterfazReportesDinamicos` para construir una consulta analítica personalizada. La frontera envía los parámetros al `ControladorReportes`, quien traduce los filtros en una consulta estructurada sobre la entidad `DataWarehouse` (abstracción que en la implementación se mapea a vistas SQL agregadas sobre las tablas `postulantes`, `notas_finales`, `admisiones` y `examenes`). Los resultados tabulares son retornados a la interfaz, que los renderiza en un data grid interactivo con opciones de exportación.
 
 ```plantuml
 @startuml Com_CU20
@@ -3151,17 +3149,22 @@ Act --> B_Admi : 1: + ProcesarAsignacionCarreras()
 B_Admi --> C_Asig : 2: + asignacionMasiva()
 C_Asig --> E_Post : 3: + getAprobados()
 E_Post --> C_Asig : 4: + ListaAprobados
-loop Para cada postulante aprobado
-  C_Asig --> E_Cupo : 5: + where('carrera_id', id)
-  E_Cupo --> C_Asig : 6: + CupoDisponible
-  alt Cupo disponible > 0
-    C_Asig --> E_Admi : 7: + create(datos)
-    C_Asig --> E_Cupo : 8: + decrement(cupos)
-  else Cupos agotados en 1ra y 2da opción
-    C_Asig --> E_Post : 9: + update(['estado' => 'Pendiente Reasignacion'])
-    C_Asig --> E_Bit : 10: + create(log)
-  end
-end
+
+C_Asig --> E_Cupo : 5 [Loop]: + where('carrera_id', primera_opcion_id)
+E_Cupo --> C_Asig : 6 [Loop]: + CupoDisponible1raOpcion
+
+C_Asig --> E_Admi : 7a [Loop, Cupo1ra > 0]: + create(postulante, carrera_1ra, via='1ra Opcion')
+C_Asig --> E_Cupo : 8a [Loop, Cupo1ra > 0]: + decrement(cupos_disponibles)
+
+C_Asig --> E_Cupo : 7b [Loop, Cupo1ra = 0]: + where('carrera_id', segunda_opcion_id)
+E_Cupo --> C_Asig : 8b [Loop, Cupo1ra = 0]: + CupoDisponible2daOpcion
+
+C_Asig --> E_Admi : 9b [Loop, Cupo2da > 0]: + create(postulante, carrera_2da, via='2da Opcion')
+C_Asig --> E_Cupo : 10b [Loop, Cupo2da > 0]: + decrement(cupos_disponibles)
+
+C_Asig --> E_Post : 9c [Loop, Cupos Agotados]: + update(['estado' => 'Pendiente Reasignacion'])
+C_Asig --> E_Bit : 10c [Loop, Cupos Agotados]: + create(log_alerta)
+
 C_Asig --> B_Admi : 11: + ConfirmarProcesamientoExito()
 B_Admi --> Act : 12: + MostrarResultadosYAlertas()
 @enduml
@@ -3239,7 +3242,7 @@ skinparam classAttributeIconSize 0
 
 actor "USUARIO" as ActorUsuario
 
-class IU_Login <<Boundary>> {
+class InterfazLogin <<Boundary>> {
   +email
   +password
   --
@@ -3250,12 +3253,12 @@ class IU_Login <<Boundary>> {
   +mostrarHome()
 }
 
-class CTR_Auth <<Control>> {
+class ControladorAutenticacion <<Control>> {
   --
   +login(email, password)
 }
 
-class CE_Usuario <<Entity>> {
+class User <<Entity>> {
   +id
   +name
   +email
@@ -3264,7 +3267,7 @@ class CE_Usuario <<Entity>> {
   +active
 }
 
-class CE_BitacoraAcceso <<Entity>> {
+class BitacoraAcceso <<Entity>> {
   +id
   +user_id
   +action
@@ -3272,10 +3275,10 @@ class CE_BitacoraAcceso <<Entity>> {
   +ip_address
 }
 
-ActorUsuario - IU_Login
-IU_Login - CTR_Auth
-CTR_Auth - CE_Usuario
-CTR_Auth - CE_BitacoraAcceso
+ActorUsuario - InterfazLogin
+InterfazLogin - ControladorAutenticacion
+ControladorAutenticacion - User
+ControladorAutenticacion - BitacoraAcceso
 @enduml
 ```
 
@@ -3288,18 +3291,18 @@ skinparam classAttributeIconSize 0
 
 actor "USUARIO" as ActorUsuario
 
-class IU_Principal <<Boundary>> {
+class InterfazPrincipal <<Boundary>> {
   --
   +solicitarCerrarSesion()
   +mostrarPantallaLogin()
 }
 
-class CTR_Auth <<Control>> {
+class ControladorAutenticacion <<Control>> {
   --
   +logout()
 }
 
-class CE_BitacoraAcceso <<Entity>> {
+class BitacoraAcceso <<Entity>> {
   +id
   +user_id
   +action
@@ -3307,9 +3310,9 @@ class CE_BitacoraAcceso <<Entity>> {
   +ip_address
 }
 
-ActorUsuario - IU_Principal
-IU_Principal - CTR_Auth
-CTR_Auth - CE_BitacoraAcceso
+ActorUsuario - InterfazPrincipal
+InterfazPrincipal - ControladorAutenticacion
+ControladorAutenticacion - BitacoraAcceso
 @enduml
 ```
 
@@ -3322,7 +3325,7 @@ skinparam classAttributeIconSize 0
 
 actor "USUARIO" as ActorUsuario
 
-class IU_Recuperacion <<Boundary>> {
+class InterfazRecuperacion <<Boundary>> {
   +email
   --
   +tomarDatos()
@@ -3331,13 +3334,13 @@ class IU_Recuperacion <<Boundary>> {
   +mostrarMensajeExito()
 }
 
-class CTR_Auth <<Control>> {
+class ControladorAutenticacion <<Control>> {
   --
   +forgotPassword(email)
   +resetPassword(token, email, password)
 }
 
-class CE_Usuario <<Entity>> {
+class User <<Entity>> {
   +id
   +name
   +email
@@ -3346,9 +3349,9 @@ class CE_Usuario <<Entity>> {
   +active
 }
 
-ActorUsuario - IU_Recuperacion
-IU_Recuperacion - CTR_Auth
-CTR_Auth - CE_Usuario
+ActorUsuario - InterfazRecuperacion
+InterfazRecuperacion - ControladorAutenticacion
+ControladorAutenticacion - User
 @enduml
 ```
 
@@ -3361,7 +3364,7 @@ skinparam classAttributeIconSize 0
 
 actor "ADMINISTRADOR" as ActorAdmin
 
-class IU_Usuarios <<Boundary>> {
+class InterfazUsuarios <<Boundary>> {
   +datosUsuario
   --
   +registrarNuevoUsuario(datos)
@@ -3370,7 +3373,7 @@ class IU_Usuarios <<Boundary>> {
   +mostrarMensajeExito()
 }
 
-class CTR_Usuarios <<Control>> {
+class ControladorUsuarios <<Control>> {
   --
   +index(request)
   +store(request)
@@ -3379,7 +3382,7 @@ class CTR_Usuarios <<Control>> {
   +destroy(request, user)
 }
 
-class CE_Usuario <<Entity>> {
+class User <<Entity>> {
   +id
   +name
   +email
@@ -3388,7 +3391,7 @@ class CE_Usuario <<Entity>> {
   +active
 }
 
-class CE_BitacoraAcceso <<Entity>> {
+class BitacoraAcceso <<Entity>> {
   +id
   +user_id
   +action
@@ -3396,10 +3399,10 @@ class CE_BitacoraAcceso <<Entity>> {
   +ip_address
 }
 
-ActorAdmin - IU_Usuarios
-IU_Usuarios - CTR_Usuarios
-CTR_Usuarios - CE_Usuario
-CTR_Usuarios - CE_BitacoraAcceso
+ActorAdmin - InterfazUsuarios
+InterfazUsuarios - ControladorUsuarios
+ControladorUsuarios - User
+ControladorUsuarios - BitacoraAcceso
 @enduml
 ```
 
@@ -3412,7 +3415,7 @@ skinparam classAttributeIconSize 0
 
 actor "POSTULANTE" as ActorPostulante
 
-class IU_Preinscripcion <<Boundary>> {
+class InterfazPreinscripcion <<Boundary>> {
   +datosPersonales
   --
   +completarFormularioRegistro(datos)
@@ -3420,12 +3423,12 @@ class IU_Preinscripcion <<Boundary>> {
   +mostrarPasosSiguientes()
 }
 
-class CTR_Preinscripcion <<Control>> {
+class ControladorPreinscripcion <<Control>> {
   --
   +store(request)
 }
 
-class CE_Postulante <<Entity>> {
+class Postulante <<Entity>> {
   +id
   +ci
   +nombres
@@ -3446,7 +3449,7 @@ class CE_Postulante <<Entity>> {
   +recurrente
 }
 
-class CE_RequisitoDocumental <<Entity>> {
+class RequisitoDocumental <<Entity>> {
   +id
   +postulante_id
   +ci_digitalizado
@@ -3456,10 +3459,10 @@ class CE_RequisitoDocumental <<Entity>> {
   +verificado_bd_externa
 }
 
-ActorPostulante - IU_Preinscripcion
-IU_Preinscripcion - CTR_Preinscripcion
-CTR_Preinscripcion - CE_Postulante
-CTR_Preinscripcion - CE_RequisitoDocumental
+ActorPostulante - InterfazPreinscripcion
+InterfazPreinscripcion - ControladorPreinscripcion
+ControladorPreinscripcion - Postulante
+ControladorPreinscripcion - RequisitoDocumental
 @enduml
 ```
 
@@ -3472,24 +3475,24 @@ skinparam classAttributeIconSize 0
 
 actor "SISTEMA" as ActorSistema
 
-class IU_Preinscripcion <<Boundary>> {
+class InterfazPreinscripcion <<Boundary>> {
   --
   +iniciarVerificacionAutomatica()
   +mostrarEstadoVerificado()
 }
 
-class CTR_Preinscripcion <<Control>> {
+class ControladorPreinscripcion <<Control>> {
   --
   +verificarRequisitos(postulante)
 }
 
-class CE_Postulante <<Entity>> {
+class Postulante <<Entity>> {
   +id
   +ci
   +estado
 }
 
-class CE_RequisitoDocumental <<Entity>> {
+class RequisitoDocumental <<Entity>> {
   +id
   +postulante_id
   +ci_digitalizado
@@ -3499,10 +3502,10 @@ class CE_RequisitoDocumental <<Entity>> {
   +verificado_bd_externa
 }
 
-ActorSistema - IU_Preinscripcion
-IU_Preinscripcion - CTR_Preinscripcion
-CTR_Preinscripcion - CE_Postulante
-CTR_Preinscripcion - CE_RequisitoDocumental
+ActorSistema - InterfazPreinscripcion
+InterfazPreinscripcion - ControladorPreinscripcion
+ControladorPreinscripcion - Postulante
+ControladorPreinscripcion - RequisitoDocumental
 @enduml
 ```
 
@@ -3515,20 +3518,20 @@ skinparam classAttributeIconSize 0
 
 actor "POSTULANTE" as ActorPostulante
 
-class IU_Inscripcion <<Boundary>> {
+class InterfazInscripcion <<Boundary>> {
   --
   +solicitarPagoMatricula()
   +mostrarFormularioPagoStripe()
 }
 
-class CTR_Inscripcion <<Control>> {
+class ControladorInscripcion <<Control>> {
   --
   +crearSesion(postulante)
   +webhook(request)
   +verificarPago(request)
 }
 
-class CE_Pago <<Entity>> {
+class Pago <<Entity>> {
   +id
   +postulante_id
   +stripe_checkout_id
@@ -3537,12 +3540,12 @@ class CE_Pago <<Entity>> {
   +fecha_pago
 }
 
-class CE_Postulante <<Entity>> {
+class Postulante <<Entity>> {
   +id
   +estado
 }
 
-class CE_Usuario <<Entity>> {
+class User <<Entity>> {
   +id
   +email
   +password
@@ -3550,11 +3553,11 @@ class CE_Usuario <<Entity>> {
   +active
 }
 
-ActorPostulante - IU_Inscripcion
-IU_Inscripcion - CTR_Inscripcion
-CTR_Inscripcion - CE_Pago
-CTR_Inscripcion - CE_Postulante
-CTR_Inscripcion - CE_Usuario
+ActorPostulante - InterfazInscripcion
+InterfazInscripcion - ControladorInscripcion
+ControladorInscripcion - Pago
+ControladorInscripcion - Postulante
+ControladorInscripcion - User
 @enduml
 ```
 
@@ -3567,27 +3570,27 @@ skinparam classAttributeIconSize 0
 
 actor "POSTULANTE" as ActorPostulante
 
-class IU_Preinscripcion <<Boundary>> {
+class InterfazPreinscripcion <<Boundary>> {
   +ci
   --
   +ingresarCI()
   +mostrarAlertaRecurrente()
 }
 
-class CTR_Preinscripcion <<Control>> {
+class ControladorPreinscripcion <<Control>> {
   --
   +buscarPorCi(request)
 }
 
-class CE_Postulante <<Entity>> {
+class Postulante <<Entity>> {
   +id
   +ci
   +recurrente
 }
 
-ActorPostulante - IU_Preinscripcion
-IU_Preinscripcion - CTR_Preinscripcion
-CTR_Preinscripcion - CE_Postulante
+ActorPostulante - InterfazPreinscripcion
+InterfazPreinscripcion - ControladorPreinscripcion
+ControladorPreinscripcion - Postulante
 @enduml
 ```
 
@@ -3600,19 +3603,19 @@ skinparam classAttributeIconSize 0
 
 actor "ADMINISTRADOR" as ActorAdmin
 
-class IU_Busqueda <<Boundary>> {
+class InterfazBusqueda <<Boundary>> {
   +parametrosFiltro
   --
   +ingresarFiltros(criterio)
   +renderizarGrillaResultados()
 }
 
-class CTR_Busqueda <<Control>> {
+class ControladorBusqueda <<Control>> {
   --
   +index(request)
 }
 
-class CE_Postulante <<Entity>> {
+class Postulante <<Entity>> {
   +id
   +ci
   +nombres
@@ -3620,9 +3623,9 @@ class CE_Postulante <<Entity>> {
   +estado
 }
 
-ActorAdmin - IU_Busqueda
-IU_Busqueda - CTR_Busqueda
-CTR_Busqueda - CE_Postulante
+ActorAdmin - InterfazBusqueda
+InterfazBusqueda - ControladorBusqueda
+ControladorBusqueda - Postulante
 @enduml
 ```
 
@@ -3635,23 +3638,23 @@ skinparam classAttributeIconSize 0
 
 actor "ADMINISTRADOR" as ActorAdmin
 
-class IU_Grupos <<Boundary>> {
+class InterfazGrupos <<Boundary>> {
   --
   +ejecutarCalculoAsignacion()
   +mostrarGruposConPostulantes()
 }
 
-class CTR_Planificacion <<Control>> {
+class ControladorPlanificacion <<Control>> {
   --
   +asignacionMasiva()
 }
 
-class CE_Postulante <<Entity>> {
+class Postulante <<Entity>> {
   +id
   +estado
 }
 
-class CE_Grupo <<Entity>> {
+class Grupo <<Entity>> {
   +id
   +numero
   +turno
@@ -3659,24 +3662,24 @@ class CE_Grupo <<Entity>> {
   +gestion_id
 }
 
-class CE_Aula <<Entity>> {
+class Aula <<Entity>> {
   +id
   +nombre
   +capacidad
 }
 
-class CE_AsignacionGrupo <<Entity>> {
+class AsignacionGrupo <<Entity>> {
   +id
   +postulante_id
   +grupo_id
 }
 
-ActorAdmin - IU_Grupos
-IU_Grupos - CTR_Planificacion
-CTR_Planificacion - CE_Postulante
-CTR_Planificacion - CE_Grupo
-CTR_Planificacion - CE_Aula
-CTR_Planificacion - CE_AsignacionGrupo
+ActorAdmin - InterfazGrupos
+InterfazGrupos - ControladorPlanificacion
+ControladorPlanificacion - Postulante
+ControladorPlanificacion - Grupo
+ControladorPlanificacion - Aula
+ControladorPlanificacion - AsignacionGrupo
 @enduml
 ```
 
@@ -3689,22 +3692,22 @@ skinparam classAttributeIconSize 0
 
 actor "ADMINISTRADOR" as ActorAdmin
 
-class IU_Grupos <<Boundary>> {
+class InterfazGrupos <<Boundary>> {
   --
   +solicitarAjusteGrupo(postulanteId, nuevoGrupoId)
   +actualizarListaGrupo()
 }
 
-class CTR_Planificacion <<Control>> {
+class ControladorPlanificacion <<Control>> {
   --
   +reasignar(request)
 }
 
-class CE_Postulante <<Entity>> {
+class Postulante <<Entity>> {
   +id
 }
 
-class CE_Grupo <<Entity>> {
+class Grupo <<Entity>> {
   +id
   +numero
   +turno
@@ -3712,17 +3715,17 @@ class CE_Grupo <<Entity>> {
   +gestion_id
 }
 
-class CE_AsignacionGrupo <<Entity>> {
+class AsignacionGrupo <<Entity>> {
   +id
   +postulante_id
   +grupo_id
 }
 
-ActorAdmin - IU_Grupos
-IU_Grupos - CTR_Planificacion
-CTR_Planificacion - CE_Postulante
-CTR_Planificacion - CE_Grupo
-CTR_Planificacion - CE_AsignacionGrupo
+ActorAdmin - InterfazGrupos
+InterfazGrupos - ControladorPlanificacion
+ControladorPlanificacion - Postulante
+ControladorPlanificacion - Grupo
+ControladorPlanificacion - AsignacionGrupo
 @enduml
 ```
 
@@ -3735,7 +3738,7 @@ skinparam classAttributeIconSize 0
 
 actor "ADMINISTRADOR" as ActorAdmin
 
-class IU_Docentes <<Boundary>> {
+class InterfazDocentes <<Boundary>> {
   +docenteId
   +grupoId
   +materiaId
@@ -3744,12 +3747,12 @@ class IU_Docentes <<Boundary>> {
   +actualizarMatrizDocente()
 }
 
-class CTR_Planificacion <<Control>> {
+class ControladorPlanificacion <<Control>> {
   --
   +asignar(request)
 }
 
-class CE_Docente <<Entity>> {
+class Docente <<Entity>> {
   +id
   +ci
   +nombres
@@ -3759,20 +3762,28 @@ class CE_Docente <<Entity>> {
   +correo
 }
 
-class CE_Grupo <<Entity>> {
+class Grupo <<Entity>> {
   +id
 }
 
-class CE_Materia <<Entity>> {
+class Materia <<Entity>> {
   +id
   +nombre
 }
 
-ActorAdmin - IU_Docentes
-IU_Docentes - CTR_Planificacion
-CTR_Planificacion - CE_Docente
-CTR_Planificacion - CE_Grupo
-CTR_Planificacion - CE_Materia
+class AsignacionDocente <<Entity>> {
+  +id
+  +docente_id
+  +grupo_id
+  +materia_id
+}
+
+ActorAdmin - InterfazDocentes
+InterfazDocentes - ControladorPlanificacion
+ControladorPlanificacion - Docente
+ControladorPlanificacion - Grupo
+ControladorPlanificacion - Materia
+ControladorPlanificacion - AsignacionDocente
 @enduml
 ```
 
@@ -3785,7 +3796,7 @@ skinparam classAttributeIconSize 0
 
 actor "POSTULANTE" as ActorPostulante
 
-class IU_Simulacro <<Boundary>> {
+class InterfazSimulacro <<Boundary>> {
   +respuestas
   --
   +iniciarSimulacro()
@@ -3794,13 +3805,13 @@ class IU_Simulacro <<Boundary>> {
   +mostrarResultadosSimulacro()
 }
 
-class CTR_Simulacro <<Control>> {
+class ControladorSimulacro <<Control>> {
   --
   +generar()
   +calificar(request)
 }
 
-class CE_PreguntaSimulacro <<Entity>> {
+class PreguntaSimulacro <<Entity>> {
   +id
   +materia_id
   +enunciado
@@ -3808,9 +3819,9 @@ class CE_PreguntaSimulacro <<Entity>> {
   +respuesta_correcta
 }
 
-ActorPostulante - IU_Simulacro
-IU_Simulacro - CTR_Simulacro
-CTR_Simulacro - CE_PreguntaSimulacro
+ActorPostulante - InterfazSimulacro
+InterfazSimulacro - ControladorSimulacro
+ControladorSimulacro - PreguntaSimulacro
 @enduml
 ```
 
@@ -3853,29 +3864,34 @@ skinparam classAttributeIconSize 0
 
 actor "Administrador" as ActorAdministrador
 
-class IU_Notas <<Boundary>> {
+class InterfazNotas <<Boundary>> {
   --
+  +buscarPostulante(ci)
   +ModificarNota(postulanteId, materia, nuevaNota)
   +ActualizarPlanillaNotas()
+  +mostrarMensajeConfirmacion()
+  +mostrarError(mensaje)
 }
 
-class CTR_Evaluacion <<Control>> {
+class ControladorEvaluacion <<Control>> {
   --
+  +obtenerNotasPostulante(postulanteId)
+  +validarRangoNota(nota)
   +update(request)
   +RecalcularPromedio()
 }
 
-class CE_Examen <<Entity>> {
+class Examen <<Entity>> {
   +id
   +postulante_id
   +materia_id
   +nota
-  +nro_examen
+  +numero_examen
   --
   +update(nuevaNota)
 }
 
-class CE_NotaFinal <<Entity>> {
+class NotaFinal <<Entity>> {
   +id
   +postulante_id
   +materia_id
@@ -3885,21 +3901,23 @@ class CE_NotaFinal <<Entity>> {
   +update(promedio)
 }
 
-class CE_BitacoraAcceso <<Entity>> {
+class AuditoriaNota <<Entity>> {
   +id
-  +user_id
-  +action
-  +created_at
-  +ip_address
+  +examen_id
+  +usuario_modificador_id
+  +nota_anterior
+  +nota_nueva
+  +motivo
+  +fecha_modificacion
   --
   +create(log)
 }
 
-ActorAdministrador - IU_Notas
-IU_Notas - CTR_Evaluacion
-CTR_Evaluacion - CE_Examen
-CTR_Evaluacion - CE_NotaFinal
-CTR_Evaluacion - CE_BitacoraAcceso
+ActorAdministrador - InterfazNotas
+InterfazNotas - ControladorEvaluacion
+ControladorEvaluacion - Examen
+ControladorEvaluacion - NotaFinal
+ControladorEvaluacion - AuditoriaNota
 @enduml
 ```
 
@@ -3912,36 +3930,41 @@ skinparam classAttributeIconSize 0
 
 actor "Administrador" as ActorAdministrador
 
-class IU_Notas <<Boundary>> {
+class InterfazNotas <<Boundary>> {
   --
+  +seleccionarArchivo()
   +CargarArchivoCSV(file)
   +MostrarResumenCarga()
+  +mostrarErroresCarga(listaErrores)
 }
 
-class CTR_Evaluacion <<Control>> {
+class ControladorEvaluacion <<Control>> {
   --
+  +validarArchivoCSV(file)
+  +parsearCSV(file)
   +storeMasivo(request)
   +CalcularPromedioPonderado()
 }
 
-class CE_Postulante <<Entity>> {
+class Postulante <<Entity>> {
   +id
   +ci
-  +nombre
+  +nombres
+  +apellidos
   +estado
 }
 
-class CE_Examen <<Entity>> {
+class Examen <<Entity>> {
   +id
   +postulante_id
   +materia_id
   +nota
-  +nro_examen
+  +numero_examen
   --
   +create(nota)
 }
 
-class CE_NotaFinal <<Entity>> {
+class NotaFinal <<Entity>> {
   +id
   +postulante_id
   +materia_id
@@ -3951,22 +3974,24 @@ class CE_NotaFinal <<Entity>> {
   +update(promedio, estado)
 }
 
-class CE_BitacoraAcceso <<Entity>> {
+class AuditoriaNota <<Entity>> {
   +id
-  +user_id
-  +action
-  +created_at
-  +ip_address
+  +examen_id
+  +usuario_modificador_id
+  +nota_anterior
+  +nota_nueva
+  +motivo
+  +fecha_modificacion
   --
   +create(log)
 }
 
-ActorAdministrador - IU_Notas
-IU_Notas - CTR_Evaluacion
-CTR_Evaluacion - CE_Postulante
-CTR_Evaluacion - CE_Examen
-CTR_Evaluacion - CE_NotaFinal
-CTR_Evaluacion - CE_BitacoraAcceso
+ActorAdministrador - InterfazNotas
+InterfazNotas - ControladorEvaluacion
+ControladorEvaluacion - Postulante
+ControladorEvaluacion - Examen
+ControladorEvaluacion - NotaFinal
+ControladorEvaluacion - AuditoriaNota
 @enduml
 ```
 
@@ -3979,27 +4004,27 @@ skinparam classAttributeIconSize 0
 
 actor "Sistema" as ActorSistema
 
-class IU_Notas <<Boundary>> {
+class ArtisanConsole <<Boundary>> {
   --
   +SolicitarCalculoGlobal()
-  +RefrescarVistaPromedios()
+  +MostrarResumenConsola()
 }
 
-class CTR_Evaluacion <<Control>> {
+class ControladorEvaluacion <<Control>> {
   --
   +calcularPromedios()
   +AplicarFormulaPonderacion()
 }
 
-class CE_Examen <<Entity>> {
+class Examen <<Entity>> {
   +id
   +postulante_id
   +materia_id
   +nota
-  +nro_examen
+  +numero_examen
 }
 
-class CE_NotaFinal <<Entity>> {
+class NotaFinal <<Entity>> {
   +id
   +postulante_id
   +materia_id
@@ -4009,10 +4034,10 @@ class CE_NotaFinal <<Entity>> {
   +updateOrCreate(promedio)
 }
 
-ActorSistema - IU_Notas
-IU_Notas - CTR_Evaluacion
-CTR_Evaluacion - CE_Examen
-CTR_Evaluacion - CE_NotaFinal
+ActorSistema - ArtisanConsole
+ArtisanConsole - ControladorEvaluacion
+ControladorEvaluacion - Examen
+ControladorEvaluacion - NotaFinal
 @enduml
 ```
 
@@ -4025,19 +4050,19 @@ skinparam classAttributeIconSize 0
 
 actor "Sistema" as ActorSistema
 
-class IU_Notas <<Boundary>> {
+class ArtisanConsole <<Boundary>> {
   --
   +EjecutarDeterminacionEstado()
-  +MostrarBadgesEstado()
+  +MostrarResumenConsola()
 }
 
-class CTR_Evaluacion <<Control>> {
+class ControladorEvaluacion <<Control>> {
   --
   +evaluarEstados()
   +ValidarUmbral(nota)
 }
 
-class CE_NotaFinal <<Entity>> {
+class NotaFinal <<Entity>> {
   +id
   +postulante_id
   +materia_id
@@ -4045,19 +4070,20 @@ class CE_NotaFinal <<Entity>> {
   +estado
 }
 
-class CE_Postulante <<Entity>> {
+class Postulante <<Entity>> {
   +id
   +ci
-  +nombre
+  +nombres
+  +apellidos
   +estado
   --
   +update(estado)
 }
 
-ActorSistema - IU_Notas
-IU_Notas - CTR_Evaluacion
-CTR_Evaluacion - CE_NotaFinal
-CTR_Evaluacion - CE_Postulante
+ActorSistema - ArtisanConsole
+ArtisanConsole - ControladorEvaluacion
+ControladorEvaluacion - NotaFinal
+ControladorEvaluacion - Postulante
 @enduml
 ```
 
@@ -4070,29 +4096,37 @@ skinparam classAttributeIconSize 0
 
 actor "Coordinador" as ActorCoordinador
 
-class IU_Admision <<Boundary>> {
+class InterfazAdmision <<Boundary>> {
   --
+  +seleccionarGestion(gestionId)
   +ProcesarAsignacionCarreras()
+  +solicitarConfirmacion()
   +MostrarResultadosYAlertas()
 }
 
-class CTR_AsignacionCarrera <<Control>> {
+class ControladorAsignacionCarrera <<Control>> {
   --
+  +obtenerListaAprobados()
+  +ordenarPorPromedio(lista)
+  +verificarCupoDisponible(carreraId, gestionId)
+  +admitirPostulante(postulanteId, carreraId, via)
+  +marcarPendienteReasignacion(postulanteId)
+  +registrarAlertaBitacora(carreraId, mensaje)
   +asignacionMasiva()
 }
 
-class CE_Postulante <<Entity>> {
+class Postulante <<Entity>> {
   +id
   +ci
-  +nombre
+  +nombres
+  +apellidos
   +estado
-  +promedio_general
   --
   +getAprobados()
   +update(estado)
 }
 
-class CE_CupoGestion <<Entity>> {
+class CupoGestion <<Entity>> {
   +id
   +gestion_id
   +carrera_id
@@ -4102,23 +4136,31 @@ class CE_CupoGestion <<Entity>> {
   +decrement(cupos)
 }
 
-class CE_Carrera <<Entity>> {
+class Carrera <<Entity>> {
   +id
   +nombre
   +codigo
 }
 
-class CE_Admision <<Entity>> {
+class Admision <<Entity>> {
   +id
   +postulante_id
   +carrera_id
-  +via_asignacion
-  +fecha
+  +via
+  +fecha_admision
   --
   +create(datos)
 }
 
-class CE_BitacoraAcceso <<Entity>> {
+class NotaFinal <<Entity>> {
+  +id
+  +postulante_id
+  +materia_id
+  +promedio
+  +estado
+}
+
+class BitacoraAcceso <<Entity>> {
   +id
   +user_id
   +action
@@ -4128,13 +4170,14 @@ class CE_BitacoraAcceso <<Entity>> {
   +create(log)
 }
 
-ActorCoordinador - IU_Admision
-IU_Admision - CTR_AsignacionCarrera
-CTR_AsignacionCarrera - CE_Postulante
-CTR_AsignacionCarrera - CE_CupoGestion
-CTR_AsignacionCarrera - CE_Carrera
-CTR_AsignacionCarrera - CE_Admision
-CTR_AsignacionCarrera - CE_BitacoraAcceso
+ActorCoordinador - InterfazAdmision
+InterfazAdmision - ControladorAsignacionCarrera
+ControladorAsignacionCarrera - Postulante
+ControladorAsignacionCarrera - CupoGestion
+ControladorAsignacionCarrera - Carrera
+ControladorAsignacionCarrera - Admision
+ControladorAsignacionCarrera - NotaFinal
+ControladorAsignacionCarrera - BitacoraAcceso
 @enduml
 ```
 
@@ -4147,18 +4190,23 @@ skinparam classAttributeIconSize 0
 
 actor "Administrador" as ActorAdministrador
 
-class IU_Configuracion <<Boundary>> {
+class InterfazConfiguracion <<Boundary>> {
   --
+  +seleccionarCarrera(carreraId)
+  +seleccionarGestion(gestionId)
   +EstablecerLimites(cuposPorCarrera)
+  +validarDatosCupo()
   +MostrarMensajeGuardado()
 }
 
-class CTR_Asignacion <<Control>> {
+class ControladorAsignacion <<Control>> {
   --
+  +getCupos(gestionId)
+  +validarCupos(datos)
   +store(request)
 }
 
-class CE_CupoGestion <<Entity>> {
+class CupoGestion <<Entity>> {
   +id
   +gestion_id
   +carrera_id
@@ -4168,9 +4216,9 @@ class CE_CupoGestion <<Entity>> {
   +updateOrCreate(datos)
 }
 
-ActorAdministrador - IU_Configuracion
-IU_Configuracion - CTR_Asignacion
-CTR_Asignacion - CE_CupoGestion
+ActorAdministrador - InterfazConfiguracion
+InterfazConfiguracion - ControladorAsignacion
+ControladorAsignacion - CupoGestion
 @enduml
 ```
 
@@ -4183,37 +4231,41 @@ skinparam classAttributeIconSize 0
 
 actor "Coordinador" as ActorCoordinador
 
-class IU_Reportes <<Boundary>> {
+class InterfazReportes <<Boundary>> {
   --
   +SeleccionarPlantillaReporte(tipo)
+  +configurarFiltros(criterios)
   +MostrarPrevisualizacionPDF()
+  +descargarPDF()
 }
 
-class CTR_Reportes <<Control>> {
+class ControladorReportes <<Control>> {
   --
+  +obtenerDatosReporte(parametros)
   +generarPDF(request)
   +FormatearPDF()
 }
 
-class CE_Admision <<Entity>> {
+class Admision <<Entity>> {
   +id
   +postulante_id
   +carrera_id
-  +via_asignacion
-  +fecha
+  +via
+  +fecha_admision
 }
 
-class CE_Postulante <<Entity>> {
+class Postulante <<Entity>> {
   +id
   +ci
-  +nombre
+  +nombres
+  +apellidos
   +estado
 }
 
-ActorCoordinador - IU_Reportes
-IU_Reportes - CTR_Reportes
-CTR_Reportes - CE_Admision
-CTR_Reportes - CE_Postulante
+ActorCoordinador - InterfazReportes
+InterfazReportes - ControladorReportes
+ControladorReportes - Admision
+ControladorReportes - Postulante
 @enduml
 ```
 
@@ -4226,19 +4278,22 @@ skinparam classAttributeIconSize 0
 
 actor "Coordinador" as ActorCoordinador
 
-class IU_ReportesDinamicos <<Boundary>> {
+class InterfazReportesDinamicos <<Boundary>> {
   --
   +ConfigurarFiltrosYCampos(parametros)
   +RenderizarDataGrid()
+  +exportarExcel()
+  +exportarCSV()
 }
 
-class CTR_Reportes <<Control>> {
+class ControladorReportes <<Control>> {
   --
+  +procesarFiltrosOLAP(filtros)
   +generarDinamico(request)
 }
 
-class CE_DataWarehouse <<Entity>> {
-  +hechos_hecho_inscripcion
+class DataWarehouse <<Entity>> {
+  +hecho_inscripciones
   +dim_tiempo
   +dim_postulante
   +dim_carrera
@@ -4246,13 +4301,13 @@ class CE_DataWarehouse <<Entity>> {
   +ConsultarBaseDeDatosBI(parametros)
 }
 
-ActorCoordinador - IU_ReportesDinamicos
-IU_ReportesDinamicos - CTR_Reportes
-CTR_Reportes - CE_DataWarehouse
+ActorCoordinador - InterfazReportesDinamicos
+InterfazReportesDinamicos - ControladorReportes
+ControladorReportes - DataWarehouse
 @enduml
 ```
 
-##### CU21: Reporte por Voz y Chatbot (IA)
+##### CU21: Reporte por Voz (IA)
 ```plantuml
 @startuml CU21_Analisis
 allowmixing
@@ -4261,34 +4316,31 @@ skinparam classAttributeIconSize 0
 
 actor "Coordinador" as ActorCoordinador
 
-class IU_Voz <<Boundary>> {
+class AsistenteVoz <<Boundary>> {
   --
+  +iniciarGrabacion()
   +EmitirComandoVoz(audio)
+  +detenerGrabacion()
+  +mostrarFeedbackVisual()
   +MostrarResultadosVoz()
 }
 
-class IU_Chatbot <<Boundary>> {
-  --
-  +EnviarPregunta(texto)
-  +MostrarRespuestaChatbot(texto)
-}
-
-class CTR_ReportesIA <<Control>> {
+class ControladorReportesIA <<Control>> {
   --
   +procesarVoz(request)
-  +procesarPreguntaChatbot(request)
+  +ejecutarSQLGenerada(sql)
+  +formatearRespuestaIA(datos)
 }
 
-class CE_ServicioCognitivoIA <<Entity>> {
+class ServicioCognitivoIA <<Boundary>> {
   +api_key
   +model_version
   --
   +TraducirIntencionASQL(audio)
-  +ProcesarPreguntaAbierta(texto)
 }
 
-class CE_DataWarehouse <<Entity>> {
-  +hechos_hecho_inscripcion
+class DataWarehouse <<Entity>> {
+  +hecho_inscripciones
   +dim_tiempo
   +dim_postulante
   +dim_carrera
@@ -4296,12 +4348,10 @@ class CE_DataWarehouse <<Entity>> {
   +EjecutarConsultaGenerada()
 }
 
-ActorCoordinador - IU_Voz
-ActorCoordinador - IU_Chatbot
-IU_Voz - CTR_ReportesIA
-IU_Chatbot - CTR_ReportesIA
-CTR_ReportesIA - CE_ServicioCognitivoIA
-CTR_ReportesIA - CE_DataWarehouse
+ActorCoordinador - AsistenteVoz
+AsistenteVoz - ControladorReportesIA
+ControladorReportesIA - ServicioCognitivoIA
+ControladorReportesIA - DataWarehouse
 @enduml
 ```
 
@@ -4314,26 +4364,31 @@ skinparam classAttributeIconSize 0
 
 actor "Coordinador" as ActorCoordinador
 
-class IU_Dashboard <<Boundary>> {
+class InterfazDashboard <<Boundary>> {
   --
   +AbrirDashboard()
+  +recibirMensajeWebSocket(evento)
+  +actualizarGraficos(datos)
+  +filtrarPorGestion(gestionId)
   +RenderizarGraficosYTarjetasKPI()
-  +TransmitirActualizacionesWebSocket(evento)
 }
 
-class CTR_Reportes <<Control>> {
+class ControladorReportes <<Control>> {
   --
   +getEstadisticas()
+  +transmitirActualizacion(evento)
+  +calcularKpisAdmision()
 }
 
-class CE_Postulante <<Entity>> {
+class Postulante <<Entity>> {
   +id
   +ci
-  +nombre
+  +nombres
+  +apellidos
   +estado
 }
 
-class CE_NotaFinal <<Entity>> {
+class NotaFinal <<Entity>> {
   +id
   +postulante_id
   +materia_id
@@ -4341,7 +4396,7 @@ class CE_NotaFinal <<Entity>> {
   +estado
 }
 
-class CE_CupoGestion <<Entity>> {
+class CupoGestion <<Entity>> {
   +id
   +gestion_id
   +carrera_id
@@ -4349,11 +4404,11 @@ class CE_CupoGestion <<Entity>> {
   +cupos_disponibles
 }
 
-ActorCoordinador - IU_Dashboard
-IU_Dashboard - CTR_Reportes
-CTR_Reportes - CE_Postulante
-CTR_Reportes - CE_NotaFinal
-CTR_Reportes - CE_CupoGestion
+ActorCoordinador - InterfazDashboard
+InterfazDashboard - ControladorReportes
+ControladorReportes - Postulante
+ControladorReportes - NotaFinal
+ControladorReportes - CupoGestion
 @enduml
 ```
 
@@ -4384,7 +4439,7 @@ P_Plan ..> P_Post : <<access>> (lee inscritos validados)
 *   **`Paquete_Registro_Postulantes` depends on `Paquete_Autenticacion`:** El registro de postulantes y la consulta de expedientes importan y dependen de los servicios transversales de seguridad para autorizar y tokenizar a los usuarios antes de permitir cualquier operación de lectura o escritura en las boundaries de inscripción.
 *   **`Paquete_Planificacion_Academica` depends on `Paquete_Registro_Postulantes`:** El algoritmo de asignación de grupos accede y lee a los postulantes del paquete de registro que ya se encuentran en estado formal de "Inscrito", precondición necesaria antes de poder ejecutar el agrupamiento físico.
 
-#### B. Dependencias de Paquetes Arquitectónicos — CICLO 2
+##### B. Dependencias de Paquetes Arquitectónicos — CICLO 2
 
 **Descripción del diagrama:** Muestra la topología completa de dependencias de la arquitectura al finalizar la segunda iteración. Los paquetes nuevos del Ciclo 2 se acoplan de forma ordenada a las bases del Ciclo 1, manteniendo el principio de **baja dependencia y extensibilidad lógica**.
 
@@ -4399,6 +4454,10 @@ package "Paquete_Planificacion_Academica" as P_Plan <<existente>>
 package "Paquete_Evaluacion" as P_Eval <<nuevo>>
 package "Paquete_Admision_Carreras" as P_Admi <<nuevo>>
 package "Paquete_Reportes_IA" as P_Rep <<nuevo>>
+
+' Dependencias del Ciclo 1
+P_Post ..> P_Auth : <<import>> (depende de seguridad)
+P_Plan ..> P_Post : <<access>> (lee inscritos validados)
 
 ' Dependencias del Ciclo 2 hacia el Ciclo 1 y entre sí
 P_Eval ..> P_Auth : <<use>> (autenticacion y roles)
@@ -4428,11 +4487,11 @@ El Flujo de Trabajo de Diseño traduce el modelo conceptual de análisis en una 
 
 ## 6.1 Diseño de la Arquitectura (Lógica y Física)
 
-### Arquitectura Fisico
-El sistema adopta el patrón arquitectónico **Model-View-Controller (MVC)** combinado con un enfoque de **Single Page Application (SPA)** mediante la integración de **Inertia.js**. Inertia elimina la necesidad de crear APIs REST complejas para la vista principal, permitiendo renderizar componentes React directamente desde los controladores de Laravel como si fueran vistas blade tradicionales, manteniendo la persistencia de estado reactivo y transiciones instantáneas sin refresco de página.
+### a) Diseño de la Arquitectura Física
+El sistema adopta el patrón arquitectónico **Model-View-Controller (MVC)** en el backend, combinado con un enfoque de **Single Page Application (SPA)** en el frontend mediante una **arquitectura desacoplada API REST + React SPA**. El backend Laravel expone endpoints RESTful seguros que son consumidos por la aplicación React independiente a través de peticiones HTTP/JSON autenticadas con tokens Sanctum, permitiendo una separación clara de responsabilidades entre la lógica del servidor y la experiencia de usuario reactiva del cliente.
 
-*   **Presentación (Frontend SPA):** React 18, TailwindCSS y bibliotecas de UI de alta calidad.
-*   **Capa de Enlace (Inertia Routing):** Serializa la respuesta del controlador y la inyecta al componente React correspondiente.
+*   **Presentación (Frontend SPA):** React 19, TailwindCSS, Axios para consumo de API REST y React Router para navegación del lado del cliente.
+*   **Capa de Comunicación (API REST):** Endpoints JSON definidos en `routes/api.php` del backend Laravel, protegidos por middleware de autenticación Sanctum y verificación de roles RBAC.
 *   **Controlador (Laravel HTTP):** Recibe las peticiones HTTP seguras, valida los formularios y delega la ejecución de lógica pesada a clases de servicio.
 *   **Lógica de Negocio (Services):** Clases PHP puras especializadas en ejecutar algoritmos (Stripe, Grupos, Asignación de Carreras).
 *   **Persistencia (Eloquent ORM):** Mapeo objeto-relacional de clases de persistencia y consultas estructuradas en PostgreSQL.
@@ -4452,10 +4511,11 @@ node "Dispositivo Cliente (PC/Movil)" {
   }
 }
 
-node "Servidor Cloud (Railway/Render)" as WebServer {
+node "Servidor Cloud (Laravel Cloud)" as WebServer {
   node "Entorno PHP 8.4" {
-    component "Laravel 11 App" as LaravelApp
-    component "Inertia.js Server" as InertiaApp
+    component "Laravel 11 API" as LaravelApp {
+      component "Laravel Sanctum Middleware" as SanctumApp
+    }
   }
 }
 
@@ -4467,17 +4527,17 @@ node "Servidor BD Cloud (Supabase/PostgreSQL Dedicated)" as DbServer {
 
 node "Cloud API Stripe" as StripeServer <<External>>
 node "Cloud API OpenAI" as OpenAICloud <<External>>
+node "Cloud API SEGIP/SEDUCA" as GovServer <<External>>
 
 ' Conexiones fisicas
-ClientApp -- WebServer : HTTPS / WebSockets (Port 443)
-InertiaApp - LaravelApp : Memoria de proceso
+ClientApp -- SanctumApp : HTTPS / JSON API (Port 443)
 LaravelApp -- DbServer : TCP/IP (Port 5432)
 LaravelApp -- StripeServer : HTTPS (API Rest)
-LaravelApp -- OpenAICloud : HTTPS (REST Chat Completion)
-SpeechApp -- OpenAICloud : HTTPS (Speech to Text)
+LaravelApp -- OpenAICloud : HTTPS (Whisper / GPT Services)
+LaravelApp -- GovServer : HTTPS (Verificación Requisitos)
 @enduml
 ```
-### a) Diseño de la Arquitectura logica
+### b) Diseño de la Arquitectura Lógica
 
 ```plantuml
 @startuml ArquitecturaLogica
@@ -4511,35 +4571,54 @@ together {
 together {
   package "Eloquent ORM\n(Persistencia)" as L3B1
   package "Integraciones y APIs\n(Stripe/SEGIP/OpenAI)" as L3B2
-  note "Capa\nintermedia" as N3
+  package "Motor de Base de Datos\n(PostgreSQL 18)" as L3B3
+  package "Entorno Laravel 11\n& PHP 8.4 Runtime" as L3B4
+  note "Capa de software\ndel sistema" as N3
   L3B1 -[hidden]right-> L3B2
-  L3B2 -[hidden]right-> N3
+  L3B2 -[hidden]right-> L3B3
+  L3B3 -[hidden]right-> L3B4
+  L3B4 -[hidden]right-> N3
 }
 
-together {
-  package "Motor de Base de Datos\n(PostgreSQL 18)" as L4B1
-  package "Entorno Laravel 11\n& PHP 8.4 Runtime" as L4B2
-  note "Capa de software\ndel sistema" as N4
-  L4B1 -[hidden]right-> L4B2
-  L4B2 -[hidden]right-> N4
-}
+' Dependencias de Capa 1 (Específica)
+L1B1 ..> L1B2 : <<use>>
+L1B1 ..> L1B3 : <<use>>
+L1B2 ..> L1B3 : <<use>>
 
-L1B1 ..> L2B1
-L1B1 ..> L2B2
-L1B2 ..> L2B2
-L1B3 ..> L2B3
+' Dependencias de Capa 1 hacia Capa 2
+L1B3 ..> L2B1 : <<use>>
+L1B3 ..> L2B2 : <<use>>
+L1B3 ..> L2B3 : <<use>>
+L1B2 ..> L2B2 : <<use>>
+L1B2 ..> L2B3 : <<use>>
+L1B1 ..> L2B2 : <<use>>
+L1B1 ..> L2B3 : <<use>>
 
-L2B1 ..> L3B1
-L2B2 ..> L3B1
-L2B2 ..> L3B2
-L2B3 ..> L3B1
-L2B3 ..> L4B2
+' Dependencia de Capa 1 hacia Capa 3 (API OpenAI)
+L1B1 ..> L3B2 : <<use>>
 
-L3B1 ..> L4B1
-L3B1 ..> L4B2
-L3B2 ..> L4B2
+' Dependencias de Capa 2 (General)
+L2B1 ..> L2B2 : <<access>>
+L2B2 ..> L2B3 : <<import>>
+
+' Dependencias de Capa 2 hacia Capa 3
+L2B1 ..> L3B1 : <<use>>
+L2B2 ..> L3B1 : <<use>>
+L2B2 ..> L3B2 : <<use>>
+L2B3 ..> L3B1 : <<use>>
+L2B3 ..> L3B4 : <<use>>
+
+' Dependencias internas de Capa 3 (Software de Sistema)
+L3B1 ..> L3B3 : <<use>>
+L3B1 ..> L3B4 : <<use>>
+L3B2 ..> L3B4 : <<use>>
 @enduml
+
 ```
+
+## 6.2 Diseño de Casos de Uso (Diagramas de Secuencia)
+
+Los diagramas de secuencia de diseño detallan la interacción temporal ordenada entre los objetos participantes de cada caso de uso, mostrando el flujo de mensajes síncronos y asíncronos, las activaciones de los objetos, y los fragmentos combinados (alt, loop, opt) que modelan la lógica condicional y las iteraciones del sistema. Cada diagrama traduce las realizaciones de análisis BCE a componentes físicos del stack tecnológico (controladores Laravel, modelos Eloquent, servicios de negocio y APIs externas).
 
 #### 1. Diagrama de Secuencia para CU01: Iniciar Sesión (Autenticación y RBAC)
 
@@ -4548,37 +4627,27 @@ L3B2 ..> L4B2
 skinparam actorStyle awesome
 skinparam backgroundColor transparent
 
-actor "Usuario" as Act
-participant "LoginPage" as UI <<Form>>
-participant "AuthController" as Ctrl <<ctr>>
-participant "User" as E_Usu <<BD>>
-participant "BitacoraAcceso" as E_Bit <<BD>>
+actor "Usuario del Sistema" as Act
+participant "IU_Login" as B_Int
+participant "CTR_Auth" as C_Ctrl
+participant "CE_Usuario" as E_Usu
+participant "CE_BitacoraAcceso" as E_Bit
 
-Act -> UI : 1: Ingresar email y password
-activate UI
-UI -> Ctrl : 2: login(email, password)
-activate Ctrl
-Ctrl -> E_Usu : 3: where('email', email)
+Act -> B_Int : 1: + Ingresar email y password
+activate B_Int
+B_Int -> C_Ctrl : 2: + login(email, password)
+activate C_Ctrl
+C_Ctrl -> E_Usu : 3: + where('email', email)
 activate E_Usu
-E_Usu --> Ctrl : Datos y Hash
+E_Usu --> C_Ctrl : 4: + Datos y Hash
 deactivate E_Usu
-alt Credenciales Válidas
-  Ctrl -> E_Bit : 4: create(data_exito)
-  activate E_Bit
-  E_Bit --> Ctrl : Confirmación
-  deactivate E_Bit
-  Ctrl --> UI : 5: Retornar Token y Usuario
-  UI --> Act : 6: Redirigir a DashboardPage
-else Credenciales Inválidas
-  Ctrl -> E_Bit : 4: create(data_fallo)
-  activate E_Bit
-  E_Bit --> Ctrl : Confirmación
-  deactivate E_Bit
-  Ctrl --> UI : 5: NotificarError("Credenciales incorrectas")
-  deactivate Ctrl
-  UI --> Act : 6: MostrarMensajeError()
-end
-deactivate UI
+C_Ctrl -> E_Bit : 5: + create(data)
+activate E_Bit
+deactivate E_Bit
+C_Ctrl --> B_Int : 6: + Redirigir a Home
+deactivate C_Ctrl
+B_Int --> Act : 7: + MostrarHome()
+deactivate B_Int
 @enduml
 ```
 
@@ -4590,22 +4659,21 @@ skinparam actorStyle awesome
 skinparam backgroundColor transparent
 
 actor "Usuario" as Act
-participant "Layout" as UI <<Form>>
-participant "AuthController" as Ctrl <<ctr>>
-participant "BitacoraAcceso" as E_Bit <<BD>>
+participant "IU_Principal" as B_Int
+participant "CTR_Auth" as C_Ctrl
+participant "CE_BitacoraAcceso" as E_Bit
 
-Act -> UI : 1: SolicitarCerrarSesion()
-activate UI
-UI -> Ctrl : 2: logout()
-activate Ctrl
-Ctrl -> E_Bit : 3: create(data_logout)
+Act -> B_Int : 1: + SolicitarCerrarSesion()
+activate B_Int
+B_Int -> C_Ctrl : 2: + logout()
+activate C_Ctrl
+C_Ctrl -> E_Bit : 3: + create(data)
 activate E_Bit
-E_Bit --> Ctrl : Confirmación
 deactivate E_Bit
-Ctrl --> UI : 4: ConfirmarCierre()
-deactivate Ctrl
-UI --> Act : 5: Redirigir a LoginPage
-deactivate UI
+C_Ctrl --> B_Int : 4: + ConfirmarCierre()
+deactivate C_Ctrl
+B_Int --> Act : 5: + MostrarPantallaLogin()
+deactivate B_Int
 @enduml
 ```
 
@@ -4617,28 +4685,23 @@ skinparam actorStyle awesome
 skinparam backgroundColor transparent
 
 actor "Usuario" as Act
-participant "ForgotPasswordPage" as UI <<Form>>
-participant "AuthController" as Ctrl <<ctr>>
-participant "User" as E_Usu <<BD>>
+participant "IU_Recuperacion" as B_Int
+participant "CTR_Auth" as C_Ctrl
+participant "CE_Usuario" as E_Usu
 
-Act -> UI : 1: IngresarCorreo(correo)
-activate UI
-UI -> Ctrl : 2: forgotPassword(email)
-activate Ctrl
-Ctrl -> E_Usu : 3: where('email', email)
+Act -> B_Int : 1: + IngresarCorreo(correo)
+activate B_Int
+B_Int -> C_Ctrl : 2: + forgotPassword(email)
+activate C_Ctrl
+C_Ctrl -> E_Usu : 3: + where('email', email)
 activate E_Usu
-E_Usu --> Ctrl : DatosExistencia
+E_Usu --> C_Ctrl : 4: + DatosExistencia
 deactivate E_Usu
-alt Correo existe en base de datos
-  Ctrl -> Ctrl : 4: sendResetLink()
-  Ctrl --> UI : 5: ConfirmarEnvio()
-  UI --> Act : 6: MostrarMensajeExito()
-else Correo no existe
-  Ctrl --> UI : 5: ConfirmarEnvio() (Mensaje Genérico)
-  deactivate Ctrl
-  UI --> Act : 6: MostrarMensajeGenerico()
-end
-deactivate UI
+C_Ctrl -> C_Ctrl : 5: + sendResetLink()
+C_Ctrl --> B_Int : 6: + ConfirmarEnvio()
+deactivate C_Ctrl
+B_Int --> Act : 7: + MostrarMensajeExito()
+deactivate B_Int
 @enduml
 ```
 
@@ -4650,36 +4713,29 @@ skinparam actorStyle awesome
 skinparam backgroundColor transparent
 
 actor "Administrador" as Act
-participant "UsersPage" as UI <<Form>>
-participant "UserController" as Ctrl <<ctr>>
-participant "User" as E_Usu <<BD>>
-participant "BitacoraAcceso" as E_Bit <<BD>>
+participant "IU_Usuarios" as B_Int
+participant "CTR_Usuarios" as C_Ctrl
+participant "CE_Usuario" as E_Usu
+participant "CE_BitacoraAcceso" as E_Bit
 
-Act -> UI : 1: RegistrarNuevoUsuario(datos)
-activate UI
-UI -> Ctrl : 2: store(request)
-activate Ctrl
-Ctrl -> E_Usu : 3: where('email', email)
+Act -> B_Int : 1: + RegistrarNuevoUsuario(datos)
+activate B_Int
+B_Int -> C_Ctrl : 2: + store(request)
+activate C_Ctrl
+C_Ctrl -> E_Usu : 3: + where('email', email)
 activate E_Usu
-E_Usu --> Ctrl : ResultadoValidación
+E_Usu --> C_Ctrl : 4: + ResultadoValidacion
 deactivate E_Usu
-alt Correo no duplicado
-  Ctrl -> E_Usu : 4: create(datos)
-  activate E_Usu
-  E_Usu --> Ctrl : Confirmación
-  deactivate E_Usu
-  Ctrl -> E_Bit : 5: create(datos_auditoria)
-  activate E_Bit
-  E_Bit --> Ctrl : Confirmación
-  deactivate E_Bit
-  Ctrl --> UI : 6: RetornarExito(user, temp_password)
-  UI --> Act : 7: ActualizarListaUsuarios()
-else Correo duplicado
-  Ctrl --> UI : 6: NotificarErrorDuplicado()
-  deactivate Ctrl
-  UI --> Act : 7: MostrarMensajeError()
-end
-deactivate UI
+C_Ctrl -> E_Usu : 5: + create(datos)
+activate E_Usu
+deactivate E_Usu
+C_Ctrl -> E_Bit : 6: + create(log)
+activate E_Bit
+deactivate E_Bit
+C_Ctrl --> B_Int : 7: + RetornarExito()
+deactivate C_Ctrl
+B_Int --> Act : 8: + ActualizarListaUsuarios()
+deactivate B_Int
 @enduml
 ```
 
@@ -4691,40 +4747,38 @@ skinparam actorStyle awesome
 skinparam backgroundColor transparent
 
 actor "Postulante" as Act
-participant "PreinscripcionPage" as UI <<Form>>
-participant "PostulanteController" as Ctrl <<ctr>>
-participant "Postulante" as E_Post <<BD>>
-participant "RequisitoDocumental" as E_Req <<BD>>
+participant "IU_Preinscripcion" as B_Int
+participant "CTR_Preinscripcion" as C_Ctrl
+participant "CE_Postulante" as E_Post
+participant "CE_RequisitoDocumental" as E_Req
 
-Act -> UI : 1: CompletarFormularioRegistro(datos)
-activate UI
-UI -> Ctrl : 2: store(request)
-activate Ctrl
-Ctrl -> E_Post : 3: where('ci', ci)
-activate E_Post
-E_Post --> Ctrl : RegistroExistente
-deactivate E_Post
-alt Postulante Nuevo
-  Ctrl -> E_Post : 4: create(datos)
+Act -> B_Int : 1: + CompletarFormulario(datos)
+activate B_Int
+Act -> B_Int : 2: + ClicIniciarRegistro()
+B_Int --> Act : 3: + MostrarVerificacionDatos(resumen)
+deactivate B_Int
+
+alt Si el postulante cancela
+  Act -> B_Int : 4a: + ClicCancelar()
+  activate B_Int
+  B_Int --> Act : 5a: + RedirigirLogin()
+  deactivate B_Int
+else Si el postulante confirma
+  Act -> B_Int : 4b: + ClicSiguiente()
+  activate B_Int
+  B_Int --> Act : 5b: + MostrarPantallaCarga("Verificando datos...")
+  B_Int -> C_Ctrl : 6b: + store(request)
+  activate C_Ctrl
+  C_Ctrl -> E_Post : 7b: + create(datos)
   activate E_Post
-  E_Post --> Ctrl : Confirmación
   deactivate E_Post
-  Ctrl -> E_Req : 5: create(['postulante_id' => id])
+  C_Ctrl -> E_Req : 8b: + create(['postulante_id' => id])
   activate E_Req
-  E_Req --> Ctrl : Confirmación
   deactivate E_Req
-  Ctrl --> UI : 6: RetornarPostulanteCreado()
-  UI --> Act : 7: MostrarVerificacionDatos()
-else Postulante Recurrente
-  Ctrl -> E_Post : 4: update(datos, recurrente=true)
-  activate E_Post
-  E_Post --> Ctrl : Confirmación
-  deactivate E_Post
-  Ctrl --> UI : 5: RetornarDatosRecurrente()
-  deactivate Ctrl
-  UI --> Act : 6: MostrarAlertaRecurrente()
+  C_Ctrl --> B_Int : 9b: + RetornarExitoYRedirigirPago()
+  deactivate C_Ctrl
+  deactivate B_Int
 end
-deactivate UI
 @enduml
 ```
 
@@ -4735,48 +4789,33 @@ deactivate UI
 skinparam actorStyle awesome
 skinparam backgroundColor transparent
 
-actor "Sistema" as Act
-participant "PreinscripcionPage" as UI <<Form>>
-participant "PostulanteController" as Ctrl <<ctr>>
-boundary "VerificacionExternaService" as Serv <<service>>
-boundary "API SEGIP" as B_SEGIP <<external>>
-boundary "API SEDUCA" as B_SEDUCA <<external>>
-participant "RequisitoDocumental" as E_Req <<BD>>
-participant "Postulante" as E_Post <<BD>>
+participant "IU_Preinscripcion" as B_Int
+participant "CTR_Preinscripcion" as C_Ctrl
+participant "CE_Postulante" as E_Post
+participant "CE_RequisitoDocumental" as E_Req
+participant "API SEGIP" as B_SEGIP
+participant "API SEDUCA" as B_SEDUCA
 
-Act -> UI : 1: IniciarVerificacionAutomatica()
-activate UI
-UI -> Ctrl : 2: verificarRequisitos(postulante)
-activate Ctrl
-Ctrl -> Serv : 3: verificarCompleto(ci, fecha_nacimiento)
-activate Serv
-Serv -> B_SEGIP : 4: ConsultarIdentidad(ci)
+B_Int -> C_Ctrl : 1: + verificarRequisitos(postulante)
+activate B_Int
+activate C_Ctrl
+C_Ctrl -> B_SEGIP : 2: + ConsultarIdentidad(ci)
 activate B_SEGIP
-B_SEGIP --> Serv : ConfirmacionIdentidad
+B_SEGIP --> C_Ctrl : 3: + ConfirmacionIdentidad
 deactivate B_SEGIP
-Serv -> B_SEDUCA : 5: ConsultarBachiller(ci)
+C_Ctrl -> B_SEDUCA : 4: + ConsultarBachiller(ci)
 activate B_SEDUCA
-B_SEDUCA --> Serv : ConfirmacionBachiller
+B_SEDUCA --> C_Ctrl : 5: + ConfirmacionBachiller
 deactivate B_SEDUCA
-Serv --> Ctrl : 6: ResultadoVerificacion (aprobado=true)
-deactivate Serv
-alt Verificacion Exitosa
-  Ctrl -> E_Req : 7: update(ci_digitalizado=true, verificado_bd_externa=true...)
-  activate E_Req
-  E_Req --> Ctrl : Confirmación
-  deactivate E_Req
-  Ctrl -> E_Post : 8: update(estado="Verificado")
-  activate E_Post
-  E_Post --> Ctrl : Confirmación
-  deactivate E_Post
-  Ctrl --> UI : 9: ConfirmarVerificacion()
-  UI --> Act : 10: MostrarEstadoVerificado()
-else Verificacion Fallida
-  Ctrl --> UI : 9: NotificarErrorVerificacion()
-  deactivate Ctrl
-  UI --> Act : 10: MostrarMensajeError()
-end
-deactivate UI
+C_Ctrl -> E_Post : 6: + update(['estado' => 'Verificado'])
+activate E_Post
+deactivate E_Post
+C_Ctrl -> E_Req : 7: + update(requisitos)
+activate E_Req
+deactivate E_Req
+C_Ctrl --> B_Int : 8: + ConfirmarVerificacion()
+deactivate C_Ctrl
+deactivate B_Int
 @enduml
 ```
 
@@ -4788,46 +4827,48 @@ skinparam actorStyle awesome
 skinparam backgroundColor transparent
 
 actor "Postulante" as Act
-participant "InscripcionPage" as UI <<Form>>
-participant "PagoController" as Ctrl <<ctr>>
-boundary "PasarelaStripe" as B_Stripe <<external>>
-participant "Pago" as E_Pago <<BD>>
-participant "Postulante" as E_Post <<BD>>
-participant "User" as E_User <<BD>>
+participant "IU_Inscripcion" as B_Insc
+participant "CTR_Inscripcion" as C_Insc
+participant "PasarelaStripe" as B_Stripe
+participant "CE_Pago" as E_Pago
+participant "CE_Postulante" as E_Post
+participant "CE_Usuario" as E_Usu
 
-Act -> UI : 1: SolicitarPagoMatricula()
-activate UI
-UI -> Ctrl : 2: crearSesion(postulante)
-activate Ctrl
-Ctrl -> B_Stripe : 3: crearSesionStripe()
+Act -> B_Insc : 1: + Solicitar pago de matrícula()
+activate B_Insc
+B_Insc -> C_Insc : 2: + crearSesion(postulante)
+activate C_Insc
+C_Insc -> B_Stripe : 3: + crearSesionStripe()
 activate B_Stripe
-B_Stripe --> Ctrl : UrlRedireccion (mock/checkout)
+B_Stripe --> C_Insc : 4: + UrlRedireccionSesion
 deactivate B_Stripe
-Ctrl --> UI : 4: RedirigirAPasarela()
-UI --> Act : 5: MostrarFormularioPagoStripe()
-Act -> B_Stripe : 6: ConfirmarDatosTarjeta()
+C_Insc --> B_Insc : 5: + RedirigirAPasarela()
+deactivate C_Insc
+B_Insc --> Act : 6: + MostrarFormularioPagoStripe()
+deactivate B_Insc
+
+Act -> B_Stripe : 7: + ConfirmarDatosTarjeta()
 activate B_Stripe
-B_Stripe -> Ctrl : 7: webhook(request)
-deactivate B_Stripe
-activate Ctrl
-Ctrl -> E_Pago : 8: create(datosPago)
+B_Stripe -> C_Insc : 8: + webhook(request)
+activate C_Insc
+C_Insc -> E_Pago : 9: + create(datosPago)
 activate E_Pago
-E_Pago --> Ctrl : Confirmación
 deactivate E_Pago
-Ctrl -> E_Post : 9: update(estado="Inscrito")
+C_Insc -> E_Post : 10: + update(['estado' => 'Inscrito'])
 activate E_Post
-E_Post --> Ctrl : Confirmación
 deactivate E_Post
-Ctrl -> E_User : 10: create(datosUsuario)
-activate E_User
-E_User --> Ctrl : Confirmación
-deactivate E_User
-Ctrl -> Ctrl : 11: EnviarCorreoCredenciales()
-Ctrl --> B_Stripe : 12: ConfirmarWebhook
-deactivate Ctrl
-B_Stripe --> UI : 13: Redireccion exitosa
-UI --> Act : 14: MostrarMensaje("Su cuenta ha sido enviada a su correo")
-deactivate UI
+C_Insc -> E_Usu : 11: + create(datosUsuario)
+activate E_Usu
+deactivate E_Usu
+C_Insc -> C_Insc : 12: + enviarCorreo()
+C_Insc --> B_Stripe : Confirmación Webhook
+deactivate C_Insc
+
+B_Stripe -> B_Insc : 13: + retornarExito()
+deactivate B_Stripe
+activate B_Insc
+B_Insc --> Act : 14: + mostrarMensajeConfirmacion()
+deactivate B_Insc
 @enduml
 ```
 
@@ -4839,27 +4880,22 @@ skinparam actorStyle awesome
 skinparam backgroundColor transparent
 
 actor "Postulante" as Act
-participant "PreinscripcionPage" as UI <<Form>>
-participant "PostulanteController" as Ctrl <<ctr>>
-participant "Postulante" as E_Post <<BD>>
+participant "IU_Preinscripcion" as B_Int
+participant "CTR_Preinscripcion" as C_Ctrl
+participant "CE_Postulante" as E_Post
 
-Act -> UI : 1: IngresarCI()
-activate UI
-UI -> Ctrl : 2: buscarPorCi(request)
-activate Ctrl
-Ctrl -> E_Post : 3: where('ci', ci)
+Act -> B_Int : 1: + IngresarCI(ci)
+activate B_Int
+B_Int -> C_Ctrl : 2: + buscarPorCi(request)
+activate C_Ctrl
+C_Ctrl -> E_Post : 3: + where('ci', ci)
 activate E_Post
-E_Post --> Ctrl : RegistroAnterior
+E_Post --> C_Ctrl : 4: + RegistroAnterior
 deactivate E_Post
-alt Postulante Recurrente
-  Ctrl --> UI : 4: RetornarDatosRecurrente(postulante)
-  UI --> Act : 5: MostrarAlertaRecurrente()
-else Postulante Nuevo
-  Ctrl --> UI : 4: ConfirmarNuevoPostulante()
-  deactivate Ctrl
-  UI --> Act : 5: HabilitarRegistroNormal()
-end
-deactivate UI
+C_Ctrl --> B_Int : 5: + RetornarEstadoDuplicado(true)
+deactivate C_Ctrl
+B_Int --> Act : 6: + MostrarAlertaRecurrente()
+deactivate B_Int
 @enduml
 ```
 
@@ -4871,22 +4907,22 @@ skinparam actorStyle awesome
 skinparam backgroundColor transparent
 
 actor "Administrador" as Act
-participant "BusquedaPostulantesPage" as UI <<Form>>
-participant "PostulanteController" as Ctrl <<ctr>>
-participant "Postulante" as E_Post <<BD>>
+participant "IU_Busqueda" as B_Int
+participant "CTR_Busqueda" as C_Ctrl
+participant "CE_Postulante" as E_Post
 
-Act -> UI : 1: IngresarFiltros(criterio)
-activate UI
-UI -> Ctrl : 2: index(request)
-activate Ctrl
-Ctrl -> E_Post : 3: paginate()
+Act -> B_Int : 1: + IngresarFiltros(criterio)
+activate B_Int
+B_Int -> C_Ctrl : 2: + index(request)
+activate C_Ctrl
+C_Ctrl -> E_Post : 3: + paginate()
 activate E_Post
-E_Post --> Ctrl : ListaResultados
+E_Post --> C_Ctrl : 4: + ListaResultados
 deactivate E_Post
-Ctrl --> UI : 4: RetornarResultados(lista)
-deactivate Ctrl
-UI --> Act : 5: RenderizarGrillaResultados()
-deactivate UI
+C_Ctrl --> B_Int : 5: + RetornarResultados(lista)
+deactivate C_Ctrl
+B_Int --> Act : 6: + RenderizarGrillaResultados()
+deactivate B_Int
 @enduml
 ```
 
@@ -4898,48 +4934,40 @@ skinparam actorStyle awesome
 skinparam backgroundColor transparent
 
 actor "Administrador" as Act
-participant "GruposPage" as UI <<Form>>
-participant "GrupoController" as Ctrl <<ctr>>
-boundary "PlanificacionService" as Serv <<service>>
-participant "Postulante" as E_Post <<BD>>
-participant "Aula" as E_Aula <<BD>>
-participant "Grupo" as E_Grupo <<BD>>
-participant "AsignacionGrupo" as E_Asig <<BD>>
+participant "IU_Grupos" as B_Grup
+participant "CTR_Planificacion" as C_Plan
+participant "CE_Postulante" as E_Post
+participant "CE_Grupo" as E_Grupo
+participant "CE_Aula" as E_Aula
+participant "CE_AsignacionGrupo" as E_Asig
 
-Act -> UI : 1: EjecutarCalculoAsignacion()
-activate UI
-UI -> Ctrl : 2: asignacionMasiva()
-activate Ctrl
-Ctrl -> Serv : 3: ejecutarAsignacionMasiva(gestion_id)
-activate Serv
-Serv -> E_Post : 4: where('estado', 'Inscrito')
+Act -> B_Grup : 1: + EjecutarCalculoAsignacion()
+activate B_Grup
+B_Grup -> C_Plan : 2: + asignacionMasiva()
+activate C_Plan
+C_Plan -> E_Post : 3: + where('estado', 'Inscrito')
 activate E_Post
-E_Post --> Serv : ListaPostulantes
+E_Post --> C_Plan : 4: + ListaPostulantes
 deactivate E_Post
-Serv -> Serv : 5: CalcularGruposNecesarios(CEIL(Total/70))
-Serv -> E_Aula : 6: get()
+C_Plan -> C_Plan : 5: + CalcularGruposNecesarios(CEIL(Total/70))
+C_Plan -> E_Aula : 6: + VerificarDisponibilidadAulas()
 activate E_Aula
-E_Aula --> Serv : AulasDisponibles
+E_Aula --> C_Plan : 7: + AulasDisponibles
 deactivate E_Aula
-Serv -> E_Grupo : 7: create(datos)
+C_Plan -> E_Grupo : 8: + create(datos)
 activate E_Grupo
-E_Grupo --> Serv : Confirmación
 deactivate E_Grupo
-Serv -> Serv : 8: CalcularDistribucionEquitativa()
-Serv -> E_Asig : 9: create(datos)
+C_Plan -> C_Plan : 9: + CalcularDistribucionEquitativa()
+C_Plan -> E_Asig : 10: + create(datos)
 activate E_Asig
-E_Asig --> Serv : Confirmación
 deactivate E_Asig
-Serv -> E_Post : 10: update(estado="En Evaluación")
+C_Plan -> E_Post : 11: + update(['estado' => 'En Evaluacion'])
 activate E_Post
-E_Post --> Serv : Confirmación
 deactivate E_Post
-Serv --> Ctrl : 11: ConfirmarAsignacionExitosa()
-deactivate Serv
-Ctrl --> UI : 12: ConfirmarAsignacionExitosa()
-deactivate Ctrl
-UI --> Act : 13: MostrarGruposConPostulantes()
-deactivate UI
+C_Plan --> B_Grup : 12: + ConfirmarAsignacionExitosa()
+deactivate C_Plan
+B_Grup --> Act : 13: + MostrarGruposConPostulantes()
+deactivate B_Grup
 @enduml
 ```
 
@@ -4951,44 +4979,31 @@ skinparam actorStyle awesome
 skinparam backgroundColor transparent
 
 actor "Administrador" as Act
-participant "GruposPage" as UI <<Form>>
-participant "GrupoController" as Ctrl <<ctr>>
-boundary "PlanificacionService" as Serv <<service>>
-participant "Postulante" as E_Post <<BD>>
-participant "Grupo" as E_Grupo <<BD>>
-participant "AsignacionGrupo" as E_Asig <<BD>>
+participant "IU_Grupos" as B_Int
+participant "CTR_Planificacion" as C_Ctrl
+participant "CE_Postulante" as E_Post
+participant "CE_Grupo" as E_Grupo
+participant "CE_AsignacionGrupo" as E_Asig
 
-Act -> UI : 1: SolicitarAjusteGrupo()
-activate UI
-UI -> Ctrl : 2: reasignar(request)
-activate Ctrl
-Ctrl -> Serv : 3: reasignarPostulante(postulante_id, grupo_id)
-activate Serv
-Serv -> E_Post : 4: findOrFail(postulante_id)
+Act -> B_Int : 1: + SolicitarAjusteGrupo(postulanteId, nuevoGrupoId)
+activate B_Int
+B_Int -> C_Ctrl : 2: + reasignar(request)
+activate C_Ctrl
+C_Ctrl -> E_Post : 3: + findOrFail(postulante_id)
 activate E_Post
-E_Post --> Serv : Postulante
+E_Post --> C_Ctrl : 4: + DatosPostulante
 deactivate E_Post
-Serv -> E_Grupo : 5: findOrFail(grupo_id)
+C_Ctrl -> E_Grupo : 5: + findOrFail(grupo_id)
 activate E_Grupo
-E_Grupo --> Serv : Grupo
+E_Grupo --> C_Ctrl : 6: + CapacidadDisponible
 deactivate E_Grupo
-Serv -> Serv : 6: VerificarCapacidad()
-alt Capacidad Disponible
-  Serv -> E_Asig : 7: update(grupo_id)
-  activate E_Asig
-  E_Asig --> Serv : Confirmación
-  deactivate E_Asig
-  Serv --> Ctrl : 8: ConfirmarReasignacion()
-  Ctrl --> UI : 9: RetornarExito()
-  UI --> Act : 10: ActualizarListaGrupo()
-else Grupo Lleno
-  Serv --> Ctrl : 8: RetornarError("Grupo lleno")
-  deactivate Serv
-  Ctrl --> UI : 9: NotificarError("Capacidad superada")
-  deactivate Ctrl
-  UI --> Act : 10: MostrarMensajeError()
-end
-deactivate UI
+C_Ctrl -> E_Asig : 7: + update(grupo_id)
+activate E_Asig
+deactivate E_Asig
+C_Ctrl --> B_Int : 8: + RetornarExito()
+deactivate C_Ctrl
+B_Int --> Act : 9: + ActualizarListaGrupo()
+deactivate B_Int
 @enduml
 ```
 
@@ -5000,47 +5015,37 @@ skinparam actorStyle awesome
 skinparam backgroundColor transparent
 
 actor "Administrador" as Act
-participant "DocentesPage" as UI <<Form>>
-participant "DocenteController" as Ctrl <<ctr>>
-participant "Docente" as E_Doc <<BD>>
-participant "Materia" as E_Mat <<BD>>
-participant "AsignacionDocente" as E_AsigDoc <<BD>>
+participant "IU_Docentes" as B_Int
+participant "CTR_Planificacion" as C_Ctrl
+participant "CE_Docente" as E_Doc
+participant "CE_Grupo" as E_Grupo
+participant "CE_Materia" as E_Mat
+participant "CE_AsignacionDocente" as E_AsigDoc
 
-Act -> UI : 1: AsignarDocente()
-activate UI
-UI -> Ctrl : 2: asignar(request)
-activate Ctrl
-Ctrl -> E_Doc : 3: findOrFail(docente_id)
+Act -> B_Int : 1: + AsignarDocente(docenteId, grupoId, materiaId)
+activate B_Int
+B_Int -> C_Ctrl : 2: + asignar(request)
+activate C_Ctrl
+C_Ctrl -> E_Doc : 3: + findOrFail(docente_id)
 activate E_Doc
-E_Doc --> Ctrl : Docente
+E_Doc --> C_Ctrl : 4: + CargaHorariaValida
 deactivate E_Doc
-Ctrl -> E_Doc : 4: tieneCargaDisponible() (carga < 4)
-activate E_Doc
-E_Doc --> Ctrl : CargaValida
-deactivate E_Doc
-alt Carga < 4
-  Ctrl -> E_Mat : 5: findOrFail(materia_id)
-  activate E_Mat
-  E_Mat --> Ctrl : Materia
-  deactivate E_Mat
-  Ctrl -> Ctrl : 6: ValidarEspecialidad()
-  alt Especialidad Coincide
-    Ctrl -> E_AsigDoc : 7: create(docente_id, grupo_id, materia_id)
-    activate E_AsigDoc
-    E_AsigDoc --> Ctrl : Confirmación
-    deactivate E_AsigDoc
-    Ctrl --> UI : 8: RetornarExito()
-    UI --> Act : 9: ActualizarMatrizDocentes()
-  else Especialidad no coincide
-    Ctrl --> UI : 8: NotificarError("Especialidad no coincide")
-    UI --> Act : 9: MostrarMensajeError()
-  end
-else Carga >= 4
-  Ctrl --> UI : 8: NotificarError("Docente con carga máxima")
-  deactivate Ctrl
-  UI --> Act : 9: MostrarAlertaCargaMaxima()
-end
-deactivate UI
+C_Ctrl -> E_Grupo : 5: + findOrFail(grupo_id)
+activate E_Grupo
+E_Grupo --> C_Ctrl : 6: + DatosGrupo
+deactivate E_Grupo
+C_Ctrl -> E_Mat : 7: + findOrFail(materia_id)
+activate E_Mat
+E_Mat --> C_Ctrl : 8: + DatosMateria
+deactivate E_Mat
+C_Ctrl -> C_Ctrl : 8.1: + ValidarCoincidenciaEspecialidad(docente.especialidad, materia.nombre)
+C_Ctrl -> E_AsigDoc : 9: + create(datos)
+activate E_AsigDoc
+deactivate E_AsigDoc
+C_Ctrl --> B_Int : 10: + RetornarExito()
+deactivate C_Ctrl
+B_Int --> Act : 11: + ActualizarMatrizDocente()
+deactivate B_Int
 @enduml
 ```
 
@@ -5052,30 +5057,31 @@ skinparam actorStyle awesome
 skinparam backgroundColor transparent
 
 actor "Postulante" as Act
-participant "SimulacroPage" as UI <<Form>>
-participant "SimulacroController" as Ctrl <<ctr>>
-participant "PreguntaSimulacro" as E_Preg <<BD>>
+participant "IU_Simulacro" as B_Int
+participant "CTR_Simulacro" as C_Ctrl
+participant "CE_PreguntaSimulacro" as E_Preg
 
-Act -> UI : 1: IniciarSimulacro()
-activate UI
-UI -> Ctrl : 2: generar()
-activate Ctrl
-Ctrl -> E_Preg : 3: where('materia_id', id)
+Act -> B_Int : 1: + IniciarSimulacro()
+activate B_Int
+B_Int -> C_Ctrl : 2: + generar()
+activate C_Ctrl
+C_Ctrl -> E_Preg : 3: + ObtenerBancoPreguntas()
 activate E_Preg
-E_Preg --> Ctrl : BancoPreguntas
+E_Preg --> C_Ctrl : 4: + ListaPreguntas
 deactivate E_Preg
-Ctrl -> Ctrl : 4: SeleccionarPreguntasAleatorias()
-Ctrl --> UI : 5: RetornarPreguntas (sin respuestas_correctas)
-deactivate Ctrl
-UI --> Act : 6: mostrarTemporizadorYPreguntas()
-Act -> UI : 7: enviarRespuestas(respuestas)
-UI -> Ctrl : 8: calificar(request)
-activate Ctrl
-Ctrl -> Ctrl : 9: CalcularNotaSimulacro()
-Ctrl --> UI : 10: retornarNotaSimulacro()
-deactivate Ctrl
-UI --> Act : 11: mostrarResultadosSimulacro()
-deactivate UI
+C_Ctrl --> B_Int : 5: + RetornarPreguntas()
+deactivate C_Ctrl
+B_Int --> Act : 6: + MostrarTemporizadorYPreguntas()
+deactivate B_Int
+
+Act -> B_Int : 7: + EnviarRespuestas(respuestas)
+activate B_Int
+B_Int -> C_Ctrl : 8: + calificar(request)
+activate C_Ctrl
+C_Ctrl --> B_Int : 9: + RetornarNotaSimulacro()
+deactivate C_Ctrl
+B_Int --> Act : 10: + MostrarResultadosSimulacro()
+deactivate B_Int
 @enduml
 ```
 
@@ -5087,39 +5093,30 @@ skinparam actorStyle awesome
 skinparam backgroundColor transparent
 
 actor "Administrador" as Act
-participant "NotasPage" as UI <<Form>>
-participant "EvaluacionController" as Ctrl <<ctr>>
-participant "Examen" as E_Exam <<BD>>
-participant "NotaFinal" as E_Nota <<BD>>
-participant "BitacoraAcceso" as E_Bit <<BD>>
+participant "IU_Notas" as B_Int
+participant "CTR_Evaluacion" as C_Ctrl
+participant "CE_Examen" as E_Exam
+participant "CE_NotaFinal" as E_Nota
+participant "CE_AuditoriaNotas" as E_Aud
 
-Act -> UI : 1: ModificarNota(postulanteId, materia, nuevaNota)
-activate UI
-UI -> Ctrl : 2: update(request)
-activate Ctrl
-alt Nota válida (0 <= nota <= 100)
-  Ctrl -> E_Exam : 3: update(nuevaNota)
-  activate E_Exam
-  E_Exam --> Ctrl : Confirmación
-  deactivate E_Exam
-  Ctrl -> Ctrl : 4: RecalcularPromedio()
-  Ctrl -> E_Nota : 5: update(promedio)
-  activate E_Nota
-  E_Nota --> Ctrl : Confirmación
-  deactivate E_Nota
-  Ctrl -> E_Bit : 6: create(log)
-  activate E_Bit
-  E_Bit --> Ctrl : Confirmación
-  deactivate E_Bit
-  Ctrl --> UI : 7: RetornarExito()
-  deactivate Ctrl
-  UI --> Act : 8: ActualizarPlanillaNotas()
-else Nota fuera de rango
-  Ctrl --> UI : 3: NotificarError("La nota debe estar entre 0 y 100")
-  deactivate Ctrl
-  UI --> Act : 4: MostrarMensajeError()
-end
-deactivate UI
+Act -> B_Int : 1: + ModificarNota(postulanteId, materiaId, numeroExamen, nuevaNota)
+activate B_Int
+B_Int -> C_Ctrl : 2: + update(request)
+activate C_Ctrl
+C_Ctrl -> E_Exam : 3: + update(nuevaNota)
+activate E_Exam
+deactivate E_Exam
+C_Ctrl -> C_Ctrl : 4: + RecalcularPromedio()
+C_Ctrl -> E_Nota : 5: + update(promedio)
+activate E_Nota
+deactivate E_Nota
+C_Ctrl -> E_Aud : 6: + create(log)
+activate E_Aud
+deactivate E_Aud
+C_Ctrl --> B_Int : 7: + RetornarExito()
+deactivate C_Ctrl
+B_Int --> Act : 8: + ActualizarPlanillaNotas()
+deactivate B_Int
 @enduml
 ```
 
@@ -5131,40 +5128,35 @@ skinparam actorStyle awesome
 skinparam backgroundColor transparent
 
 actor "Administrador" as Act
-participant "NotasPage" as UI <<Form>>
-participant "EvaluacionController" as Ctrl <<ctr>>
-participant "Postulante" as E_Post <<BD>>
-participant "Examen" as E_Exam <<BD>>
-participant "NotaFinal" as E_Nota <<BD>>
-participant "BitacoraAcceso" as E_Bit <<BD>>
+participant "IU_Notas" as B_Nota
+participant "CTR_Evaluacion" as C_Eval
+participant "CE_Postulante" as E_Post
+participant "CE_Examen" as E_Exam
+participant "CE_NotaFinal" as E_Nota
+participant "CE_AuditoriaNotas" as E_Aud
 
-Act -> UI : 1: CargarArchivoCSV(file)
-activate UI
-UI -> Ctrl : 2: storeMasivo(request)
-activate Ctrl
-loop Para cada fila del archivo CSV
-  Ctrl -> E_Post : 3: where('ci', ci)
-  activate E_Post
-  E_Post --> Ctrl : DatosPostulante
-  deactivate E_Post
-  Ctrl -> E_Exam : 5: create(nota)
-  activate E_Exam
-  E_Exam --> Ctrl : Confirmación
-  deactivate E_Exam
-  Ctrl -> Ctrl : 6: CalcularPromedioPonderado()
-  Ctrl -> E_Nota : 7: update(promedio, estado)
-  activate E_Nota
-  E_Nota --> Ctrl : Confirmación
-  deactivate E_Nota
-end
-Ctrl -> E_Bit : 8: create(log)
-activate E_Bit
-E_Bit --> Ctrl : Confirmación
-deactivate E_Bit
-Ctrl --> UI : 9: ConfirmarCargaExitosa(resumen)
-deactivate Ctrl
-UI --> Act : 10: MostrarResumenCarga()
-deactivate UI
+Act -> B_Nota : 1: + CargarArchivoCSV(file)
+activate B_Nota
+B_Nota -> C_Eval : 2: + storeMasivo(request)
+activate C_Eval
+C_Eval -> E_Post : 3: + where('ci', ci)
+activate E_Post
+E_Post --> C_Eval : 4: + DatosPostulante
+deactivate E_Post
+C_Eval -> E_Exam : 5: + create(nota)
+activate E_Exam
+deactivate E_Exam
+C_Eval -> C_Eval : 6: + CalcularPromedioPonderado()
+C_Eval -> E_Nota : 7: + update(promedio, estado)
+activate E_Nota
+deactivate E_Nota
+C_Eval -> E_Aud : 8: + create(log)
+activate E_Aud
+deactivate E_Aud
+C_Eval --> B_Nota : 9: + ConfirmarCargaExitosa(resumen)
+deactivate C_Eval
+B_Nota --> Act : 10: + MostrarResumenCarga()
+deactivate B_Nota
 @enduml
 ```
 
@@ -5176,38 +5168,27 @@ skinparam actorStyle awesome
 skinparam backgroundColor transparent
 
 actor "Sistema" as Act
-participant "NotasPage" as UI <<Form>>
-participant "EvaluacionController" as Ctrl <<ctr>>
-participant "Examen" as E_Exam <<BD>>
-participant "NotaFinal" as E_Nota <<BD>>
+participant "Artisan_Console" as B_Console
+participant "CTR_Evaluacion" as C_Ctrl
+participant "CE_Examen" as E_Exam
+participant "CE_NotaFinal" as E_Nota
 
-Act -> UI : 1: SolicitarCalculoGlobal()
-activate UI
-UI -> Ctrl : 2: calcularPromedios()
-activate Ctrl
-loop Para cada materia del postulante
-  Ctrl -> E_Exam : 3: where('postulante_id', id)
-  activate E_Exam
-  E_Exam --> Ctrl : NotasMateria
-  deactivate E_Exam
-  alt 3 exámenes registrados (notas completas)
-    Ctrl -> Ctrl : 5: AplicarFormulaPonderacion(30%-30%-40%)
-    Ctrl -> E_Nota : 6: updateOrCreate(promedio)
-    activate E_Nota
-    E_Nota --> Ctrl : Confirmación
-    deactivate E_Nota
-  else Notas incompletas (faltan exámenes)
-    Ctrl -> Ctrl : 5: CalcularPromedioParcial()
-    Ctrl -> E_Nota : 6: updateOrCreate(promedio)
-    activate E_Nota
-    E_Nota --> Ctrl : Confirmación
-    deactivate E_Nota
-  end
-end
-Ctrl --> UI : 7: RetornarExito()
-deactivate Ctrl
-UI --> Act : 8: RefrescarVistaPromedios()
-deactivate UI
+Act -> B_Console : 1: + ejecutarCalculoGlobal()
+activate B_Console
+B_Console -> C_Ctrl : 2: + calcularPromedios()
+activate C_Ctrl
+C_Ctrl -> E_Exam : 3: + where('postulante_id', id)
+activate E_Exam
+E_Exam --> C_Ctrl : 4: + NotasMateria
+deactivate E_Exam
+C_Ctrl -> C_Ctrl : 5: + AplicarFormulaPonderacion()
+C_Ctrl -> E_Nota : 6: + updateOrCreate(promedio)
+activate E_Nota
+deactivate E_Nota
+C_Ctrl --> B_Console : 7: + RetornarExito()
+deactivate C_Ctrl
+B_Console --> Act : 8: + MostrarResumenConsola()
+deactivate B_Console
 @enduml
 ```
 
@@ -5219,37 +5200,27 @@ skinparam actorStyle awesome
 skinparam backgroundColor transparent
 
 actor "Sistema" as Act
-participant "NotasPage" as UI <<Form>>
-participant "EvaluacionController" as Ctrl <<ctr>>
-participant "NotaFinal" as E_Nota <<BD>>
-participant "Postulante" as E_Post <<BD>>
+participant "Artisan_Console" as B_Console
+participant "CTR_Evaluacion" as C_Ctrl
+participant "CE_NotaFinal" as E_Nota
+participant "CE_Postulante" as E_Post
 
-Act -> UI : 1: EjecutarDeterminacionEstado()
-activate UI
-UI -> Ctrl : 2: evaluarEstados()
-activate Ctrl
-Ctrl -> E_Nota : 3: get()
+Act -> B_Console : 1: + ejecutarDeterminacionEstado()
+activate B_Console
+B_Console -> C_Ctrl : 2: + evaluarEstados()
+activate C_Ctrl
+C_Ctrl -> E_Nota : 3: + get()
 activate E_Nota
-E_Nota --> Ctrl : PromediosCalculados
+E_Nota --> C_Ctrl : 4: + PromediosCalculados
 deactivate E_Nota
-loop Para cada postulante con notas completas
-  Ctrl -> Ctrl : 5: ValidarUmbral(>=60 por cada materia)
-  alt Todas las materias >= 60
-    Ctrl -> E_Post : 6: update(estado="Aprobado")
-    activate E_Post
-    E_Post --> Ctrl : Confirmación
-    deactivate E_Post
-  else Alguna materia < 60
-    Ctrl -> E_Post : 6: update(estado="Reprobado")
-    activate E_Post
-    E_Post --> Ctrl : Confirmación
-    deactivate E_Post
-  end
-end
-Ctrl --> UI : 7: RetornarExito()
-deactivate Ctrl
-UI --> Act : 8: MostrarBadgesEstado()
-deactivate UI
+C_Ctrl -> C_Ctrl : 5: + ValidarUmbral(>=60)
+C_Ctrl -> E_Post : 6: + update(['estado' => estado])
+activate E_Post
+deactivate E_Post
+C_Ctrl --> B_Console : 7: + RetornarExito()
+deactivate C_Ctrl
+B_Console --> Act : 8: + MostrarResumenConsola()
+deactivate B_Console
 @enduml
 ```
 
@@ -5261,51 +5232,62 @@ skinparam actorStyle awesome
 skinparam backgroundColor transparent
 
 actor "Coordinador" as Act
-participant "AdmisionPage" as UI <<Form>>
-participant "AdmisionController" as Ctrl <<ctr>>
-participant "Postulante" as E_Post <<BD>>
-participant "CupoGestion" as E_Cupo <<BD>>
-participant "Carrera" as E_Carr <<BD>>
-participant "Admision" as E_Admi <<BD>>
-participant "BitacoraAcceso" as E_Bit <<BD>>
+participant "IU_Admision" as B_Admi
+participant "CTR_AsignacionCarrera" as C_Asig
+participant "CE_Postulante" as E_Post
+participant "CE_CupoGestion" as E_Cupo
+participant "CE_Admision" as E_Admi
+participant "CE_BitacoraAcceso" as E_Bit
 
-Act -> UI : 1: ProcesarAsignacionCarreras()
-activate UI
-UI -> Ctrl : 2: asignacionMasiva()
-activate Ctrl
-Ctrl -> E_Post : 3: getAprobados()
+Act -> B_Admi : 1: + ProcesarAsignacionCarreras()
+activate B_Admi
+B_Admi -> C_Asig : 2: + asignacionMasiva()
+activate C_Asig
+C_Asig -> E_Post : 3: + getAprobados()
 activate E_Post
-E_Post --> Ctrl : ListaAprobados
+E_Post --> C_Asig : 4: + ListaAprobados
 deactivate E_Post
+
 loop Para cada postulante aprobado
-  Ctrl -> E_Cupo : 5: where('carrera_id', id)
+  C_Asig -> E_Cupo : 5 [Loop]: + where('carrera_id', primera_opcion_id)
   activate E_Cupo
-  E_Cupo --> Ctrl : CupoDisponible
+  E_Cupo --> C_Asig : 6 [Loop]: + CupoDisponible1raOpcion
   deactivate E_Cupo
-  alt Cupo disponible > 0
-    Ctrl -> E_Admi : 7: create(datos)
+  
+  alt Cupo disponible en 1ra opción > 0
+    C_Asig -> E_Admi : 7a [Loop, Cupo1ra > 0]: + create(postulante, carrera_1ra, via='1ra Opcion')
     activate E_Admi
-    E_Admi --> Ctrl : Confirmación
     deactivate E_Admi
-    Ctrl -> E_Cupo : 8: decrement(cupos)
+    C_Asig -> E_Cupo : 8a [Loop, Cupo1ra > 0]: + decrement(cupos_disponibles)
     activate E_Cupo
-    E_Cupo --> Ctrl : Confirmación
     deactivate E_Cupo
-  else Cupos agotados en 1ra y 2da opción
-    Ctrl -> E_Post : 9: update(estado="Pendiente Reasignacion")
-    activate E_Post
-    E_Post --> Ctrl : Confirmación
-    deactivate E_Post
-    Ctrl -> E_Bit : 10: create(datos_alerta)
-    activate E_Bit
-    E_Bit --> Ctrl : Confirmación
-    deactivate E_Bit
+  else Sin cupo en 1ra opción
+    C_Asig -> E_Cupo : 7b [Loop, Cupo1ra = 0]: + where('carrera_id', segunda_opcion_id)
+    activate E_Cupo
+    E_Cupo --> C_Asig : 8b [Loop, Cupo1ra = 0]: + CupoDisponible2daOpcion
+    deactivate E_Cupo
+    alt Cupo disponible en 2da opción > 0
+      C_Asig -> E_Admi : 9b [Loop, Cupo2da > 0]: + create(postulante, carrera_2da, via='2da Opcion')
+      activate E_Admi
+      deactivate E_Admi
+      C_Asig -> E_Cupo : 10b [Loop, Cupo2da > 0]: + decrement(cupos_disponibles)
+      activate E_Cupo
+      deactivate E_Cupo
+    else Sin cupo en ambas opciones
+      C_Asig -> E_Post : 9c [Loop, Cupos Agotados]: + update(['estado' => 'Pendiente Reasignacion'])
+      activate E_Post
+      deactivate E_Post
+      C_Asig -> E_Bit : 10c [Loop, Cupos Agotados]: + create(log_alerta)
+      activate E_Bit
+      deactivate E_Bit
+    end
   end
 end
-Ctrl --> UI : 11: ConfirmarProcesamientoExito()
-deactivate Ctrl
-UI --> Act : 12: MostrarResultadosYAlertas()
-deactivate UI
+
+C_Asig --> B_Admi : 11: + ConfirmarProcesamientoExito()
+deactivate C_Asig
+B_Admi --> Act : 12: + MostrarResultadosYAlertas()
+deactivate B_Admi
 @enduml
 ```
 
@@ -5317,22 +5299,21 @@ skinparam actorStyle awesome
 skinparam backgroundColor transparent
 
 actor "Administrador" as Act
-participant "ConfiguracionPage" as UI <<Form>>
-participant "AdmisionController" as Ctrl <<ctr>>
-participant "CupoGestion" as E_Cupo <<BD>>
+participant "IU_Configuracion" as B_Int
+participant "CTR_Asignacion" as C_Ctrl
+participant "CE_CupoGestion" as E_Cupo
 
-Act -> UI : 1: EstablecerLimites(cuposPorCarrera)
-activate UI
-UI -> Ctrl : 2: store(request)
-activate Ctrl
-Ctrl -> E_Cupo : 3: updateOrCreate(datos)
+Act -> B_Int : 1: + EstablecerLimites(cuposPorCarrera)
+activate B_Int
+B_Int -> C_Ctrl : 2: + store(request)
+activate C_Ctrl
+C_Ctrl -> E_Cupo : 3: + updateOrCreate(datos)
 activate E_Cupo
-E_Cupo --> Ctrl : Confirmación
 deactivate E_Cupo
-Ctrl --> UI : 4: RetornarConfirmacion()
-deactivate Ctrl
-UI --> Act : 5: MostrarMensajeGuardado()
-deactivate UI
+C_Ctrl --> B_Int : 4: + RetornarConfirmacion()
+deactivate C_Ctrl
+B_Int --> Act : 5: + MostrarMensajeGuardado()
+deactivate B_Int
 @enduml
 ```
 
@@ -5344,28 +5325,28 @@ skinparam actorStyle awesome
 skinparam backgroundColor transparent
 
 actor "Coordinador" as Act
-participant "ReportesPage" as UI <<Form>>
-participant "ReporteController" as Ctrl <<ctr>>
-participant "Admision" as E_Admi <<BD>>
-participant "Postulante" as E_Post <<BD>>
+participant "IU_Reportes" as B_Int
+participant "CTR_Reportes" as C_Ctrl
+participant "CE_Admision" as E_Admi
+participant "CE_Postulante" as E_Post
 
-Act -> UI : 1: SeleccionarPlantillaReporte(tipo)
-activate UI
-UI -> Ctrl : 2: generarPDF(request)
-activate Ctrl
-Ctrl -> E_Admi : 3: get()
+Act -> B_Int : 1: + SeleccionarPlantillaReporte(tipo)
+activate B_Int
+B_Int -> C_Ctrl : 2: + generarPDF(request)
+activate C_Ctrl
+C_Ctrl -> E_Admi : 3: + get()
 activate E_Admi
-E_Admi --> Ctrl : DatosAdmision
+E_Admi --> C_Ctrl : 4: + DatosAdmision
 deactivate E_Admi
-Ctrl -> E_Post : 5: get()
+C_Ctrl -> E_Post : 5: + get()
 activate E_Post
-E_Post --> Ctrl : DatosPostulantes
+E_Post --> C_Ctrl : 6: + DatosPostulantes
 deactivate E_Post
-Ctrl -> Ctrl : 7: FormatearPDF()
-Ctrl --> UI : 8: RetornarDocumento()
-deactivate Ctrl
-UI --> Act : 9: MostrarPrevisualizacionPDF()
-deactivate UI
+C_Ctrl -> C_Ctrl : 7: + FormatearPDF()
+C_Ctrl --> B_Int : 8: + RetornarDocumento()
+deactivate C_Ctrl
+B_Int --> Act : 9: + MostrarPrevisualizacionPDF()
+deactivate B_Int
 @enduml
 ```
 
@@ -5377,22 +5358,22 @@ skinparam actorStyle awesome
 skinparam backgroundColor transparent
 
 actor "Coordinador" as Act
-participant "ReportesDinamicosPage" as UI <<Form>>
-participant "ReporteController" as Ctrl <<ctr>>
-participant "DataWarehouse" as E_Data <<BD>>
+participant "IU_ReportesDinamicos" as B_Int
+participant "CTR_Reportes" as C_Ctrl
+participant "CE_DataWarehouse" as E_Data
 
-Act -> UI : 1: ConfigurarFiltrosYCampos(parametros)
-activate UI
-UI -> Ctrl : 2: generarDinamico(request)
-activate Ctrl
-Ctrl -> E_Data : 3: ConsultarBaseDeDatosBI(parametros)
+Act -> B_Int : 1: + ConfigurarFiltrosYCampos(parametros)
+activate B_Int
+B_Int -> C_Ctrl : 2: + generarDinamico(request)
+activate C_Ctrl
+C_Ctrl -> E_Data : 3: + ConsultarBaseDeDatosBI(parametros)
 activate E_Data
-E_Data --> Ctrl : DatosBI
+E_Data --> C_Ctrl : 4: + DatosBI
 deactivate E_Data
-Ctrl --> UI : 5: RetornarTablaResultados()
-deactivate Ctrl
-UI --> Act : 6: RenderizarDataGrid()
-deactivate UI
+C_Ctrl --> B_Int : 5: + RetornarTablaResultados()
+deactivate C_Ctrl
+B_Int --> Act : 6: + RenderizarDataGrid()
+deactivate B_Int
 @enduml
 ```
 
@@ -5404,27 +5385,27 @@ skinparam actorStyle awesome
 skinparam backgroundColor transparent
 
 actor "Coordinador" as Act
-participant "ReportesVozPage" as UI <<Form>>
-participant "ReporteController" as Ctrl <<ctr>>
-boundary "ServicioCognitivoIA" as B_IA <<external>>
-participant "DataWarehouse" as E_Data <<BD>>
+participant "IU_Voz" as B_Int
+participant "CTR_ReportesIA" as C_Ctrl
+participant "API_ServicioCognitivoIA" as B_IA
+participant "CE_DataWarehouse" as E_Data
 
-Act -> UI : 1: EmitirComandoVoz(audio)
-activate UI
-UI -> Ctrl : 2: procesarVoz(request)
-activate Ctrl
-Ctrl -> B_IA : 3: TraducirIntencionASQL(audio)
+Act -> B_Int : 1: + EmitirComandoVoz(audio)
+activate B_Int
+B_Int -> C_Ctrl : 2: + procesarVoz(request)
+activate C_Ctrl
+C_Ctrl -> B_IA : 3: + TraducirIntencionASQL(audio)
 activate B_IA
-B_IA --> Ctrl : RetornarConsultaEstructurada()
+B_IA --> C_Ctrl : 4: + RetornarConsultaEstructurada()
 deactivate B_IA
-Ctrl -> E_Data : 5: EjecutarConsultaGenerada()
+C_Ctrl -> E_Data : 5: + EjecutarConsultaGenerada()
 activate E_Data
-E_Data --> Ctrl : ResultadosSQL
+E_Data --> C_Ctrl : 6: + ResultadosSQL
 deactivate E_Data
-Ctrl --> UI : 7: RetornarResultados()
-deactivate Ctrl
-UI --> Act : 8: MostrarResultadosVoz()
-deactivate UI
+C_Ctrl --> B_Int : 7: + RetornarResultados()
+deactivate C_Ctrl
+B_Int --> Act : 8: + MostrarResultadosVoz()
+deactivate B_Int
 @enduml
 ```
 
@@ -5436,35 +5417,35 @@ skinparam actorStyle awesome
 skinparam backgroundColor transparent
 
 actor "Coordinador" as Act
-participant "DashboardPage" as UI <<Form>>
-participant "ReporteController" as Ctrl <<ctr>>
-participant "Postulante" as E_Post <<BD>>
-participant "NotaFinal" as E_Nota <<BD>>
-participant "CupoGestion" as E_Cupo <<BD>>
+participant "IU_Dashboard" as B_Dash
+participant "CTR_Reportes" as C_Rep
+participant "CE_Postulante" as E_Post
+participant "CE_NotaFinal" as E_Nota
+participant "CE_CupoGestion" as E_Cupo
 
-Act -> UI : 1: AbrirDashboard()
-activate UI
-UI -> Ctrl : 2: getEstadisticas()
-activate Ctrl
-Ctrl -> E_Post : 3: get()
+Act -> B_Dash : 1: + AbrirDashboard()
+activate B_Dash
+B_Dash -> C_Rep : 2: + getEstadisticas()
+activate C_Rep
+C_Rep -> E_Post : 3: + get()
 activate E_Post
-E_Post --> Ctrl : DistribucionInscritos
+E_Post --> C_Rep : 4: + DistribucionInscritos
 deactivate E_Post
-Ctrl -> E_Nota : 5: get()
+C_Rep -> E_Nota : 5: + get()
 activate E_Nota
-E_Nota --> Ctrl : RendimientoYTasas
+E_Nota --> C_Rep : 6: + RendimientoYTasas
 deactivate E_Nota
-Ctrl -> E_Cupo : 7: get()
+C_Rep -> E_Cupo : 7: + get()
 activate E_Cupo
-E_Cupo --> Ctrl : LlenadoCupos
+E_Cupo --> C_Rep : 8: + LlenadoCupos
 deactivate E_Cupo
-Ctrl --> UI : 9: EnviarDatosEstadisticos()
-deactivate Ctrl
-UI --> Act : 10: RenderizarGraficosYTarjetasKPI()
-activate UI
-... Suscripción WebSocket ...
-Ctrl -> UI : 11: TransmitirActualizacionesWebSocket(evento)
-deactivate UI
+C_Rep --> B_Dash : 9: + EnviarDatosEstadisticos()
+B_Dash --> Act : 10: + RenderizarGraficosYTarjetasKPI()
+deactivate B_Dash
+C_Rep -> B_Dash : 11: + TransmitirActualizacionesWebSocket(evento)
+activate B_Dash
+deactivate B_Dash
+deactivate C_Rep
 @enduml
 ```
 
@@ -6098,7 +6079,8 @@ INSERT INTO gestiones (codigo, activa, fecha_inicio, fecha_fin) VALUES
 INSERT INTO carreras (nombre, codigo) VALUES
 ('Ingeniería Informática', '187-3'),
 ('Ingeniería de Sistemas', '187-4'),
-('Ingeniería en Redes y Telecomunicaciones', '187-5');
+('Ingeniería en Redes y Telecomunicaciones', '187-5'),
+('Ingeniería en Robótica', '187-6');
 
 -- 5. Tabla de Cupos por Gestión y Carrera
 INSERT INTO cupos_gestion (gestion_id, carrera_id, cupo_maximo, cupos_disponibles) VALUES
@@ -6173,7 +6155,7 @@ INSERT INTO examenes (postulante_id, materia_id, numero_examen, nota) VALUES
 (1, 4, 1, 80.00), (1, 4, 2, 85.00), (1, 4, 3, 90.00),
 -- Postulante 2 (Pedro) - Reprobado en Física
 (2, 1, 1, 60.00), (2, 1, 2, 65.00), (2, 1, 3, 70.00),
-(2, 2, 1, 40.00), (2, 2, 2, 50.00), (2, 2, 3, 55.00), -- Reprobó Física
+(2, 2, 1, 40.00), (2, 2, 2, 50.00), (2, 2, 3, 55.00), -- Reprobó Matemáticas
 (2, 3, 1, 75.00), (2, 3, 2, 80.00), (2, 3, 3, 85.00),
 (2, 4, 1, 70.00), (2, 4, 2, 75.00), (2, 4, 3, 80.00),
 -- Postulante 3 (Sofia) - Aprobada
@@ -6392,7 +6374,7 @@ SELECT a.nombre AS aula, a.capacidad, (a.capacidad - COUNT(ag.postulante_id)) AS
 FROM aulas a
 JOIN grupos g ON g.aula_id = a.id
 LEFT JOIN asignaciones_grupo ag ON ag.grupo_id = g.id
-WHERE g.turno = 'Mañana'
+WHERE g.turno = 'Manana'
 GROUP BY a.id, a.nombre, a.capacidad
 HAVING COUNT(ag.postulante_id) < a.capacidad;
 ```
@@ -6603,7 +6585,7 @@ Para la construcción física del Sistema Web del CUP de la FICCT, se selecciona
 *   **Framework Backend (Enforzador del Patrón BCE):** *Laravel 11* actuando como la infraestructura del subsistema backend. Es el encargado de implementar físicamente el enrutamiento seguro de peticiones, inyección de dependencias para los controladores de control (`Control`), mediación de la lógica del negocio mediante servicios dedicados, mapeo relacional de objetos de persistencia a través de Eloquent ORM (`Entidad`), y el cumplimiento automático de la transaccionalidad ACID.
 *   **Framework Frontend (Capa de Presentación Reactiva):** *React 19* como biblioteca de renderizado declarativo para construir la Single Page Application (SPA), en conjunto con *Tailwind CSS* para una visualización premium y pulida del estudiante. Desde la perspectiva de PUDS, React gobierna las clases de frontera (`Frontera` o `Boundary`), transformándolas en componentes web encapsulados y reutilizables basados en estados reactivos.
 *   **Herramienta de Compilación y Ensamblado de Artefactos (Build System):** *Vite* configurado como el empaquetador ultrarrápido de última generación. En el flujo de trabajo de implementación de PUDS, realiza la transpilación de JSX a JS estándar, minificación de código, fragmentación de paquetes (code splitting) y carga en caliente en desarrollo (HMR), maximizando la eficiencia de carga de la interfaz de usuario.
-*   **Puente Arquitectónico de Comunicación:** *Inertia.js* actuando como el adaptador físico que unifica las capas de presentación y control de forma directa. Elimina la sobrecarga de mantener un sistema API REST complejo, permitiendo a los controladores Laravel inyectar estados y props directamente a las interfaces React sin recargas físicas del navegador, lo que aumenta la cohesión del diseño arquitectónico.
+*   **Comunicación HTTP Frontend-Backend:** *Axios* como cliente HTTP basado en promesas para el consumo de los endpoints REST de Laravel desde React. Proporciona interceptores de autenticación (inyección automática del token Sanctum), manejo centralizado de errores, y cancelación de peticiones. *React Router* gestiona la navegación del lado del cliente como SPA sin recargas de página, mapeando las rutas del frontend a los componentes React correspondientes.
 *   **Gestor de Persistencia y Base de Datos:** *PostgreSQL 18* local en conjunto con *Supabase* como instancia en la nube de alta disponibilidad. Este motor de base de datos relacional robusto almacena físicamente el modelo relacional mapeado a partir del diagrama de clases de entidad de diseño. Garantiza la persistencia e integridad referencial por medio de constraints estrictas y almacenamiento indexado de alto rendimiento.
 *   **Herramientas de Control de Configuración y Control de Versiones (PUDS SCM):** *Git v2.45* integrado con *GitHub* como el sistema oficial para la Gestión de Configuración de Software. En PUDS, facilita el control riguroso de versiones, la trazabilidad de cada cambio en los artefactos físicos (código) respecto a los requerimientos, la definición de ramas de características (feature branching) y el establecimiento de líneas base (baselines) de versión estable correspondientes a cada fin de ciclo de iteración.
 *   **Entorno de Pruebas y Aseguramiento de la Calidad (PUDS QA Testing):** *PHPUnit 11* integrado en Laravel para la validación automática de las pruebas unitarias y de integración de la lógica de negocio académica (StripeService, AcademicoService, GruposService y AdmisionService), junto con *Vitest* para la validación de comportamiento de la interfaz React. Esto asegura que la calidad y estabilidad del software se verifiquen continuamente en cada iteración del ciclo de desarrollo antes del despliegue en producción.
@@ -6627,33 +6609,36 @@ skinparam roundCorner 8
 skinparam packageStyle rectangle
 
 package "React Frontend SPA (Capa de Presentación)" {
-  component "AppLayout.jsx" as LAY
-  component "Welcome.jsx" as COMP_Welc
-  component "Formulario.jsx" as COMP_Insc
-  component "Calificar.jsx" as COMP_Nota
-  component "CargaMasiva.jsx" as COMP_CSV
-  component "Dashboard.jsx" as COMP_Dash
+  component "App.jsx" as LAY
+  component "LoginPage.jsx" as COMP_Login
+  component "PreinscripcionPage.jsx" as COMP_Preinsc
+  component "InscripcionPage.jsx" as COMP_Insc
+  component "SimulacroPage.jsx" as COMP_Simu
+  component "DashboardPage.jsx" as COMP_Dash
+  component "UsersPage.jsx" as COMP_Users
+  component "GruposPage.jsx" as COMP_Grup
+  component "DocentesPage.jsx" as COMP_Doc
+  component "BusquedaPostulantesPage.jsx" as COMP_Busq
 }
 
-package "Inertia Bridge" {
-  interface "Inertia.js Protocol" as INER
+package "API REST (Axios / JSON)" {
+  interface "Endpoints routes/api.php" as API
 }
 
 package "Laravel Backend Controller (Capa de Control)" {
-  component "WebRoutes (web.php)" as ROUT
-  component "LoginController.php" as C_Auth
-  component "InscripcionController.php" as C_Insc
-  component "AcademicoController.php" as C_Acad
-  component "GruposController.php" as C_Grup
-  component "AdmisionController.php" as C_Admi
+  component "ApiRoutes (api.php)" as ROUT
+  component "AuthController.php" as C_Auth
+  component "PostulanteController.php" as C_Post
+  component "PagoController.php" as C_Pago
+  component "GrupoController.php" as C_Grup
+  component "DocenteController.php" as C_Doc
+  component "UserController.php" as C_User
+  component "SimulacroController.php" as C_Simu
 }
 
 package "Laravel Business Services (Capa de Servicios)" {
-  component "StripeService.php" as S_Stripe
-  component "AcademicoService.php" as S_Acad
-  component "GruposService.php" as S_Grup
-  component "AdmisionService.php" as S_Admi
-  component "ReporteIAValidator.php" as S_IA
+  component "PlanificacionService.php" as S_Plan
+  component "VerificacionExternaService.php" as S_Verif
 }
 
 package "Eloquent ORM (Capa de Acceso a Datos)" {
@@ -6679,54 +6664,63 @@ package "Eloquent ORM (Capa de Acceso a Datos)" {
 
 database "PostgreSQL 18 (Persistencia)" as DB
 
-' Relaciones de Presentación
+' Relaciones de Presentación (React → API REST)
+LAY ..> COMP_Login
+LAY ..> COMP_Preinsc
 LAY ..> COMP_Insc
-LAY ..> COMP_Nota
-LAY ..> COMP_CSV
+LAY ..> COMP_Simu
 LAY ..> COMP_Dash
+LAY ..> COMP_Users
+LAY ..> COMP_Grup
+LAY ..> COMP_Doc
+LAY ..> COMP_Busq
 
-COMP_Welc --> INER
-COMP_Insc --> INER
-COMP_Nota --> INER
-COMP_CSV --> INER
-COMP_Dash --> INER
+COMP_Login --> API
+COMP_Preinsc --> API
+COMP_Insc --> API
+COMP_Simu --> API
+COMP_Dash --> API
+COMP_Users --> API
+COMP_Grup --> API
+COMP_Doc --> API
+COMP_Busq --> API
 
-' Relaciones con Capa Control
-INER ..> ROUT
+' Relaciones con Capa Control (API → Rutas → Controllers)
+API ..> ROUT
 ROUT --> C_Auth
-ROUT --> C_Insc
-ROUT --> C_Acad
+ROUT --> C_Post
+ROUT --> C_Pago
 ROUT --> C_Grup
-ROUT --> C_Admi
+ROUT --> C_Doc
+ROUT --> C_User
+ROUT --> C_Simu
 
 ' Control a Servicios
-C_Insc ..> S_Stripe
-C_Acad ..> S_Acad
-C_Grup ..> S_Grup
-C_Admi ..> S_Admi
-C_Admi ..> S_IA
+C_Grup ..> S_Plan
+C_Post ..> S_Verif
 
 ' Relación de Persistencia (Controladores y Servicios a Modelos)
 C_Auth ..> M_User
 C_Auth ..> M_Bita
-C_Insc ..> M_Post
-C_Insc ..> M_Req
-S_Stripe ..> M_Pago
-S_Acad ..> M_Exam
-S_Acad ..> M_Nota
-S_Acad ..> M_Mate
-S_Grup ..> M_Grup
-S_Grup ..> M_Gest
-S_Grup ..> M_Aula
-S_Grup ..> M_AsigG
-S_Admi ..> M_Post
-S_Admi ..> M_Admi
-S_Admi ..> M_Carr
-S_Admi ..> M_Cupo
-S_Admi ..> M_Simu
-C_Grup ..> M_Doc
-C_Grup ..> M_AsigD
-C_Grup ..> M_Mate
+C_Post ..> M_Post
+C_Post ..> M_Req
+C_Pago ..> M_Pago
+C_Pago ..> M_Post
+C_Grup ..> M_Grup
+C_Grup ..> M_AsigG
+C_Doc ..> M_Doc
+C_Doc ..> M_AsigD
+C_Doc ..> M_Mate
+C_User ..> M_User
+C_User ..> M_Bita
+C_Simu ..> M_Simu
+S_Plan ..> M_Grup
+S_Plan ..> M_Gest
+S_Plan ..> M_Aula
+S_Plan ..> M_AsigG
+S_Plan ..> M_Post
+S_Verif ..> M_Req
+S_Verif ..> M_Post
 
 ' SQL Queries de Modelos a Base de Datos
 M_User --> DB : SQL Queries
@@ -6751,10 +6745,10 @@ M_Admi --> DB : SQL Queries
 ```
 
 ### Descripción dinámica de la arquitectura global:
-*   **React Frontend SPA:** Aloja los componentes web dinámicos. Interactúan mediante la interfaz de Inertia.js para enviar y recibir datos en formato JSON de manera síncrona.
-*   **Inertia Bridge:** Actúa como el túnel middleware. Resuelve las peticiones enviando las llamadas al enrutador principal de Laravel y cargando de vuelta los componentes React sin recargas completas del navegador.
+*   **React Frontend SPA:** Aloja los componentes web dinámicos (páginas React). Se comunican con el backend a través de peticiones HTTP/JSON vía Axios, consumiendo los endpoints RESTful definidos en `routes/api.php`.
+*   **API REST (Axios / JSON):** Capa de comunicación HTTP que conecta el frontend React con el backend Laravel. Las peticiones llevan un token Sanctum para autenticación y los datos viajan en formato JSON.
 *   **Laravel Backend Controller:** Es el despachador de negocio. Recibe las llamadas físicas y delega la ejecución de algoritmos pesados o transaccionales a la Capa de Servicios.
-*   **Laravel Business Services:** Contiene los algoritmos críticos académicos y transacciones financieras (Stripe, SEGIP, distribución equitativa y cálculo meritocrático).
+*   **Laravel Business Services:** Contiene los algoritmos críticos académicos y transacciones (PlanificacionService para distribución equitativa de grupos, VerificacionExternaService para validación SEGIP/SEDUCA).
 *   **Eloquent ORM:** Modela en clases orientadas a objetos las 21 tablas relacionales del sistema, gobernando de manera segura las propiedades ACID antes de impactar el motor.
 *   **PostgreSQL 18:** Motor físico que persiste los datos estructurados aplicando restricciones de llaves foráneas y checks relacionales rápidos.
 
@@ -6762,59 +6756,69 @@ M_Admi --> DB : SQL Queries
 
 ## 7.3 Implementación de la Arquitectura de Subsistemas
 
-### Estructura de Directorios Física del Proyecto (Laravel + React + Inertia)
+### Estructura de Directorios Física del Proyecto (Laravel API REST + React SPA)
 
-Para comprender la distribución y empaquetamiento del software en archivos del sistema de archivos real (`cup-system`), se muestra el árbol de directorios físico a continuación:
+Para comprender la distribución y empaquetamiento del software en archivos del sistema de archivos real, se muestra el árbol de directorios físico a continuación:
 
 ```
-cup-system/
-├── app/
-│   ├── Http/
-│   │   ├── Controllers/
-│   │   │   ├── Auth/
-│   │   │   │   └── LoginController.php          ← Login, logout y bitácora física
-│   │   │   ├── InscripcionController.php       ← Preinscripción, checklist y Stripe
-│   │   │   ├── AcademicoController.php         ← Carga de notas manual y masiva CSV
-│   │   │   ├── GruposController.php            ← Invocación de distribución de grupos
-│   │   │   └── AdmisionController.php          ← Algoritmo de asignación de carreras
-│   │   └── Middleware/
-│   │       └── VerifyRole.php                  ← Interceptador y validador de roles RBAC
-│   ├── Models/
-│   │   ├── User.php                            ← Mapeo físico de tabla users
-│   │   ├── Postulante.php                      ← Lógica de estados y datos del estudiante
-│   │   ├── Examen.php                          ← Mapeo físico de notas de 3 exámenes
-│   │   ├── Grupo.php                           ← Mapeo físico de grupos de aula
-│   │   ├── Pago.php                            ← Mapeo físico de transacciones Stripe
-│   │   ├── NotaFinal.php                       ← Mapeo físico de promedios ponderados
-│   │   └── PreguntaSimulacro.php               ← Banco de preguntas del simulacro
-│   └── Services/
-│       ├── StripeService.php                   ← Integración de Checkout y Webhooks Stripe
-│       ├── AcademicoService.php                ← Algoritmo de cálculo promedio (>=60 en c/u)
-│       ├── GruposService.php                   ← Algoritmo de grupos equitativos (CEIL(Total/70))
-│       ├── AdmisionService.php                 ← Algoritmo meritocrático de cupos por carrera
-│       └── ReporteIAValidator.php              ← Procesamiento NLP de comandos de voz IA
-├── database/
-│   ├── migrations/                             ← Creación física de las 21 tablas en PostgreSQL
-│   └── seeders/
-│       └── DatabaseSeeder.php                  ← Carga masiva automatizada de prueba
-├── resources/
-│   └── js/
-│       ├── Components/                         ← Componentes UI reutilizables React
-│       ├── Layouts/
-│       │   └── AppLayout.jsx                   ← Barra lateral con enlaces y notificaciones
-│       ├── Pages/
-│       │   ├── Welcome.jsx                     ← Página de simulacro y chatbot IA
-│       │   ├── Inscripcion/
-│       │   │   └── Formulario.jsx              ← Formulario React de registro
-│       │   ├── Academico/
-│       │   │   ├── Calificar.jsx               ← Grilla editable reactiva para notas
-│       │   │   └── CargaMasiva.jsx             ← Formulario de subida de CSV
-│       │   └── Dashboard.jsx                   ← Gráficos Chart.js KPIs
-│       └── app.jsx                             ← Bootstrap de la app frontend React
-├── routes/
-│   ├── api.php                                 ← Webhook Stripe (exento de CSRF)
-│   └── web.php                                 ← Rutas de administración protegidas por VerifyRole
-└── .env.example                                ← Configuración de entorno local
+2do_Parcial_SI_intento/
+├── backend/                                       ← Laravel 11 API REST
+│   ├── app/
+│   │   ├── Http/
+│   │   │   └── Controllers/
+│   │   │       ├── AuthController.php             ← Login, logout, registro y bitácora
+│   │   │       ├── UserController.php             ← CRUD de usuarios y gestión de roles
+│   │   │       ├── PostulanteController.php       ← Preinscripción, inscripción y búsqueda
+│   │   │       ├── PagoController.php             ← Integración Stripe (sesión + webhook)
+│   │   │       ├── GrupoController.php            ← Gestión de grupos y asignaciones
+│   │   │       ├── DocenteController.php          ← CRUD de docentes y asignación
+│   │   │       └── SimulacroController.php        ← Generación y calificación de simulacro
+│   │   ├── Models/                                ← 20 modelos Eloquent ORM
+│   │   │   ├── User.php                          ← Mapeo físico de tabla users
+│   │   │   ├── Postulante.php                    ← Lógica de estados y datos del estudiante
+│   │   │   ├── Examen.php                        ← Mapeo físico de notas (3 exámenes)
+│   │   │   ├── Grupo.php                         ← Mapeo físico de grupos de aula
+│   │   │   ├── Pago.php                          ← Mapeo físico de transacciones Stripe
+│   │   │   ├── NotaFinal.php                     ← Mapeo físico de promedios ponderados
+│   │   │   ├── PreguntaSimulacro.php             ← Banco de preguntas del simulacro
+│   │   │   ├── AuditoriaNota.php                 ← Registro de cambios en notas
+│   │   │   ├── Docente.php, Materia.php, Carrera.php, Aula.php ...
+│   │   │   └── (y demás modelos de las 20 tablas)
+│   │   ├── Providers/
+│   │   └── Services/
+│   │       ├── PlanificacionService.php       ← Algoritmo de grupos equitativos (CEIL(N/70))
+│   │       └── VerificacionExternaService.php  ← Integración SEGIP/SEDUCA (mock clients)
+│   ├── database/
+│   │   ├── migrations/                        ← Creación física de las 21 tablas en PostgreSQL
+│   │   └── seeders/
+│   │       └── DatabaseSeeder.php             ← Carga masiva automatizada de prueba
+│   ├── routes/
+│   │   ├── api.php                            ← Endpoints REST principales + webhook Stripe
+│   │   ├── web.php                            ← Rutas web básicas
+│   │   └── console.php                        ← Comandos Artisan personalizados
+│   └── .env.example                           ← Configuración de entorno local
+├── frontend/                                      ← React 19 SPA (Vite)
+│   └── src/
+│       ├── App.jsx                            ← Componente raíz con React Router
+│       ├── main.jsx                           ← Punto de entrada de la SPA
+│       ├── api/                               ← Configuración Axios e interceptores
+│       ├── context/                           ← Context API (AuthContext, etc.)
+│       ├── components/                        ← Componentes UI reutilizables React
+│       ├── pages/
+│       │   ├── LoginPage.jsx                  ← Formulario de autenticación
+│       │   ├── ForgotPasswordPage.jsx         ← Recuperación de contraseña
+│       │   ├── DashboardPage.jsx              ← Gráficos KPIs del coordinador
+│       │   ├── postulante/
+│       │   │   ├── PreinscripcionPage.jsx     ← Formulario de preinscripción
+│       │   │   ├── InscripcionPage.jsx        ← Pago y confirmación Stripe
+│       │   │   └── SimulacroPage.jsx          ← Simulacro de examen con temporizador
+│       │   └── admin/
+│       │       ├── UsersPage.jsx              ← Gestión CRUD de usuarios (RBAC)
+│       │       ├── BusquedaPostulantesPage.jsx ← Búsqueda y filtros de postulantes
+│       │       ├── GruposPage.jsx             ← Visualización y gestión de grupos
+│       │       └── DocentesPage.jsx           ← Asignación de docentes
+│       └── assets/                            ← Imágenes y recursos estáticos
+└── documentacion/                                 ← Documentación técnica
 ```
 
 ---
@@ -6833,19 +6837,18 @@ skinparam componentStyle uml2
 skinparam roundCorner 8
 
 package "React Frontend (UI)" {
-  component "Welcome.jsx" as UI_Welcome
-}
-
-package "Laravel Middleware (Security)" {
-  component "VerifyRole.php" as MID_Role
+  component "LoginPage.jsx" as UI_Login
+  component "ForgotPasswordPage.jsx" as UI_Forgot
 }
 
 package "Laravel Controllers" {
-  component "LoginController.php" as C_Login
+  component "AuthController.php" as C_Auth
+  component "UserController.php" as C_User
 }
 
 package "Eloquent ORM (Data)" {
   component "User.php" as M_User
+  component "BitacoraAcceso.php" as M_Bita
 }
 
 database "PostgreSQL 18" {
@@ -6854,11 +6857,13 @@ database "PostgreSQL 18" {
 }
 
 ' Flujo de dependencias
-UI_Welcome ..> MID_Role : Petición de acceso
-MID_Role ..> C_Login : Redirección / Filtrado
-C_Login ..> M_User : Consulta de credenciales
+UI_Login ..> C_Auth : POST /api/login (Axios)
+UI_Forgot ..> C_Auth : POST /api/forgot-password
+C_Auth ..> M_User : Consulta de credenciales
+C_User ..> M_User : CRUD usuarios
 M_User --> T_Users : SELECT / UPDATE
-C_Login --> T_Bitacora : INSERT (Registrar Auditoría)
+C_Auth --> M_Bita : INSERT (Registrar Auditoría)
+M_Bita --> T_Bitacora : INSERT
 @enduml
 ```
 
@@ -6872,19 +6877,22 @@ skinparam componentStyle uml2
 skinparam roundCorner 8
 
 package "React Frontend" {
-  component "Formulario.jsx" as UI_Form
+  component "PreinscripcionPage.jsx" as UI_Preinsc
+  component "InscripcionPage.jsx" as UI_Insc
 }
 
 package "Laravel Controllers" {
-  component "InscripcionController.php" as C_Insc
+  component "PostulanteController.php" as C_Post
+  component "PagoController.php" as C_Pago
 }
 
 package "Laravel Services" {
-  component "StripeService.php" as S_Stripe
+  component "VerificacionExternaService.php" as S_Verif
 }
 
 package "Eloquent Models" {
   component "Postulante.php" as M_Post
+  component "RequisitoDocumental.php" as M_Req
   component "Pago.php" as M_Pago
 }
 
@@ -6899,16 +6907,18 @@ interface "API SEGIP" as API_Segip
 interface "API SEDUCA" as API_Seduca
 
 ' Flujo de interacciones físicas
-UI_Form ..> C_Insc : Enviar datos preinscripción
-C_Insc ..> API_Segip : Validar CI
-C_Insc ..> API_Seduca : Validar Título Bachiller
-C_Insc ..> S_Stripe : Crear sesión de pago
-S_Stripe ..> API_Stripe : HTTPS Request
-C_Insc ..> M_Post : Guardar datos y requisitos
-C_Insc ..> M_Pago : Guardar transacción exitosa
+UI_Preinsc ..> C_Post : Enviar datos preinscripción (Axios)
+C_Post ..> S_Verif : Validar requisitos
+S_Verif ..> API_Segip : Validar CI
+S_Verif ..> API_Seduca : Validar Título Bachiller
+UI_Insc ..> C_Pago : Solicitar pago
+C_Pago ..> API_Stripe : Crear sesión Stripe
+C_Post ..> M_Post : Guardar datos postulante
+C_Post ..> M_Req : Guardar requisitos
+C_Pago ..> M_Pago : Guardar transacción exitosa
 
 M_Post --> T_Postulantes
-M_Post --> T_Requisitos
+M_Req --> T_Requisitos
 M_Pago --> T_Pagos
 @enduml
 ```
@@ -6923,39 +6933,50 @@ skinparam componentStyle uml2
 skinparam roundCorner 8
 
 package "React Frontend" {
-  component "Calificar.jsx" as UI_Grid
+  component "GruposPage.jsx" as UI_Grup
+  component "DocentesPage.jsx" as UI_Doc
 }
 
 package "Laravel Controllers" {
-  component "GruposController.php" as C_Grup
+  component "GrupoController.php" as C_Grup
+  component "DocenteController.php" as C_Doc
 }
 
 package "Laravel Services" {
-  component "GruposService.php" as S_Grup
+  component "PlanificacionService.php" as S_Plan
 }
 
 package "Eloquent Models" {
   component "Grupo.php" as M_Grup
+  component "AsignacionGrupo.php" as M_AsigG
+  component "Docente.php" as M_Doc
+  component "AsignacionDocente.php" as M_AsigD
 }
 
 database "PostgreSQL 18" {
   [aulas] as T_Aulas
   [grupos] as T_Grupos
   [asignaciones_grupo] as T_AsigGrupo
+  [asignaciones_docente] as T_AsigDoc
 }
 
 ' Dependencias de archivos
-UI_Grid ..> C_Grup : Iniciar distribución masiva
-C_Grup ..> S_Grup : Ejecutar asignación
-S_Grup ..> M_Grup : Crear grupo
-S_Grup --> T_Aulas : SELECT (Aulas libres)
+UI_Grup ..> C_Grup : Iniciar distribución masiva (Axios)
+UI_Doc ..> C_Doc : Asignar docente
+C_Grup ..> S_Plan : Ejecutar asignación
+S_Plan ..> M_Grup : Crear grupo
+S_Plan ..> M_AsigG : Mapeo Alumno-Grupo
+C_Doc ..> M_Doc : CRUD Docentes
+C_Doc ..> M_AsigD : Crear asignación docente
 M_Grup --> T_Grupos : INSERT
-S_Grup --> T_AsigGrupo : INSERT (Mapeo Alumno-Grupo)
+M_AsigG --> T_AsigGrupo : INSERT
+M_AsigD --> T_AsigDoc : INSERT
+S_Plan --> T_Aulas : SELECT (Aulas libres)
 @enduml
 ```
 
-#### 4. Subsistema de Evaluación Académica y Reportes Inteligencia AI (`Paquete_Evaluacion` y `Paquete_Reportes_IA`)
-Este subsistema orquesta la subida de exámenes, la calificación estricta del CUP (ponderado y >=60 por materia), las pruebas del Simulacro, y el servicio de procesamiento de reportes por voz gobernados por Inteligencia Artificial:
+#### 4. Subsistema de Evaluación Académica, Simulacro y Reportes con Inteligencia Artificial (`Paquete_Evaluacion` y `Paquete_Reportes_IA`)
+Este subsistema orquesta la subida de exámenes, la calificación estricta del CUP (ponderado y >=60 por materia), las pruebas del Simulacro (implementado), y el servicio de procesamiento de reportes por voz gobernados por Inteligencia Artificial (diseñado para Ciclo 2):
 
 ```plantuml
 @startuml ComponentesEvaluacionReportesIA
@@ -6964,54 +6985,48 @@ skinparam componentStyle uml2
 skinparam roundCorner 8
 
 package "React SPA Frontend" {
-  component "CargaMasiva.jsx" as UI_CSV
-  component "Welcome.jsx" as UI_Welcome
-  component "Dashboard.jsx" as UI_Dash
+  component "SimulacroPage.jsx" as UI_Simu
+  component "DashboardPage.jsx" as UI_Dash
 }
 
 package "Laravel Controllers" {
-  component "AcademicoController.php" as C_Acad
-  component "AdmisionController.php" as C_Admi
-}
-
-package "Laravel Services" {
-  component "AcademicoService.php" as S_Acad
-  component "ReporteIAValidator.php" as S_IA
+  component "SimulacroController.php" as C_Simu
+  component "[Diseñado Ciclo 2] EvaluacionController.php" as C_Eval
 }
 
 package "Eloquent Models" {
   component "Examen.php" as M_Exam
   component "NotaFinal.php" as M_Nota
   component "PreguntaSimulacro.php" as M_Simu
+  component "AuditoriaNota.php" as M_Audit
 }
 
 database "PostgreSQL 18" {
   [examenes] as T_Examenes
   [notas_finales] as T_NotasFinales
   [preguntas_simulacro] as T_Simulacro
-  [admisiones] as T_Admisiones
+  [auditoria_notas] as T_Auditoria
 }
 
 interface "OpenAI Whisper / GPT API" as API_AI
 
 ' Flujo físico de datos de evaluación e IA
-UI_CSV ..> C_Acad : Cargar CSV de notas
-UI_Welcome ..> S_IA : Enviar audio de voz
-S_IA ..> API_AI : Procesar comando NLP
-C_Acad ..> S_Acad : Ejecutar promedio ponderado y estado
-S_Acad ..> M_Exam : Registrar notas exámenes
-S_Acad ..> M_Nota : Registrar promedio materia
-C_Admi ..> M_Simu : Obtener banco de preguntas
-UI_Dash ..> T_Admisiones : SELECT reportes
+UI_Simu ..> C_Simu : Iniciar simulacro (Axios)
+C_Simu ..> M_Simu : Obtener banco de preguntas
+C_Eval ..> M_Exam : Registrar notas exámenes
+C_Eval ..> M_Nota : Registrar promedio materia
+C_Eval ..> M_Audit : Registrar auditoría de notas
+UI_Dash ..> C_Eval : Obtener estadísticas
 
 M_Exam --> T_Examenes
 M_Nota --> T_NotasFinales
 M_Simu --> T_Simulacro
+M_Audit --> T_Auditoria
 @enduml
 ```
 
-#### 5. Subsistema de Admisión de Carreras (`Paquete_Admision_Carreras`)
-Este subsistema gobierna el procesamiento y ejecución del algoritmo meritocrático de asignación de vacantes y la configuración de cupos de ingreso por carrera:
+#### 5. Subsistema de Admisión de Carreras (`Paquete_Admision_Carreras`) — Diseñado para Ciclo 2
+Este subsistema gobierna el procesamiento y ejecución del algoritmo meritocrático de asignación de vacantes y la configuración de cupos de ingreso por carrera. Sus controladores y servicios están **diseñados y documentados** en este documento como guía para la implementación en la siguiente iteración:
 
 ```plantuml
 @startuml ComponentesAdmisionCarreras
@@ -7155,9 +7170,9 @@ A continuación se documenta cómo cada abstracción del ciclo de desarrollo se 
 
 | Caso de Uso (CU)                            | Clase de Análisis (BCE)                                            | Controlador en Diseño (Secuencia) | Archivo Físico (Componente / Código)               | Justificación de la Trazabilidad                                                                                                                                                                                                     |
 | :------------------------------------------ | :----------------------------------------------------------------- | :-------------------------------- | :------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **CU13, CU14, CU15, CU16** (Calificaciones) | `ControladorEvaluacion` (Control)                                  | `EvaluacionController`            | `AcademicoController.php`                          | Se consolidó la lógica de carga manual, masiva CSV, promedios ponderados y validación individual en un único controlador físico (`AcademicoController.php`) para maximizar la cohesión del módulo académico.                         |
-| **CU17, CU18** (Admisión)                   | `ControladorAsignacionCarrera` / `ControladorAsignacion` (Control) | `AdmisionController`              | `AdmisionController.php`                           | El algoritmo meritocrático de plazas y la configuración de cupos se mapean directamente en `AdmisionController.php` y su servicio de negocio `AdmisionService.php`.                                                                  |
-| **CU19, CU20, CU21, CU22** (Reportes e IA)  | `ControladorReportes` (Control)                                    | `ReporteController`               | `ReporteController.php` / `AdmisionController.php` | Los reportes dinámicos, de voz (NLP) y de llenado de cupos son administrados por el controlador lógico de reportes. Físicamente se implementan en `ReporteController.php` utilizando el servicio cognitivo `ReporteIAValidator.php`. |
+| **CU13, CU14, CU15, CU16** (Calificaciones) | `ControladorEvaluacion` (Control)                                  | `EvaluacionController`            | `[Diseñado Ciclo 2] EvaluacionController.php`      | Se consolida la lógica de carga manual, masiva CSV, promedios ponderados y validación individual en un único controlador físico diseñado para maximizar la cohesión del módulo académico. Pendiente de implementación.                |
+| **CU17, CU18** (Admisión)                   | `ControladorAsignacionCarrera` / `ControladorAsignacion` (Control) | `AdmisionController`              | `[Diseñado Ciclo 2] AdmisionController.php`         | El algoritmo meritocrático de plazas y la configuración de cupos se mapean en el controlador diseñado `AdmisionController.php` y su servicio de negocio `AdmisionService.php`, documentados para su codificación subsiguiente. |
+| **CU19, CU20, CU21, CU22** (Reportes e IA)  | `ControladorReportes` (Control)                                    | `ReporteController`               | `[Diseñado Ciclo 2] ReporteController.php`          | Los reportes dinámicos, de voz (NLP) y de llenado de cupos son administrados por el controlador lógico de reportes diseñado en esta documentación técnica. |
 
 #### 2. Coherencia con el Modelo de Datos (DDL)
 Se verificó que las clases de tipo **Entidad (Entity)** representadas en los diagramas de análisis de clases y de secuencia tengan su equivalencia exacta en las tablas de la base de datos de PostgreSQL 18:
@@ -7165,13 +7180,15 @@ Se verificó que las clases de tipo **Entidad (Entity)** representadas en los di
 - **`CE_NotaFinal` / `NotaFinal`:** Corresponde a la tabla `notas_finales`. Almacena el promedio ponderado consolidado y el estado aprobatorio por materia.
 - **`CE_CupoGestion` / `CupoGestion`:** Corresponde a la tabla `cupos_gestion`. Almacena las plazas habilitadas y disponibles de cada carrera.
 - **`CE_Admision` / `Admision`:** Corresponde a la tabla `admisiones`. Almacena el registro final de asignación meritocrática de carrera.
-- **`CE_BitacoraAcceso` / `BitacoraAcceso`:** Corresponde a la tabla `bitacora_accesos`. Registra de forma inmutable todas las transacciones críticas de notas y admisiones.
+- **`CE_AuditoriaNotas` / `AuditoriaNota`:** Corresponde a la tabla `auditoria_notas`. Registra de forma inmutable todos los cambios realizados sobre las notas de exámenes, incluyendo nota anterior, nota nueva y motivo del cambio.
+- **`CE_BitacoraAcceso` / `BitacoraAcceso`:** Corresponde a la tabla `bitacora_accesos`. Registra de forma inmutable las acciones de login, logout y operaciones administrativas críticas.
 
 #### 3. Trazabilidad con el Código Fuente Real Implementado
 Se realizó un contraste con la estructura de archivos en el repositorio de desarrollo de la facultad, concluyendo lo siguiente:
-- Los modelos relacionales base de Laravel (`Postulante.php`, `Examen.php`, `NotaFinal.php`, `Carrera.php`, `Admision.php`, `CupoGestion.php`, `BitacoraAcceso.php`) están codificados en `app/Models/` y coinciden plenamente con los atributos modelados.
-- Los servicios de negocio del Ciclo 1 como la conformación de grupos con límite de 70 alumnos y la asignación docente se encuentran implementados de forma exitosa en la capa de servicios (`PlanificacionService.php`), concordando con el diseño dinámico establecido.
-- Los controladores y servicios de procesamiento masivo y de inteligencia artificial de este Ciclo 2 se encuentran completamente diseñados y documentados en esta línea base arquitectónica para guiar la codificación subsiguiente del sistema por el equipo de backend de la FICCT.
+- Los modelos relacionales base de Laravel (`Postulante.php`, `Examen.php`, `NotaFinal.php`, `Carrera.php`, `Admision.php`, `CupoGestion.php`, `BitacoraAcceso.php`, `AuditoriaNota.php`) están codificados en `backend/app/Models/` y coinciden plenamente con los atributos modelados.
+- Los servicios de negocio del Ciclo 1 como la conformación de grupos con límite de 70 alumnos y la verificación de requisitos documentales se encuentran implementados de forma exitosa en la capa de servicios (`PlanificacionService.php`, `VerificacionExternaService.php`), concordando con el diseño dinámico establecido.
+- Los controladores del Ciclo 1 (`AuthController.php`, `PostulanteController.php`, `PagoController.php`, `GrupoController.php`, `DocenteController.php`, `SimulacroController.php`, `UserController.php`) están implementados en `backend/app/Http/Controllers/`.
+- Los controladores y servicios del Ciclo 2 (evaluación académica masiva, admisión meritocrática e inteligencia artificial) se encuentran **diseñados y documentados** en esta línea base arquitectónica como guía para la codificación subsiguiente del sistema por el equipo de backend.
 
 ---
 
