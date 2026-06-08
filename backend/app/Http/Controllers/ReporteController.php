@@ -91,7 +91,7 @@ class ReporteController extends Controller
         // CU17 - Paso 4: E_Post --> C_Asig : + ListaAprobados
         // Se ordenan por promedio general descendente para asegurar meritocracia
         $aprobados = Postulante::where('gestion_id', $gestion->id)
-            ->whereIn('estado', ['Aprobado', 'Pendiente Reasignacion'])
+            ->whereIn('estado', ['Aprobado', 'Pendiente Reasignacion', 'Admitido'])
             ->get()
             ->map(function ($postulante) {
                 // Calcular promedio general acumulado de las materias
@@ -106,6 +106,16 @@ class ReporteController extends Controller
         $pendientes = 0;
 
         DB::transaction(function () use ($aprobados, $gestion, $coordinador, &$asignados, &$reasignados2da, &$pendientes) {
+            
+            // 1. Limpiar las admisiones previas de esta gestión para recalcular desde cero de forma justa
+            $ids = $aprobados->pluck('id');
+            Admision::whereIn('postulante_id', $ids)->delete();
+            
+            // 2. Restaurar todos los cupos disponibles al máximo original
+            DB::table('cupos_gestion')->where('gestion_id', $gestion->id)->update([
+                'cupos_disponibles' => DB::raw('cupo_maximo')
+            ]);
+
             foreach ($aprobados as $postulante) {
                 // CU17 - Paso 5 [Loop]: C_Asig -> E_Cupo : + where('carrera_id', primera_opcion_id)
                 // CU17 - Paso 6 [Loop]: E_Cupo --> C_Asig : + CupoDisponible1raOpcion

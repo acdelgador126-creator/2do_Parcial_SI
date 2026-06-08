@@ -155,7 +155,7 @@ export default function NotasAdminPage() {
       // CU16 - Paso 2: B_Console -> C_Ctrl : + evaluarEstados()
       const res = await api.post('/evaluaciones/evaluar-estados-global');
       // CU16 - Paso 8: B_Console --> Act : + MostrarResumenConsola()
-      setMessage({ type: 'success', text: `Estados determinados. Aprobados: ${res.data.aprobados}, Reprobados: ${res.data.reprobados}` });
+      setMessage({ type: 'success', text: `Estados determinados. Aprobados (Sin asignar): ${res.data.aprobados}, Reprobados: ${res.data.reprobados}, Admitidos: ${res.data.admitidos}, Pendientes de Cupo: ${res.data.pendientes}` });
       fetchPlanilla();
     } catch (err) {
       setMessage({ type: 'error', text: 'Error al determinar los estados académicos.' });

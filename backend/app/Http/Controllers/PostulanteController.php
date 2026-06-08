@@ -21,6 +21,15 @@ class PostulanteController extends Controller
     {
         // CU05 - Paso 6b: B_Int -> C_Ctrl : + store(request)
         // CU08 - Paso 2: B_Int -> C_Ctrl : + buscarPorCi(request)
+        $existente = Postulante::where('ci', $request->ci)->first();
+        
+        $emailRule = 'required|email|max:150';
+        if (!$existente) {
+            $emailRule .= '|unique:postulantes,email';
+        } else {
+            $emailRule .= '|unique:postulantes,email,' . $existente->id;
+        }
+
         $validated = $request->validate([
             'ci' => 'required|string|min:7|max:20',
             'nombres' => 'required|string|max:150',
@@ -29,7 +38,7 @@ class PostulanteController extends Controller
             'sexo' => 'required|in:M,F',
             'direccion' => 'nullable|string|max:255',
             'telefono' => 'nullable|string|max:20',
-            'email' => 'required|email|max:150|unique:postulantes,email',
+            'email' => $emailRule,
             'colegio_procedencia' => 'nullable|string|max:150',
             'ciudad' => 'nullable|string|max:100',
             'titulo_bachiller' => 'nullable|string|max:255',
@@ -48,7 +57,7 @@ class PostulanteController extends Controller
             'sexo.in' => 'El sexo seleccionado no es válido.',
             'email.required' => 'El correo electrónico es obligatorio.',
             'email.email' => 'El correo electrónico debe tener un formato válido.',
-            'email.unique' => 'Este correo electrónico ya está registrado en el sistema.',
+            'email.unique' => 'Este correo electrónico ya está registrado en el sistema por otra persona.',
             'primera_opcion_id.required' => 'La primera opción de carrera es obligatoria.',
             'primera_opcion_id.exists' => 'La primera opción seleccionada no existe.',
             'segunda_opcion_id.required' => 'La segunda opción de carrera es obligatoria.',
@@ -65,12 +74,19 @@ class PostulanteController extends Controller
             ], 422);
         }
 
-        // CU08 - Paso 3: Ctrl -> E_Post : BuscarRegistroAnterior(ci)
-        // CU08 - Paso 4: E_Post --> Ctrl : ResultadoBusqueda
-        $existente = Postulante::where('ci', $validated['ci'])->first();
-
         if ($existente) {
-            // CU08 - Paso 5 [alt recurrente]: Ctrl --> UI : RetornarDatosRecurrente(datosAnteriores)
+            if ($existente->gestion_id !== $gestion->id) {
+                // Opción B (Destructiva): Limpiar el historial anterior para evitar colisiones 1062
+                \App\Models\Examen::where('postulante_id', $existente->id)->delete();
+                \App\Models\NotaFinal::where('postulante_id', $existente->id)->delete();
+                \App\Models\AsignacionGrupo::where('postulante_id', $existente->id)->delete();
+                \App\Models\Admision::where('postulante_id', $existente->id)->delete();
+                RequisitoDocumental::where('postulante_id', $existente->id)->delete();
+                
+                // Regenerar requisitos en blanco para la nueva gestión
+                RequisitoDocumental::create(['postulante_id' => $existente->id]);
+            }
+
             // Ya participó antes -> actualizar datos y marcar recurrente
             $existente->update(array_merge($validated, [
                 'gestion_id' => $gestion->id,
@@ -79,7 +95,7 @@ class PostulanteController extends Controller
             ]));
 
             return response()->json([
-                'message' => 'Postulante recurrente detectado. Datos actualizados para la gestion actual.',
+                'message' => 'Postulante recurrente detectado. Datos actualizados para la nueva gestion.',
                 'postulante' => $existente->fresh()->load('primeraOpcion', 'segundaOpcion'),
                 'recurrente' => true,
             ]);

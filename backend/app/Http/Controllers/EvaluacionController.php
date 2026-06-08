@@ -296,10 +296,17 @@ class EvaluacionController extends Controller
         }
 
         // CU16 - Paso 7: C_Ctrl --> B_Console : + RetornarExito()
+        $totalAprobados = Postulante::where('estado', 'Aprobado')->count();
+        $totalReprobados = Postulante::where('estado', 'Reprobado')->count();
+        $totalAdmitidos = Postulante::where('estado', 'Admitido')->count();
+        $totalPendientes = Postulante::where('estado', 'Pendiente Reasignacion')->count();
+
         return response()->json([
             'message' => 'Determinación de estados finalizada.',
-            'aprobados' => $aprobados,
-            'reprobados' => $reprobados,
+            'aprobados' => $totalAprobados,
+            'reprobados' => $totalReprobados,
+            'admitidos' => $totalAdmitidos,
+            'pendientes' => $totalPendientes,
         ]);
     }
 
@@ -399,7 +406,7 @@ class EvaluacionController extends Controller
      */
     public function getPlanillaNotas(Request $request): JsonResponse
     {
-        $query = Postulante::whereIn('estado', ['En Evaluacion', 'Aprobado', 'Reprobado']);
+        $query = Postulante::whereIn('estado', ['En Evaluacion', 'Aprobado', 'Reprobado', 'Admitido', 'Pendiente Reasignacion']);
 
         if ($request->filled('grupo_id')) {
             $grupoId = $request->grupo_id;

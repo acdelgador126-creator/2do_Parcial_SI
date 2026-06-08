@@ -20,8 +20,21 @@ class AsignacionCarreraController extends Controller
         $user = $request->user();
         
         $result = DB::transaction(function () use ($user) {
-            // Obtener postulantes Aprobados o Pendientes de Reasignación
-            $postulantes = Postulante::with(['notasFinales'])->whereIn('estado', ['Aprobado', 'Pendiente Reasignacion'])->get();
+            
+            $gestionActiva = \App\Models\Gestion::activa()->first();
+            if ($gestionActiva) {
+                // Limpiar admisiones previas de esta gestión para evitar errores de duplicado (1062)
+                $ids = Postulante::where('gestion_id', $gestionActiva->id)->pluck('id');
+                Admision::whereIn('postulante_id', $ids)->delete();
+                
+                // Reiniciar los cupos al máximo
+                CupoGestion::where('gestion_id', $gestionActiva->id)->update([
+                    'cupos_disponibles' => DB::raw('cupo_maximo')
+                ]);
+            }
+
+            // Obtener postulantes Aprobados, Pendientes o previamente Admitidos
+            $postulantes = Postulante::with(['notasFinales'])->whereIn('estado', ['Aprobado', 'Pendiente Reasignacion', 'Admitido'])->get();
 
             // Calcular promedio general de cada uno y ordenar descendentemente (Meritocracia)
             $postulantes = $postulantes->map(function ($postulante) {

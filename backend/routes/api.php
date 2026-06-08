@@ -12,6 +12,7 @@ use App\Http\Controllers\ReporteController;
 use App\Http\Controllers\ChatbotController;
 use App\Http\Controllers\NotificacionController;
 use App\Http\Controllers\AsignacionCarreraController;
+use App\Http\Controllers\GestionController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -74,8 +75,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/evaluaciones/calcular-promedios-global', [EvaluacionController::class, 'calcularPromediosGlobal']);
         Route::post('/evaluaciones/evaluar-estados-global', [EvaluacionController::class, 'determinarEstadosGlobal']);
 
-        // Configuración de cupos
+        // Configuración de cupos y gestiones
         Route::post('/cupos', [ReporteController::class, 'configurarCupos']);
+        Route::get('/gestiones', [GestionController::class, 'index']);
+        Route::post('/gestiones', [GestionController::class, 'store']);
+        Route::post('/gestiones/{gestion}/activar', [GestionController::class, 'activar']);
     });
 
     // Busqueda y consulta (solo admin/coordinador/docente)

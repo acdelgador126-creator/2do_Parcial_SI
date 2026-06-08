@@ -64,4 +64,9 @@ class Postulante extends Model
     {
         return $this->hasMany(NotaFinal::class);
     }
+
+    public function admision()
+    {
+        return $this->hasOne(Admision::class);
+    }
 }
