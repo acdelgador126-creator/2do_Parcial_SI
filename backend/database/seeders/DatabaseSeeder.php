@@ -22,35 +22,108 @@ class DatabaseSeeder extends Seeder
         
         $this->command->info("Población de datos completada.");
 
-        // CU22: garantizar gestión activa para el dashboard estadístico
+        // CU22: garantizar gestión activa para el dashboard estadístico y la inscripción
         DB::table('gestiones')->update(['activa' => false]);
         DB::table('gestiones')->where('codigo', '1-2026')->update(['activa' => true]);
-        $this->command->info("Gestión 1-2026 activada para el dashboard (CU22).");
+        $this->command->info("Gestión 1-2026 activada.");
 
-        // Forzar contraseñas conocidas para las cuentas de prueba administrativa, coordinación y docente
-        DB::statement("UPDATE users SET password = ? WHERE email = ?", [
-            '$2y$12$lqHi9fjbEsurjtBPXOuYVO6ZasIkwKxI2/OmiLqufO1824T9tWGy6',
-            'admin@ficct.uagrm.edu.bo'
+        // Obtener el ID de la gestión activa dynamically
+        $activeGestion = DB::table('gestiones')->where('activa', true)->first();
+        $activeGestionId = $activeGestion ? $activeGestion->id : 1;
+
+        // Mapear todos los postulantes a la gestión activa y marcarlos como 'Inscrito'
+        DB::table('postulantes')->update([
+            'gestion_id' => $activeGestionId,
+            'estado' => 'Inscrito'
         ]);
-        DB::statement("UPDATE users SET password = ? WHERE email = ?", [
-            '$2y$12$WxUhNnTFpDvStSZUlTt/uuH7iKvbPzEFSPMnPJRv0LYBT8p0ZSfy6',
-            'coordinador@ficct.uagrm.edu.bo'
+        $this->command->info("Todos los postulantes mapeados a la gestión activa y marcados como 'Inscrito'.");
+
+        // Aprobar todos los requisitos documentales para los postulantes
+        DB::table('requisitos_documentales')->update([
+            'ci_digitalizado' => true,
+            'certificado_nacimiento' => true,
+            'titulo_bachiller_legalizado' => true,
+            'formulario_preinscripcion' => true,
+            'verificado_bd_externa' => true,
         ]);
-        DB::statement("UPDATE users SET password = ? WHERE email = ?", [
-            '$2y$12$Kc6lGL23.CF8Fv8KpzXhxOn/XTMidsOMVNj5UjYoNnQeLusoGghGS',
-            'docente@ficct.uagrm.edu.bo'
-        ]);
-        $this->command->info("Contraseñas de Admin, Coordinador y Docente actualizadas.");
+        $this->command->info("Todos los requisitos documentales marcados como verificados (true).");
+
+        // Insertar pagos exitosos en la tabla 'pagos' para todos los postulantes importados
+        $this->command->info("Generando registros de pagos exitosos para los postulantes...");
+        $postulanteIds = DB::table('postulantes')->pluck('id');
+        $pagosData = [];
+        $now = now();
+        foreach ($postulanteIds as $pid) {
+            $exists = DB::table('pagos')->where('postulante_id', $pid)->exists();
+            if (!$exists) {
+                $pagosData[] = [
+                    'postulante_id' => $pid,
+                    'stripe_checkout_id' => 'cs_seed_' . $pid,
+                    'monto' => 700,
+                    'estado_pago' => 'Succeeded',
+                    'fecha_pago' => $now,
+                ];
+            }
+        }
+        if (!empty($pagosData)) {
+            foreach (array_chunk($pagosData, 500) as $chunk) {
+                DB::table('pagos')->insert($chunk);
+            }
+        }
+        $this->command->info("Historial de pagos exitosos generado para toda la población.");
+
+        // Forzar existencia y contraseñas conocidas para las cuentas de prueba administrativa, coordinación y docente
+        $usersToEnsure = [
+            [
+                'id' => 1,
+                'name' => 'Admin CUP',
+                'email' => 'admin@ficct.uagrm.edu.bo',
+                'password' => '$2y$12$lqHi9fjbEsurjtBPXOuYVO6ZasIkwKxI2/OmiLqufO1824T9tWGy6', // Admin2026!
+                'role' => 'Administrador',
+                'active' => true,
+            ],
+            [
+                'id' => 2,
+                'name' => 'Coordinador CUP',
+                'email' => 'coordinador@ficct.uagrm.edu.bo',
+                'password' => '$2y$12$WxUhNnTFpDvStSZUlTt/uuH7iKvbPzEFSPMnPJRv0LYBT8p0ZSfy6', // Coord2026!
+                'role' => 'Coordinador',
+                'active' => true,
+            ],
+            [
+                'id' => 3,
+                'name' => 'Docente Test',
+                'email' => 'docente@ficct.uagrm.edu.bo',
+                'password' => '$2y$12$Kc6lGL23.CF8Fv8KpzXhxOn/XTMidsOMVNj5UjYoNnQeLusoGghGS', // Docente2026!
+                'role' => 'Docente',
+                'active' => true,
+            ],
+        ];
+
+        foreach ($usersToEnsure as $userData) {
+            $user = \App\Models\Autenticacion\User::where('email', $userData['email'])->first();
+            if (!$user) {
+                \App\Models\Autenticacion\User::create($userData);
+            } else {
+                $user->update([
+                    'name' => $userData['name'],
+                    'password' => $userData['password'],
+                    'role' => $userData['role'],
+                    'active' => true,
+                ]);
+            }
+        }
+        $this->command->info("Cuentas de Admin, Coordinador y Docente garantizadas.");
 
         // Crear cuenta de Postulante Test si no existe
         $postulanteEmail = 'postulante@gmail.com';
-        $postulanteUser = \App\Models\User::where('email', $postulanteEmail)->first();
+        $postulanteUser = \App\Models\Autenticacion\User::where('email', $postulanteEmail)->first();
         if (!$postulanteUser) {
-            $postulanteUser = \App\Models\User::create([
+            $postulanteUser = \App\Models\Autenticacion\User::create([
                 'id' => 1999,
                 'name' => 'Postulante Test',
                 'email' => $postulanteEmail,
-                'password' => '$2y$12$4in5.khUQ0ZDJQ/LiovlP.tscLJmECsyaDztgbyGnIm2g12YMNgEi',
+                'password' => '$2y$12$4in5.khUQ0ZDJQ/LiovlP.tscLJmECsyaDztgbyGnIm2g12YMNgEi', // Post2026!
                 'role' => 'Postulante',
                 'active' => true,
             ]);
@@ -62,9 +135,9 @@ class DatabaseSeeder extends Seeder
         }
 
         // Crear/vincular postulante asociado
-        $postulante = \App\Models\Postulante::where('email', $postulanteEmail)->first();
+        $postulante = \App\Models\RegistroPostulantes\Postulante::where('email', $postulanteEmail)->first();
         if (!$postulante) {
-            $postulante = \App\Models\Postulante::create([
+            $postulante = \App\Models\RegistroPostulantes\Postulante::create([
                 'id' => 1999,
                 'ci' => '9999999',
                 'nombres' => 'Postulante',
@@ -76,13 +149,13 @@ class DatabaseSeeder extends Seeder
                 'primera_opcion_id' => 1,
                 'segunda_opcion_id' => 2,
                 'turno_preferencia' => 'Manana',
-                'gestion_id' => 1,
+                'gestion_id' => $activeGestionId,
                 'estado' => 'Inscrito',
                 'recurrente' => false,
                 'user_id' => $postulanteUser->id,
             ]);
 
-            \App\Models\RequisitoDocumental::create([
+            \App\Models\RegistroPostulantes\RequisitoDocumental::create([
                 'postulante_id' => $postulante->id,
                 'ci_digitalizado' => true,
                 'certificado_nacimiento' => true,
@@ -91,7 +164,7 @@ class DatabaseSeeder extends Seeder
                 'verificado_bd_externa' => true,
             ]);
 
-            \App\Models\Pago::create([
+            \App\Models\RegistroPostulantes\Pago::create([
                 'postulante_id' => $postulante->id,
                 'stripe_checkout_id' => 'cs_test_postulante_default',
                 'monto' => 700,
@@ -101,9 +174,10 @@ class DatabaseSeeder extends Seeder
             $postulante->update([
                 'user_id' => $postulanteUser->id,
                 'estado' => 'Inscrito',
+                'gestion_id' => $activeGestionId,
             ]);
         }
-        $this->command->info("Postulante Test (postulante@gmail.com) configurado con contraseña 'Post2026!' y estado 'Inscrito'.");
+        $this->command->info("Postulante Test (postulante@gmail.com) configurado.");
 
         // Sincronizar secuencias
         $this->command->info("Sincronizando secuencias de PostgreSQL...");

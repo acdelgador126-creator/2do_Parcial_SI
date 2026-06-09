@@ -1,0 +1,69 @@
+(Transcrito por TurboScribe. Actualizar a Ilimitado para eliminar este mensaje.)
+
+...y él va a hacer lo posible de que ustedes puedan saber qué es esto. Entonces, una vez que ya está, intento otra vez registrarlo. El hecho de postularse, el alumno todavía no sabe cuál es su grupo, no se olviden de eso.
+
+El alumno no sabe, así como ustedes seleccionan, ¿no? A ver, en la materia, por decir de cálculo, ¿cuántos grupos hay? 12 grupos. Entonces, yo necesito registrarme al grupo de 6 a 5, que está a las 7 de la mañana, el lunes, miércoles y viernes. Para ello no hay eso.
+
+No se olviden, por favor, que la política es negocio distinta. Yo me registro y el alumno postulante se conforma con estar registrado en convento. ¿Por qué? Porque ya lo admitieron, por lo menos, como postulante.
+
+Pero no saben qué grupo es. Tal vez ustedes pueden pedir una referencia, si quieren, en la mañana, tarde, noche. De repente el alumno dice, en la mañana.
+
+Y yo puedo tomar eso. ¿Cuántos alumnos tomaron el turno de la mañana? Si todos vienen en la mañana, obviamente se seleccionaría algunos estudiantes en la mañana, para llenarlo un poco. En lo poco, lo hemos colocado de 70 alumnos.
+
+Entonces, lo que queda es en la tarde o está en la noche, porque van a existir y tienen tres horarios. No se olviden que las materias también están listas. Entonces, la carga horaria que ustedes van a crear, porque ustedes lo tienen que mostrar, es matemáticas, que lo hemos colocado, computación, inglés.
+
+Entonces, ustedes tienen que hacer esos horarios. Ustedes lo tienen que encontrar. Estos son los horarios.
+
+Miren, aquí yo tengo, no sé, como 500 alumnos que quieren ser estudiantes en esta facultad. Entonces, de los 570, ¿cuántos grupos son? Eso lo calcula. Eso lo calcula lo que ustedes están haciendo.
+
+Entonces, no se olviden, por otro lado, tengo un profesor. Cuando hay dos profesores, fíjense, que también son reclutados. Porque es un reclutamiento de personal conjunto.
+
+Entonces, decimos que estos profesores solamente van a estar para cubrir el curso de un preuniversitario. Entonces, yo empiezo a solicitar, y aquí yo tengo un grupo de los aceptados, que ellos deben presentar en su aplicación. Los requisitos también, como les dije a algunos, a algunos, pero ustedes lo pueden seguir perfeccionando, es que deberían tener su profesión en el área.
+
+Si están aquí en computación, deben ser ingenieros informáticos, ingenieros de sistemas, ingenieros sin luz, si quieren, si van a ser para matemáticas, cualquiera de la ingeniería, menos ingeniería comercial, porque su cargo, ustedes saben que no es avanzado, ¿no? Pero en tecnología y computación, el cargo lo tiene en el mismo nivel. En esa área, sí es posible. Pero, por ejemplo, se presenta un ingeniero comercial, por más que sea muy bueno en matemáticas, ya no es que no sea bueno.
+
+No, no estamos hablando de eso, estamos hablando del requisito. Entonces, deberían hecharse algo. Por ejemplo, usted debe ser, tiene que ser profesión del área.
+
+Significa que un ingeniero comercial tal vez no puede dar la parte de lo que viene a ser. Ya cuando pedimos para computación, de preferencia que sean informáticos, que sean de sistemas, que sean tal cosa. Si viene un ingeniero civil y tiene una maestría en ciencia de la computación, es acercado a tener una maestría en ciencia de la computación.
+
+Pero si tiene, por ejemplo, una maestría, de repente, en recursos humanos, y es ingeniero civil y quiere dar computación, no está dentro del área. No es menos eso. Creo que eso lo tiene que hacer el SOFA, no se olvide.
+
+Lo que tenemos aquí es un cargo inocente, que también debe incumplir el requisito. Entonces, cuando yo recibo los 500 alumnos, ya están aquí los docentes. Entonces, yo digo, a ver, 7x5, 7x6, 7x7, 49.
+
+Y le dije, le coloqué incluso, el alumno 71 ya es un nuevo grupo, ¿se acuerdan? ¿Cómo se arreglan ustedes? De repente, si nosotros decimos 7x7, 49 y 10 alumnos que estén en el otro, significa que puedo seguir reclutando más hasta llegar a 70, porque siempre se va a aumentar, siempre hay. Dicen, se cierra el 5, pero hay varios que el 5 no se registraron. Entonces, se habilita 2 días más y ahí se va reclutando un poquito más de estudiantes.
+
+Entonces, así sea uno, se va para el otro grupo. Esa es una regla matemática que tenemos colocada. Entonces, de todos los profesores que están aquí, el software, no es lo que se hace manualmente, puedo asignar 1 hasta 4 grupos a un docente.
+
+¿Me entienden? Es ustedes lo que me querían contar. De 1 hasta 4. Ya, por ejemplo, si alguien dice, yo quiero el quinto grupo, no debería permitir, en principio, la revisión y validación. No me puede permitir darle 5 grupos a este docente, porque el máximo son 4. Y esa regla ustedes lo hacen desde el software.
+
+Y luego ustedes empiezan a calcular matemáticamente, que lo hacen también en el software, de que en cada materia es un puesto la nota mínima. ¿Cuánto? 60. Por ejemplo, alguien tiene 100 aquí.
+
+Es muy bueno en inglés, porque estuvo en el CDA, o se tuvo un correo de inglés, salió muy bien. Pero se sacó 55 en matemática, se sacó 80 en física, se sacó 90 en otra materia. No porque le dé un promedio de 80 o 90, porque puede darle un promedio muy bueno, si ustedes sacan el promedio.
+
+Pero esto es en el colegio. Lamentablemente, cada materia debe superar los 60 puntos, o tal vez 60 que es el índice. No se olviden que eso se calculó en el software, que el empleo lo tiene que hacer.
+
+Entonces, si cada uno cumple, entonces ustedes lo sacan en la lista, ustedes deben tener reporte, no se olviden que el reporte es lo más importante. Sin reporte, jóvenes, no hay, básicamente, información. Porque no voy a tener yo un estancamiento de datos almacenados en la base de datos, y no voy a poder mirar.
+
+En realidad, el reporte es lo más importante en un software. Sin información que pueda yo mirar en el usuario, difícilmente voy a poder mirar lo que yo quisiera ver. Entonces, ¿qué va a suceder? Cuando ustedes me empiecen a visualizar eso, a ver, por favor, dejemos de conversar.
+
+Cuando ustedes me entreguen esa información, nosotros vamos a poder ver, cuando comienza a recibir la información, cuántos grupos hay, cuáles son los horarios, cuáles son los docentes, cuál es el aula, ustedes lo deben programar. Aula, horario, turno. Ustedes tienen que decir de cuántas horas pasan cada clase.
+
+Ustedes lo definen, cada grupo. Porque no es nada más, se inscribió y está en el curso, no. Tiene que verse.
+
+No se olviden que hemos puesto tres pruebas, dos exámenes y un final. Entonces, la sumatoria de todo eso, como el porcentaje de las poderaciones que ustedes le den, si ustedes le dan 30, 30 y 40, las poderaciones que ustedes le pueden dar, porque ellos también les son cuartos. Y entonces, el 100% sabemos cuánto como los cada estudiante.
+
+Esas simulaciones de los mil datos deberían estar ahí, cada uno de los, de la información, quién aprobó, quién no aprobó, para ver. Porque si ustedes lo meten uno por uno, no acabamos. Porque usted hace 50.
+
+Entonces, eso significa que al finalizar, yo voy a poder decir, de los 500 alumnos, aprobaron 280. El resto, reprobó. No puede ingresar a la facultad.
+
+Entonces, de estos 280, quiero saber cuál es el grupo o qué docente o en qué grupo tenemos la mayor cantidad de aprobados. No se olviden que cada uno está ligado a un horario, a una carga horaria. Y en esa carga horaria, yo sé quién es el docente.
+
+Entonces, podemos saber en algún momento cuál es dónde o cuál es el docente que más aprobado tiene en este curso preuniversitario. Porque no solamente es colocar, ustedes tienen que hacer varios cálculos matemáticos. Porque de eso se trata el software que ustedes están haciendo.
+
+Entonces, de esta manera de que cuando usted ve ya, suponiendo de que termina el curso, se denomina, entonces ahí nosotros tenemos ya la evidencia real que les estaba yo comentando. Entonces, podemos visualizar quiénes aprobaron, quiénes no. No se olviden que en esta aprobación está la cantidad de estudiantes que va a la carrera 1, a la carrera 2, a la carrera 3, a la carrera 4. Cuatro carreras.
+
+No hay más carreras. No se inventen más carreras. Cuatro.
+
+Eso sí. La facultad de computación.
+
+(Transcrito por TurboScribe. Actualizar a Ilimitado para eliminar este mensaje.)

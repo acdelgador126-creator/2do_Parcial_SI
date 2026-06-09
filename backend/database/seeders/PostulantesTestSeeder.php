@@ -2,10 +2,10 @@
 
 namespace Database\Seeders;
 
-use App\Models\Docente;
-use App\Models\Pago;
-use App\Models\Postulante;
-use App\Models\RequisitoDocumental;
+use App\Models\PlanificacionAcademica\Docente;
+use App\Models\RegistroPostulantes\Pago;
+use App\Models\RegistroPostulantes\Postulante;
+use App\Models\RegistroPostulantes\RequisitoDocumental;
 use Illuminate\Database\Seeder;
 
 class PostulantesTestSeeder extends Seeder

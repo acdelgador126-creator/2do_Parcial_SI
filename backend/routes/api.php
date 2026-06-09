@@ -1,18 +1,18 @@
 <?php
 
-use App\Http\Controllers\AuthController;
-use App\Http\Controllers\UserController;
-use App\Http\Controllers\PostulanteController;
-use App\Http\Controllers\PagoController;
-use App\Http\Controllers\DocenteController;
-use App\Http\Controllers\GrupoController;
-use App\Http\Controllers\SimulacroController;
-use App\Http\Controllers\EvaluacionController;
-use App\Http\Controllers\ReporteController;
-use App\Http\Controllers\ChatbotController;
-use App\Http\Controllers\NotificacionController;
-use App\Http\Controllers\AsignacionCarreraController;
-use App\Http\Controllers\GestionController;
+use App\Http\Controllers\Autenticacion\AuthController;
+use App\Http\Controllers\Autenticacion\UserController;
+use App\Http\Controllers\RegistroPostulantes\PostulanteController;
+use App\Http\Controllers\RegistroPostulantes\PagoController;
+use App\Http\Controllers\PlanificacionAcademica\DocenteController;
+use App\Http\Controllers\PlanificacionAcademica\GrupoController;
+use App\Http\Controllers\PlanificacionAcademica\SimulacroController;
+use App\Http\Controllers\Evaluacion\EvaluacionController;
+use App\Http\Controllers\ReportesIA\ReporteController;
+use App\Http\Controllers\ReportesIA\ChatbotController;
+use App\Http\Controllers\ReportesIA\NotificacionController;
+use App\Http\Controllers\AdmisionCarreras\AsignacionCarreraController;
+use App\Http\Controllers\AdmisionCarreras\GestionController;
 use Illuminate\Support\Facades\Route;
 
 /*

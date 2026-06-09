@@ -1,0 +1,30 @@
+<?php
+
+namespace App\Models\Evaluacion;
+
+use Illuminate\Database\Eloquent\Model;
+use App\Models\RegistroPostulantes\Postulante;
+use App\Models\PlanificacionAcademica\Materia;
+
+class NotaFinal extends Model
+{
+    public $timestamps = false;
+    protected $table = 'notas_finales';
+    protected $fillable = [
+        'postulante_id',
+        'materia_id',
+        'promedio',
+        'estado',
+        'observaciones',
+    ];
+
+    public function postulante()
+    {
+        return $this->belongsTo(Postulante::class);
+    }
+
+    public function materia()
+    {
+        return $this->belongsTo(Materia::class);
+    }
+}

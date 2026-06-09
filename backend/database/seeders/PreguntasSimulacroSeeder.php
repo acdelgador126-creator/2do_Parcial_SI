@@ -2,8 +2,8 @@
 
 namespace Database\Seeders;
 
-use App\Models\Materia;
-use App\Models\PreguntaSimulacro;
+use App\Models\PlanificacionAcademica\Materia;
+use App\Models\PlanificacionAcademica\PreguntaSimulacro;
 use Illuminate\Database\Seeder;
 
 class PreguntasSimulacroSeeder extends Seeder

@@ -2,10 +2,10 @@
 
 namespace Database\Seeders;
 
-use App\Models\Aula;
-use App\Models\Carrera;
-use App\Models\Gestion;
-use App\Models\Materia;
+use App\Models\PlanificacionAcademica\Aula;
+use App\Models\AdmisionCarreras\Carrera;
+use App\Models\AdmisionCarreras\Gestion;
+use App\Models\PlanificacionAcademica\Materia;
 use Illuminate\Database\Seeder;
 
 class CatalogosSeeder extends Seeder

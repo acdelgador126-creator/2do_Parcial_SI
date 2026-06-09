@@ -1,0 +1,57 @@
+(Transcrito por TurboScribe. Actualizar a Ilimitado para eliminar este mensaje.)
+
+para que lo puedan diseñar en su trabajo. Entonces, este se utiliza y este tiene que poder. Y a eso, por favor, yo lo puedo trabajar así, ese sería un escenario.
+
+Lo podemos trabajar así también, dependiendo de qué es lo que nosotros hagamos. Podemos, inclusive, ir visualizando un componente con un conjunto de interfaces. No siempre hay una, puede haber varias interfaces.
+
+Uno puede ser que esté usando y otro puede ser que lo haya probado. Normalmente los componentes se lo encarcelan dentro de un modelo, es más, ustedes ven que en cada componente lo están colocando aquí. En un nodo, en un paquete, encarcelan un conjunto de elementos.
+
+Entonces no hay ningún problema. Puede ser usado así de manera correcta. Y aquí tenemos el desear de cada nodo.
+
+Es el que básicamente va a participar en algún tipo de evento en el cual va a estar dentro del sofá. Entonces ahí lo podemos observar. Cada componente es como si ustedes miraran un diagrama en clase, porque es de la misma característica.
+
+Inclusive aquí podemos observar esto, de que todas las operaciones de un componente tienen un alcance. Por ejemplo, yo tengo aquí el componente B y el componente A, y decimos cómo lo vamos a usar. Si yo lo desglosara, lo puedo colocar así.
+
+Aquí aparecen sus atributos y aquí su método. Aquí este resumen lo van leyendo del libro. Aquí hay más estereotipos.
+
+Y en un momento, este es, si vamos un poquito a la parte de la tabla, miren, dice arquitectura del sistema. Entonces, la arquitectura del sistema es esto. ¿Cuántos paquetes tenemos? Por un lado, las facturas del proveedor, la facturación del comprador, el final de compra y final de venta.
+
+Y aquí tengo la cuenta. Tenemos que hacer contabilidad. Sin contabilidad no puedo dar información.
+
+Con contabilidad me encarga de poder manejar la parte económica del empresa. Entonces ya yo sé cuánto tengo en el banco, cuánto tengo de repente en el castigo o cuánto tengo en cualquier otro lugar. Pero por otro lado, sabemos de qué manera se lo va observando cada uno.
+
+Miren, este es un componente, como se lo mostré también el otro día. Este es el servidor principal, pero este es un móvil. Pero junto a este nudo podemos observar que hay, fíjense, componentes.
+
+Estos componentes justamente son todos aquellos que tienen algún tipo de característica para funcionar dentro del lugar. Aquí yo tengo la instalación de trabajo. Y aquí yo tengo la instalación de trabajo que está al lado del cliente, si quieren verlo.
+
+Al lado del cliente. Si ustedes ven el cliente, entonces este es el software en el que ustedes van a comunicar y establecer la comunicación tipo WAN, es decir, como sea de Internet. Normalmente las comunicaciones son mediante protocolos.
+
+Ustedes saben que cada máquina tiene un IP. Entonces es por eso que facilito podemos saber cuando ustedes, por ejemplo, aquí en la lista de los usuarios, no sé si lo han incluido, si lo han incluido, por favor, me gustaría que me visualicen un IP. ¿Se acuerdan que les hice a ustedes en el examen, lo que se han quedado también, una lista en la bitácora, o sea, para ver la autorización y la autenticación de los usuarios que realizan algún tipo de acción en el software, en el sistema.
+
+Entonces, si ustedes no han podido observar, en este tipo de autenticación, no se olviden que el usuario ya tiene asignado un conjunto de privilegios, que le llamamos un testing. Entonces, cuando ustedes colocan, también han seleccionado su contraseña, ¿no es cierto? Le han puesto que sea mayúscula, que sea minúscula, que sea numeral, aunque ha faltado que tenga un carácter, por ejemplo, especial, que también las contraseñas hoy en día las piden. Elegirse carácter especial, que sea numeral, que sea el señor de migración, que sea el petro, lo que usted quiera.
+
+Hoy en día, por seguridad, para que usted cifraba la información, piden que la contraseña tenga mayúscula, minúscula, número, y carácter especial. Entonces, si usted, por ejemplo, coloca Juan, entonces, en vez de la U, le puede colocar un signo de migración, si ya tiene una mayúscula, ya tiene un signo de migración. Por lo general, la contraseña, casi es una normativa, son ocho carácteres, pero el mezcla de esos ocho, como le digo, mayúscula, minúscula, numeral, y carácter especial.
+
+Eso regle, por favor, sobre el cuarto, para que le controle. Carácter especial, es como se maneja. Ahora, fíjense que en una contraseña deberían colocar a uno, si no tiene carácter especial, eso le agrega.
+
+Entonces, debe verificar esos cuatro. Si está bien, le acepta. Si no, le va a decir error.
+
+Pero no es que nada más me sale error. Me tiene que salir un mensajecito que diga debe tener mayúscula, minúscula, número y carácter especial. Entonces, ahí me doy cuenta de que número está acercando, porque no voy a hacer que me lo rechacen y rechacen y no sé para qué lo que ocurra.
+
+Entonces, si yo quiero saber, debe mandar un mensaje. Ya yo sé de que me olvidé de un carácter especial, entonces le pongo un numeral, o le pongo una resta, o le pongo un símbolo de migración, o lo que yo quiera, cualquier símbolo especial. Entonces, una vez que tiene eso, por más que tenga un hito, ya suficiente mayúscula, una minúscula si quiere, un número y un carácter especial formado por ocho caracteres, me permite dar un ok.
+
+Entonces, ¿eso qué significa? Que recién me voy a poder ingresar, o sea, el hueco, prácticamente el hueco donde yo estoy trabajando, la parte del lado del servidor y del lado del cliente, significa entonces que cuando yo ingreso, el cartillo está completito. Eso significa que no hace falta que yo vaya y desprende todos los procesos de mi celular, porque en el segundo ciclo ya usted ve su aplicación no siendo exclusiva. Ya lo han trabajado, no hay ningún impedimento, o tal vez desconfiguración, se llama eso, ¿no? No poderlo mirar bien.
+
+Entonces, ¿qué pasa? Entonces ustedes lo miran. ¿Qué significa eso? Que toda la información que ustedes están adquisitando como perfil no tiene ningún inconveniente, pueden trabajarlo, si tienen algo para registrar, si tienen algo para hacer cualquier cosa. Lo mismo, por favor, quiero que ocurra en el parcial, no se olviden que en el examen parcial, hablando del examen parcial, que es más rápido, ¿está? ¿Sus usuarios quiénes son? Por un lado, los alumnos.
+
+Como alumnos, tal como ustedes manejan el perfil, ¿no es cierto? Como alumnos que vemos. Pero en este caso, ellos son postulantes. Como postulantes, no se olviden de que ellos son los primeros que ven, si sus requisitos fueron aceptados, que yo puedo mandar mis requisitos, y me pueden enviar un mensaje y me dicen, ¿sabe qué? De los 10 requisitos, el 5 y el 7 no es rechazado por par motivos.
+
+Entonces, me está enviando, yo tengo que saber cuáles son mis motivos. Entonces, si me dicen a mí que los 10 requisitos son válidos, entonces, bien, no nos olvidemos que yo le dije que debe estar poblada la base de datos. No me van a venir con base de datos vacía.
+
+Y también le dije que para poblar la base de datos, si lo hacen manualmente, es mucho, lo deben simular ustedes el curso entero. Por ejemplo, yo tengo 1.000, 2.000 estudiantes. Si lo hacen a mano, también es mucho.
+
+El 6 y el 7, los otros dicen muere. El 6 y el 7, los otros dicen muere. No me debe permitir.
+
+No me debe permitir. Me debe decir que falta tanto. Entonces, esa comunicación.
+
+(Transcrito por TurboScribe. Actualizar a Ilimitado para eliminar este mensaje.)
