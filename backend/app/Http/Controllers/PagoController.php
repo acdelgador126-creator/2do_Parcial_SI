@@ -6,6 +6,8 @@ use App\Models\Pago;
 use App\Models\Postulante;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Events\DashboardUpdated;
+
 use Stripe\Checkout\Session as StripeSession;
 use Stripe\Stripe;
 use Stripe\Webhook;
@@ -168,13 +170,15 @@ class PagoController extends Controller
                     // Generar contraseña: CI + letraNombre + letraApellido
                     $contrasenaGenerada = trim($postulante->ci) . $letraNombre . $letraApellido;
 
-                    \App\Models\User::create([
+                    $newUser = \App\Models\User::create([
                         'name' => $postulante->nombres . ' ' . $postulante->apellidos,
                         'email' => $postulante->email,
                         'password' => \Illuminate\Support\Facades\Hash::make($contrasenaGenerada),
                         'role' => 'Postulante',
                         'active' => true,
                     ]);
+
+                    $postulante->update(['user_id' => $newUser->id]);
 
                     // CU07 - Paso 12: C_Insc -> C_Insc : + enviarCorreo()
                     // Enviar correo con las credenciales de acceso creadas (se escribirá en log por MAIL_MAILER=log)
@@ -194,10 +198,37 @@ class PagoController extends Controller
                     } catch (\Exception $e) {
                         \Illuminate\Support\Facades\Log::error("Error al enviar correo de credenciales: " . $e->getMessage());
                     }
+                } else {
+                    // Si el usuario ya existe (es un postulante repitente), reactivamos su cuenta
+                    $user->update([
+                        'name' => $postulante->nombres . ' ' . $postulante->apellidos,
+                        'active' => true,
+                    ]);
+
+                    $postulante->update(['user_id' => $user->id]);
+
+                    // Enviar un correo de confirmación de reactivación
+                    try {
+                        \Illuminate\Support\Facades\Mail::raw(
+                            "Hola " . $postulante->nombres . " " . $postulante->apellidos . ". Tu pago ha sido procesado con éxito para la nueva gestión.\n\n" .
+                            "Tu cuenta de acceso para el portal CUP-FICCT ha sido reactivada:\n" .
+                            "- Usuario (Correo): " . $postulante->email . "\n" .
+                            "Puedes ingresar con tu contraseña habitual en el siguiente enlace: " . config('app.frontend_url', 'http://localhost:5173') . "\n\n" .
+                            "¡Mucho éxito en tu proceso de admisión!",
+                            function ($message) use ($postulante) {
+                                $message->to($postulante->email)
+                                    ->subject('Tu cuenta ha sido reactivada - CUP FICCT');
+                            }
+                        );
+                    } catch (\Exception $e) {
+                        \Illuminate\Support\Facades\Log::error("Error al enviar correo de reactivación: " . $e->getMessage());
+                    }
                 }
             }
+            event(new DashboardUpdated());
         }
     }
+
 
     /**
      * Verificar estado de pago por session_id (para frontend post-redirect)

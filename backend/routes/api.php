@@ -60,6 +60,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
     Route::get('/postulantes/{postulante}', [PostulanteController::class, 'show']);
+    Route::get('/dashboard/notas-individuales/{postulanteId?}', [ReporteController::class, 'getNotasIndividuales']);
+
 
     // Notificaciones comunes
     Route::get('/notificaciones', [NotificacionController::class, 'index']);
@@ -75,15 +77,16 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/evaluaciones/calcular-promedios-global', [EvaluacionController::class, 'calcularPromediosGlobal']);
         Route::post('/evaluaciones/evaluar-estados-global', [EvaluacionController::class, 'determinarEstadosGlobal']);
 
-        // Configuración de cupos y gestiones
+        // Configuración de cupos y gestiones (CU18 — solo Administrador)
         Route::post('/cupos', [ReporteController::class, 'configurarCupos']);
-        Route::get('/gestiones', [GestionController::class, 'index']);
         Route::post('/gestiones', [GestionController::class, 'store']);
         Route::post('/gestiones/{gestion}/activar', [GestionController::class, 'activar']);
+        Route::post('/gestiones/{gestion}/desactivar', [GestionController::class, 'desactivar']);
     });
 
     // Busqueda y consulta (solo admin/coordinador/docente)
     Route::middleware('role:Administrador,Coordinador,Docente')->group(function () {
+        Route::get('/gestiones', [GestionController::class, 'index']);
         Route::get('/postulantes', [PostulanteController::class, 'index']);
 
         // Planilla de Notas
@@ -99,6 +102,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/reportes/estructurado', [ReporteController::class, 'generarEstructurado']);
         Route::post('/reportes/dinamico', [ReporteController::class, 'generarDinamico']);
         Route::post('/reportes/comando-voz', [ReporteController::class, 'procesarVoz']);
+        Route::post('/reportes/comando-voz/exportar', [ReporteController::class, 'exportarReporteVoz']);
 
         // Grupos
         Route::get('/grupos', [GrupoController::class, 'index']);

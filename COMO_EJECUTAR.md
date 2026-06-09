@@ -38,9 +38,9 @@ Para trabajar en el proyecto, necesitas ejecutar el **Backend** y el **Frontend*
 
 ---
 
-## 🔄 Cómo Reiniciar la Base de Datos (Opcional)
+## 🔄 Cómo Reiniciar y Poblar la Base de Datos desde Cero
 
-Si en algún momento deseas limpiar la base de datos PostgreSQL, borrar los registros y volver a crear todas las tablas con los datos de prueba desde cero, sigue estos pasos:
+Si deseas limpiar la base de datos PostgreSQL, recrear la estructura de tablas limpia y poblar el sistema con la población completa de **1600 postulantes**, sigue estos pasos:
 
 1. Abre una terminal en el directorio `backend`:
    ```bash
@@ -50,9 +50,9 @@ Si en algún momento deseas limpiar la base de datos PostgreSQL, borrar los regi
    ```bash
    php artisan migrate:fresh --seed
    ```
-   *Este comando eliminará todas las tablas existentes en la base de datos `cup_v2`, las volverá a crear y las poblará con más de 500+ registros de prueba (postulantes, docentes, aulas, exámenes, etc.).*
+   *Este comando eliminará todas las tablas en la base de datos PostgreSQL `cup_v2`, volverá a crearlas ejecutando todas las migraciones del sistema, las poblará con los 1600+ registros reales de la población usando `INSERTS_POBLACION_COMPLETA.sql`, y sincronizará automáticamente las secuencias auto-incrementales de PostgreSQL.*
 
-3. Si deseas verificar que las tablas se hayan creado correctamente, puedes correr el script de diagnóstico:
+3. Para listar y verificar las tablas creadas, puedes ejecutar:
    ```bash
    php check_tables.php
    ```

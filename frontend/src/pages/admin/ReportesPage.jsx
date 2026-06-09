@@ -15,9 +15,46 @@ export default function ReportesPage() {
   const [transcript, setTranscript] = useState('');
   const [voiceResults, setVoiceResults] = useState([]);
   const [extractedFilters, setExtractedFilters] = useState(null);
+  const [voiceHint, setVoiceHint] = useState(null);
+  const [textoComando, setTextoComando] = useState('');
 
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState(null);
+
+  const tieneFiltrosVoz = extractedFilters && (
+    extractedFilters.estado || extractedFilters.carrera || extractedFilters.turno
+  );
+
+  const procesarComandoVoz = async (text) => {
+    const trimmed = text?.trim();
+    if (!trimmed) return;
+
+    setLoading(true);
+    setMessage(null);
+    setVoiceHint(null);
+    setVoiceResults([]);
+    setExtractedFilters(null);
+
+    try {
+      const res = await api.post('/reportes/comando-voz', { texto: trimmed });
+      setVoiceResults(res.data.resultados || []);
+      setExtractedFilters(res.data.filtros_extraidos || null);
+
+      if (res.data.mensaje) {
+        setVoiceHint(res.data.mensaje);
+      } else if ((res.data.resultados || []).length === 0) {
+        setVoiceHint('No hay postulantes que coincidan con los filtros detectados.');
+      }
+    } catch (err) {
+      console.error(err);
+      setMessage({
+        type: 'error',
+        text: err.response?.data?.message || 'Error al procesar el comando de voz.',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getEstructurado = async () => {
     // CU19 - Paso 1: Act -> B_Int : + SeleccionarPlantillaReporte(tipo)
@@ -90,20 +127,8 @@ export default function ReportesPage() {
     recognition.onresult = async (e) => {
       const text = e.results[0][0].transcript;
       setTranscript(text);
-
-      // CU21 - Paso 1: Act -> B_Int : + EmitirComandoVoz(audio)
-      setLoading(true);
-      try {
-        // CU21 - Paso 2: B_Int -> C_Ctrl : + procesarVoz(request)
-        const res = await api.post('/reportes/comando-voz', { texto: text });
-        // CU21 - Paso 8: B_Int --> Act : + MostrarResultadosVoz()
-        setVoiceResults(res.data.resultados || []);
-        setExtractedFilters(res.data.filtros_extraidos);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
+      setTextoComando(text);
+      await procesarComandoVoz(text);
     };
 
     recognition.start();
@@ -137,6 +162,48 @@ export default function ReportesPage() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const exportarVoz = async (formato) => {
+    if (!tieneFiltrosVoz) {
+      setMessage({
+        type: 'error',
+        text: 'Primero dicte o escriba un comando con filtros reconocidos (estado, carrera o turno).',
+      });
+      return;
+    }
+
+    try {
+      const res = await api.post('/reportes/comando-voz/exportar', {
+        filtros: extractedFilters,
+        formato: formato,
+      }, { responseType: 'blob' });
+
+      const contentType = res.headers['content-type'] || '';
+      if (contentType.includes('application/json')) {
+        const text = await res.data.text();
+        const json = JSON.parse(text);
+        throw new Error(json.message || 'Error al generar el archivo.');
+      }
+
+      const ext = formato === 'pdf' ? 'pdf' : 'xlsx';
+      const mime = formato === 'pdf'
+        ? 'application/pdf'
+        : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+      const blob = new Blob([res.data], { type: mime });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `reporte_voz_${Date.now()}.${ext}`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Error exportando:', err);
+      setMessage({
+        type: 'error',
+        text: err.message || err.response?.data?.message || 'Error al exportar el reporte de voz.',
+      });
+    }
   };
 
   return (
@@ -219,7 +286,31 @@ export default function ReportesPage() {
         <div className="glass-panel p-6 rounded-2xl flex flex-col justify-between">
           <div>
             <h2 className="text-lg font-semibold text-slate-200 mb-2">Consulta por Comando de Voz (IA - CU21)</h2>
-            <p className="text-xs text-slate-400 mb-6">Haga clic en el micrófono y dicte su consulta en lenguaje natural para filtrar postulantes.</p>
+            <p className="text-xs text-slate-400 mb-4">
+              Dicte o escriba su consulta en español. Use palabras claras: estado, carrera y turno.
+            </p>
+            <p className="text-[10px] text-slate-500 mb-4 leading-relaxed">
+              Ejemplos: &quot;aprobados de sistemas en la tarde&quot;, &quot;preinscritos de informática&quot;, &quot;reprobados en la noche&quot;.
+            </p>
+
+            <div className="flex gap-2 mb-4">
+              <input
+                type="text"
+                value={textoComando}
+                onChange={(e) => setTextoComando(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && procesarComandoVoz(textoComando)}
+                placeholder='Ej: "aprobados de sistemas en la mañana"'
+                className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:border-blue-500 outline-none"
+              />
+              <button
+                type="button"
+                onClick={() => procesarComandoVoz(textoComando)}
+                disabled={loading || !textoComando.trim()}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-xl disabled:opacity-50 cursor-pointer"
+              >
+                Buscar
+              </button>
+            </div>
             
             <div className="flex items-center gap-6 mb-6">
               <button
@@ -244,23 +335,86 @@ export default function ReportesPage() {
             </div>
 
             {extractedFilters && (
-              <div className="text-[10px] text-slate-400 bg-slate-950/20 p-2 rounded-lg mb-4 flex gap-3">
-                <span>Filtros IA Extraídos:</span>
+              <div className="text-[10px] text-slate-400 bg-slate-950/20 p-2 rounded-lg mb-4 flex flex-wrap gap-2 items-center">
+                <span>Filtros detectados:</span>
                 {extractedFilters.estado && <span className="bg-blue-600/10 text-blue-400 px-1.5 py-0.5 rounded">Estado: {extractedFilters.estado}</span>}
                 {extractedFilters.carrera && <span className="bg-emerald-600/10 text-emerald-400 px-1.5 py-0.5 rounded">Carrera: {extractedFilters.carrera}</span>}
                 {extractedFilters.turno && <span className="bg-purple-600/10 text-purple-400 px-1.5 py-0.5 rounded">Turno: {extractedFilters.turno}</span>}
+                {!tieneFiltrosVoz && (
+                  <span className="bg-amber-600/10 text-amber-400 px-1.5 py-0.5 rounded">Ninguno — reformule el comando</span>
+                )}
+              </div>
+            )}
+
+            {voiceHint && (
+              <div className="text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 p-3 rounded-xl mb-4">
+                {voiceHint}
               </div>
             )}
 
             {voiceResults.length > 0 && (
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-slate-400">Resultados encontrados: <strong className="text-slate-100">{voiceResults.length}</strong></span>
-                <button
-                  onClick={() => downloadCSV(voiceResults, 'reporte_comando_voz')}
-                  className="px-3 py-1 rounded-lg bg-emerald-600/10 text-emerald-400 border border-emerald-500/25 text-[10px] font-bold hover:bg-emerald-600/25 transition-all cursor-pointer"
-                >
-                  Descargar CSV
-                </button>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-slate-400">Resultados encontrados: <strong className="text-slate-100">{voiceResults.length}</strong></span>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => downloadCSV(voiceResults, 'reporte_comando_voz')}
+                      className="px-3 py-1 rounded-lg bg-emerald-600/10 text-emerald-400 border border-emerald-500/25 text-[10px] font-bold hover:bg-emerald-600/25 transition-all cursor-pointer"
+                    >
+                      CSV
+                    </button>
+                    <button
+                      onClick={() => exportarVoz('pdf')}
+                      disabled={!tieneFiltrosVoz}
+                      className="px-3 py-1 rounded-lg bg-red-600/10 text-red-400 border border-red-500/25 text-[10px] font-bold hover:bg-red-600/25 transition-all cursor-pointer disabled:opacity-40"
+                    >
+                      PDF
+                    </button>
+                    <button
+                      onClick={() => exportarVoz('excel')}
+                      disabled={!tieneFiltrosVoz}
+                      className="px-3 py-1 rounded-lg bg-green-600/10 text-green-400 border border-green-500/25 text-[10px] font-bold hover:bg-green-600/25 transition-all cursor-pointer disabled:opacity-40"
+                    >
+                      Excel
+                    </button>
+                  </div>
+                </div>
+
+                {/* Tabla de resultados de voz */}
+                <div className="overflow-x-auto max-h-[300px] overflow-y-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="border-b border-slate-800 text-slate-400 uppercase tracking-widest text-[10px] font-bold">
+                        <th className="py-2 px-2">Postulante</th>
+                        <th className="py-2 px-2">CI</th>
+                        <th className="py-2 px-2">Estado</th>
+                        <th className="py-2 px-2">Turno</th>
+                        <th className="py-2 px-2">1ra Opción</th>
+                        <th className="py-2 px-2">Asignada</th>
+                        <th className="py-2 px-2">Promedio</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {voiceResults.map((p) => (
+                        <tr key={p.id} className="border-b border-slate-800/40 hover:bg-slate-900/10 text-slate-300">
+                          <td className="py-2 px-2 font-medium">{p.apellidos}, {p.nombres}</td>
+                          <td className="py-2 px-2 font-mono">{p.ci}</td>
+                          <td className="py-2 px-2">
+                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                              p.estado === 'Aprobado' ? 'bg-emerald-500/10 text-emerald-400'
+                              : p.estado === 'Reprobado' ? 'bg-red-500/10 text-red-400'
+                              : 'bg-blue-500/10 text-blue-400'
+                            }`}>{p.estado}</span>
+                          </td>
+                          <td className="py-2 px-2">{p.turno_preferencia}</td>
+                          <td className="py-2 px-2 text-slate-400">{p.primeraOpcion?.nombre || '-'}</td>
+                          <td className="py-2 px-2 text-slate-200 font-semibold">{p.admision?.carrera?.nombre || '-'}</td>
+                          <td className="py-2 px-2 font-mono font-bold text-slate-200">{p.promedio_general || '-'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </div>
@@ -378,7 +532,7 @@ export default function ReportesPage() {
                         }`}>{p.estado}</span>
                       </td>
                       <td className="py-2 px-2">{p.turno_preferencia}</td>
-                      <td className="py-2 px-2 text-slate-400">{p.primera_opcion?.nombre || '-'}</td>
+                      <td className="py-2 px-2 text-slate-400">{p.primeraOpcion?.nombre || '-'}</td>
                       <td className="py-2 px-2 text-slate-200 font-semibold">{p.admision?.carrera?.nombre || '-'}</td>
                       <td className="py-2 px-2 font-mono font-bold text-slate-200">{p.promedio_general || '-'}</td>
                     </tr>

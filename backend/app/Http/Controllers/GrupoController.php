@@ -7,6 +7,8 @@ use App\Models\Grupo;
 use App\Services\PlanificacionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Events\DashboardUpdated;
+
 
 class GrupoController extends Controller
 {
@@ -28,7 +30,10 @@ class GrupoController extends Controller
         // Las cotas y el balanceo físico de aulas se ejecutan dentro del orquestador PlanificacionService
         $resultado = $this->planificacion->ejecutarAsignacionMasiva($gestion->id);
 
+        event(new DashboardUpdated());
+
         return response()->json($resultado);
+
     }
 
     /**
@@ -47,7 +52,12 @@ class GrupoController extends Controller
             $request->grupo_id
         );
 
+        if (isset($resultado['success']) && $resultado['success']) {
+            event(new DashboardUpdated());
+        }
+
         return response()->json($resultado, $resultado['success'] ? 200 : 422);
+
     }
 
     /**
@@ -57,7 +67,7 @@ class GrupoController extends Controller
     {
         $gestion = Gestion::activa()->first();
         if (! $gestion) {
-            return response()->json(['data' => []]);
+            return response()->json([]);
         }
 
         $grupos = Grupo::where('gestion_id', $gestion->id)

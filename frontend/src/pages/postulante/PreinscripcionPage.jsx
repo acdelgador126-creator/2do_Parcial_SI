@@ -21,6 +21,33 @@ export default function PreinscripcionPage() {
   const [segundaOpcion, setSegundaOpcion] = useState('2');
   const [turno, setTurno] = useState('Manana');
 
+  // Estados de Validación
+  const [errors, setErrors] = useState({
+    ci: '',
+    nombres: '',
+    apellidos: '',
+    fechaNacimiento: '',
+    email: '',
+    telefono: '',
+    direccion: '',
+    ciudad: '',
+    colegio: '',
+    tituloBachiller: '',
+    carrera: ''
+  });
+  const [touched, setTouched] = useState({
+    ci: false,
+    nombres: false,
+    apellidos: false,
+    fechaNacimiento: false,
+    email: false,
+    telefono: false,
+    direccion: false,
+    ciudad: false,
+    colegio: false,
+    tituloBachiller: false
+  });
+
   // Estados del Flujo
   // Pasos: 'form' -> 'verification' -> 'validating' -> 'payment' -> 'processing_payment'
   const [step, setStep] = useState('form');
@@ -58,6 +85,154 @@ export default function PreinscripcionPage() {
 
   const getSexoName = (value) => {
     return value === 'M' ? 'Masculino' : 'Femenino';
+  };
+
+  // Validaciones
+  const validateCI = (value) => {
+    if (!value) return 'El CI es requerido';
+    if (!/^\d+$/.test(value)) return 'El CI debe contener solo números';
+    if (value.length < 7) return 'El CI debe tener al menos 7 dígitos';
+    if (value.length > 10) return 'El CI no puede tener más de 10 dígitos';
+    return '';
+  };
+
+  const validateNombres = (value) => {
+    if (!value.trim()) return 'Los nombres son requeridos';
+    if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(value)) return 'Los nombres solo pueden contener letras y espacios';
+    if (value.trim().length < 2) return 'Los nombres deben tener al menos 2 caracteres';
+    return '';
+  };
+
+  const validateApellidos = (value) => {
+    if (!value.trim()) return 'Los apellidos son requeridos';
+    if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(value)) return 'Los apellidos solo pueden contener letras y espacios';
+    if (value.trim().length < 2) return 'Los apellidos deben tener al menos 2 caracteres';
+    return '';
+  };
+
+  const validateFechaNacimiento = (value) => {
+    if (!value) return 'La fecha de nacimiento es requerida';
+    const fecha = new Date(value);
+    const hoy = new Date();
+    const edad = hoy.getFullYear() - fecha.getFullYear();
+    const mes = hoy.getMonth() - fecha.getMonth();
+    if (mes < 0 || (mes === 0 && hoy.getDate() < fecha.getDate())) {
+      edad--;
+    }
+    if (edad < 15) return 'Debe tener al menos 15 años para registrarse';
+    if (edad > 100) return 'Fecha de nacimiento inválida';
+    if (fecha > hoy) return 'La fecha de nacimiento no puede ser futura';
+    return '';
+  };
+
+  const validateEmail = (value) => {
+    if (!value.trim()) return 'El correo electrónico es requerido';
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(value)) return 'Ingrese un correo electrónico válido';
+    return '';
+  };
+
+  const validateTelefono = (value) => {
+    if (value && !/^\d{7,8}$/.test(value)) return 'El teléfono debe tener 7 u 8 dígitos';
+    return '';
+  };
+
+  const validateDireccion = (value) => {
+    if (value && value.trim().length < 10) return 'La dirección debe tener al menos 10 caracteres';
+    return '';
+  };
+
+  const validateCiudad = (value) => {
+    if (!value.trim()) return 'La ciudad es requerida';
+    if (value.trim().length < 3) return 'La ciudad debe tener al menos 3 caracteres';
+    return '';
+  };
+
+  const validateColegio = (value) => {
+    if (!value.trim()) return 'El colegio es requerido';
+    if (value.trim().length < 5) return 'El colegio debe tener al menos 5 caracteres';
+    return '';
+  };
+
+  const validateTituloBachiller = (value) => {
+    if (!value.trim()) return 'El título de bachiller es requerido';
+    if (value.trim().length < 5) return 'El título debe tener al menos 5 caracteres';
+    return '';
+  };
+
+  const validateCarreras = (primera, segunda) => {
+    if (primera === segunda) return 'La primera y segunda opción deben ser diferentes';
+    return '';
+  };
+
+  const handleBlur = (field, value) => {
+    setTouched({ ...touched, [field]: true });
+    let error = '';
+    switch (field) {
+      case 'ci':
+        error = validateCI(value);
+        break;
+      case 'nombres':
+        error = validateNombres(value);
+        break;
+      case 'apellidos':
+        error = validateApellidos(value);
+        break;
+      case 'fechaNacimiento':
+        error = validateFechaNacimiento(value);
+        break;
+      case 'email':
+        error = validateEmail(value);
+        break;
+      case 'telefono':
+        error = validateTelefono(value);
+        break;
+      case 'direccion':
+        error = validateDireccion(value);
+        break;
+      case 'ciudad':
+        error = validateCiudad(value);
+        break;
+      case 'colegio':
+        error = validateColegio(value);
+        break;
+      case 'tituloBachiller':
+        error = validateTituloBachiller(value);
+        break;
+      default:
+        break;
+    }
+    setErrors({ ...errors, [field]: error });
+  };
+
+  const validateAll = () => {
+    const newErrors = {
+      ci: validateCI(ci),
+      nombres: validateNombres(nombres),
+      apellidos: validateApellidos(apellidos),
+      fechaNacimiento: validateFechaNacimiento(fechaNacimiento),
+      email: validateEmail(email),
+      telefono: validateTelefono(telefono),
+      direccion: validateDireccion(direccion),
+      ciudad: validateCiudad(ciudad),
+      colegio: validateColegio(colegio),
+      tituloBachiller: validateTituloBachiller(tituloBachiller),
+      carrera: validateCarreras(primeraOpcion, segundaOpcion)
+    };
+    setErrors(newErrors);
+    setTouched({
+      ci: true,
+      nombres: true,
+      apellidos: true,
+      fechaNacimiento: true,
+      email: true,
+      telefono: true,
+      direccion: true,
+      ciudad: true,
+      colegio: true,
+      tituloBachiller: true
+    });
+    return !Object.values(newErrors).some(error => error !== '');
   };
 
   // CU08: Buscar CI proactivamente al salir del campo
@@ -112,8 +287,8 @@ export default function PreinscripcionPage() {
     e.preventDefault();
     // CU05 - Paso 1: Act -> B_Int : + CompletarFormulario(datos)
     // CU05 - Paso 2: Act -> B_Int : + ClicIniciarRegistro()
-    if (primeraOpcion === segundaOpcion) {
-      setError('La primera y segunda opción de carrera deben ser diferentes.');
+    if (!validateAll()) {
+      setError('Por favor, corrige los errores en el formulario.');
       return;
     }
     setError('');
@@ -304,9 +479,14 @@ export default function PreinscripcionPage() {
                       type="text"
                       value={ci}
                       onChange={(e) => setCi(e.target.value)}
-                      onBlur={(e) => buscarCiRecurrente(e.target.value)}
+                      onBlur={(e) => {
+                        handleBlur('ci', e.target.value);
+                        buscarCiRecurrente(e.target.value);
+                      }}
                       placeholder="Ej. 8765432"
-                      className="w-full bg-slate-900/80 border border-slate-700/50 rounded-xl px-4 py-3 text-slate-100 focus:outline-none focus:border-blue-500 transition-colors"
+                      className={`w-full bg-slate-900/80 border rounded-xl px-4 py-3 text-slate-100 focus:outline-none transition-colors ${
+                        touched.ci && errors.ci ? 'border-red-500 focus:border-red-500' : 'border-slate-700/50 focus:border-blue-500'
+                      }`}
                       required
                     />
                     {buscandoCi && (
@@ -315,7 +495,10 @@ export default function PreinscripcionPage() {
                       </div>
                     )}
                   </div>
-                  {ci.length >= 7 && !buscandoCi && !esRecurrente && (
+                  {touched.ci && errors.ci && (
+                    <p className="text-xs text-red-400 mt-1 ml-1">{errors.ci}</p>
+                  )}
+                  {ci.length >= 7 && !buscandoCi && !esRecurrente && !errors.ci && (
                     <p className="text-xs text-emerald-400/70 mt-1 ml-1">✓ CI válido, sin registros previos</p>
                   )}
                 </div>
@@ -329,10 +512,16 @@ export default function PreinscripcionPage() {
                     type="text"
                     value={nombres}
                     onChange={(e) => setNombres(e.target.value)}
+                    onBlur={(e) => handleBlur('nombres', e.target.value)}
                     placeholder="Ej. Juan"
-                    className="w-full bg-slate-900/80 border border-slate-700/50 rounded-xl px-4 py-3 text-slate-100 focus:outline-none focus:border-blue-500 transition-colors"
+                    className={`w-full bg-slate-900/80 border rounded-xl px-4 py-3 text-slate-100 focus:outline-none transition-colors ${
+                      touched.nombres && errors.nombres ? 'border-red-500 focus:border-red-500' : 'border-slate-700/50 focus:border-blue-500'
+                    }`}
                     required
                   />
+                  {touched.nombres && errors.nombres && (
+                    <p className="text-xs text-red-400 mt-1 ml-1">{errors.nombres}</p>
+                  )}
                 </div>
 
                 {/* Apellidos */}
@@ -344,10 +533,16 @@ export default function PreinscripcionPage() {
                     type="text"
                     value={apellidos}
                     onChange={(e) => setApellidos(e.target.value)}
+                    onBlur={(e) => handleBlur('apellidos', e.target.value)}
                     placeholder="Ej. Pérez García"
-                    className="w-full bg-slate-900/80 border border-slate-700/50 rounded-xl px-4 py-3 text-slate-100 focus:outline-none focus:border-blue-500 transition-colors"
+                    className={`w-full bg-slate-900/80 border rounded-xl px-4 py-3 text-slate-100 focus:outline-none transition-colors ${
+                      touched.apellidos && errors.apellidos ? 'border-red-500 focus:border-red-500' : 'border-slate-700/50 focus:border-blue-500'
+                    }`}
                     required
                   />
+                  {touched.apellidos && errors.apellidos && (
+                    <p className="text-xs text-red-400 mt-1 ml-1">{errors.apellidos}</p>
+                  )}
                 </div>
 
                 {/* Fecha Nacimiento */}
@@ -359,9 +554,15 @@ export default function PreinscripcionPage() {
                     type="date"
                     value={fechaNacimiento}
                     onChange={(e) => setFechaNacimiento(e.target.value)}
-                    className="w-full bg-slate-900/80 border border-slate-700/50 rounded-xl px-4 py-3 text-slate-100 focus:outline-none focus:border-blue-500 transition-colors"
+                    onBlur={(e) => handleBlur('fechaNacimiento', e.target.value)}
+                    className={`w-full bg-slate-900/80 border rounded-xl px-4 py-3 text-slate-100 focus:outline-none transition-colors ${
+                      touched.fechaNacimiento && errors.fechaNacimiento ? 'border-red-500 focus:border-red-500' : 'border-slate-700/50 focus:border-blue-500'
+                    }`}
                     required
                   />
+                  {touched.fechaNacimiento && errors.fechaNacimiento && (
+                    <p className="text-xs text-red-400 mt-1 ml-1">{errors.fechaNacimiento}</p>
+                  )}
                 </div>
 
                 {/* Sexo */}
@@ -389,10 +590,16 @@ export default function PreinscripcionPage() {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    onBlur={(e) => handleBlur('email', e.target.value)}
                     placeholder="Ej. juan@gmail.com"
-                    className="w-full bg-slate-900/80 border border-slate-700/50 rounded-xl px-4 py-3 text-slate-100 focus:outline-none focus:border-blue-500 transition-colors"
+                    className={`w-full bg-slate-900/80 border rounded-xl px-4 py-3 text-slate-100 focus:outline-none transition-colors ${
+                      touched.email && errors.email ? 'border-red-500 focus:border-red-500' : 'border-slate-700/50 focus:border-blue-500'
+                    }`}
                     required
                   />
+                  {touched.email && errors.email && (
+                    <p className="text-xs text-red-400 mt-1 ml-1">{errors.email}</p>
+                  )}
                 </div>
 
                 {/* Teléfono */}
@@ -404,9 +611,15 @@ export default function PreinscripcionPage() {
                     type="text"
                     value={telefono}
                     onChange={(e) => setTelefono(e.target.value)}
+                    onBlur={(e) => handleBlur('telefono', e.target.value)}
                     placeholder="Ej. 71234567"
-                    className="w-full bg-slate-900/80 border border-slate-700/50 rounded-xl px-4 py-3 text-slate-100 focus:outline-none focus:border-blue-500 transition-colors"
+                    className={`w-full bg-slate-900/80 border rounded-xl px-4 py-3 text-slate-100 focus:outline-none transition-colors ${
+                      touched.telefono && errors.telefono ? 'border-red-500 focus:border-red-500' : 'border-slate-700/50 focus:border-blue-500'
+                    }`}
                   />
+                  {touched.telefono && errors.telefono && (
+                    <p className="text-xs text-red-400 mt-1 ml-1">{errors.telefono}</p>
+                  )}
                 </div>
 
                 {/* Dirección */}
@@ -418,9 +631,15 @@ export default function PreinscripcionPage() {
                     type="text"
                     value={direccion}
                     onChange={(e) => setDireccion(e.target.value)}
+                    onBlur={(e) => handleBlur('direccion', e.target.value)}
                     placeholder="Ej. Calle Principal 123, Apt 4B"
-                    className="w-full bg-slate-900/80 border border-slate-700/50 rounded-xl px-4 py-3 text-slate-100 focus:outline-none focus:border-blue-500 transition-colors"
+                    className={`w-full bg-slate-900/80 border rounded-xl px-4 py-3 text-slate-100 focus:outline-none transition-colors ${
+                      touched.direccion && errors.direccion ? 'border-red-500 focus:border-red-500' : 'border-slate-700/50 focus:border-blue-500'
+                    }`}
                   />
+                  {touched.direccion && errors.direccion && (
+                    <p className="text-xs text-red-400 mt-1 ml-1">{errors.direccion}</p>
+                  )}
                 </div>
 
                 {/* Ciudad */}
@@ -432,9 +651,15 @@ export default function PreinscripcionPage() {
                     type="text"
                     value={ciudad}
                     onChange={(e) => setCiudad(e.target.value)}
-                    className="w-full bg-slate-900/80 border border-slate-700/50 rounded-xl px-4 py-3 text-slate-100 focus:outline-none focus:border-blue-500 transition-colors"
+                    onBlur={(e) => handleBlur('ciudad', e.target.value)}
+                    className={`w-full bg-slate-900/80 border rounded-xl px-4 py-3 text-slate-100 focus:outline-none transition-colors ${
+                      touched.ciudad && errors.ciudad ? 'border-red-500 focus:border-red-500' : 'border-slate-700/50 focus:border-blue-500'
+                    }`}
                     required
                   />
+                  {touched.ciudad && errors.ciudad && (
+                    <p className="text-xs text-red-400 mt-1 ml-1">{errors.ciudad}</p>
+                  )}
                 </div>
 
                 {/* Colegio */}
@@ -446,10 +671,16 @@ export default function PreinscripcionPage() {
                     type="text"
                     value={colegio}
                     onChange={(e) => setColegio(e.target.value)}
+                    onBlur={(e) => handleBlur('colegio', e.target.value)}
                     placeholder="Ej. Colegio Nacional Florida"
-                    className="w-full bg-slate-900/80 border border-slate-700/50 rounded-xl px-4 py-3 text-slate-100 focus:outline-none focus:border-blue-500 transition-colors"
+                    className={`w-full bg-slate-900/80 border rounded-xl px-4 py-3 text-slate-100 focus:outline-none transition-colors ${
+                      touched.colegio && errors.colegio ? 'border-red-500 focus:border-red-500' : 'border-slate-700/50 focus:border-blue-500'
+                    }`}
                     required
                   />
+                  {touched.colegio && errors.colegio && (
+                    <p className="text-xs text-red-400 mt-1 ml-1">{errors.colegio}</p>
+                  )}
                 </div>
 
                 {/* Título Bachiller */}
@@ -461,10 +692,16 @@ export default function PreinscripcionPage() {
                     type="text"
                     value={tituloBachiller}
                     onChange={(e) => setTituloBachiller(e.target.value)}
+                    onBlur={(e) => handleBlur('tituloBachiller', e.target.value)}
                     placeholder="Ej. Bachiller Técnico Humanístico"
-                    className="w-full bg-slate-900/80 border border-slate-700/50 rounded-xl px-4 py-3 text-slate-100 focus:outline-none focus:border-blue-500 transition-colors"
+                    className={`w-full bg-slate-900/80 border rounded-xl px-4 py-3 text-slate-100 focus:outline-none transition-colors ${
+                      touched.tituloBachiller && errors.tituloBachiller ? 'border-red-500 focus:border-red-500' : 'border-slate-700/50 focus:border-blue-500'
+                    }`}
                     required
                   />
+                  {touched.tituloBachiller && errors.tituloBachiller && (
+                    <p className="text-xs text-red-400 mt-1 ml-1">{errors.tituloBachiller}</p>
+                  )}
                 </div>
 
                 {/* Separador */}
@@ -481,8 +718,17 @@ export default function PreinscripcionPage() {
                   </label>
                   <select
                     value={primeraOpcion}
-                    onChange={(e) => setPrimeraOpcion(e.target.value)}
-                    className="w-full bg-slate-900/80 border border-slate-700/50 rounded-xl px-4 py-3 text-slate-100 focus:outline-none focus:border-blue-500 transition-colors"
+                    onChange={(e) => {
+                      setPrimeraOpcion(e.target.value);
+                      if (segundaOpcion === e.target.value) {
+                        setErrors({ ...errors, carrera: 'La primera y segunda opción deben ser diferentes' });
+                      } else {
+                        setErrors({ ...errors, carrera: '' });
+                      }
+                    }}
+                    className={`w-full bg-slate-900/80 border rounded-xl px-4 py-3 text-slate-100 focus:outline-none transition-colors ${
+                      errors.carrera ? 'border-red-500 focus:border-red-500' : 'border-slate-700/50 focus:border-blue-500'
+                    }`}
                   >
                     <option value="1">Ingeniería Informática</option>
                     <option value="2">Ingeniería de Sistemas</option>
@@ -497,8 +743,17 @@ export default function PreinscripcionPage() {
                   </label>
                   <select
                     value={segundaOpcion}
-                    onChange={(e) => setSegundaOpcion(e.target.value)}
-                    className="w-full bg-slate-900/80 border border-slate-700/50 rounded-xl px-4 py-3 text-slate-100 focus:outline-none focus:border-blue-500 transition-colors"
+                    onChange={(e) => {
+                      setSegundaOpcion(e.target.value);
+                      if (primeraOpcion === e.target.value) {
+                        setErrors({ ...errors, carrera: 'La primera y segunda opción deben ser diferentes' });
+                      } else {
+                        setErrors({ ...errors, carrera: '' });
+                      }
+                    }}
+                    className={`w-full bg-slate-900/80 border rounded-xl px-4 py-3 text-slate-100 focus:outline-none transition-colors ${
+                      errors.carrera ? 'border-red-500 focus:border-red-500' : 'border-slate-700/50 focus:border-blue-500'
+                    }`}
                   >
                     <option value="1">Ingeniería Informática</option>
                     <option value="2">Ingeniería de Sistemas</option>
@@ -520,6 +775,9 @@ export default function PreinscripcionPage() {
                     <option value="Tarde">Tarde</option>
                     <option value="Noche">Noche</option>
                   </select>
+                  {errors.carrera && (
+                    <p className="text-xs text-red-400 mt-1 ml-1">{errors.carrera}</p>
+                  )}
                 </div>
 
                 {/* Botón Enviar */}

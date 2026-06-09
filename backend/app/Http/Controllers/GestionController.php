@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Gestion;
-use App\Models\CupoGestion;
+use App\Models\Postulante;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -55,6 +55,27 @@ class GestionController extends Controller
 
         return response()->json([
             'message' => "La gestión {$gestion->codigo} ahora es la gestión activa.",
+            'gestion' => $gestion
+        ]);
+    }
+
+    /**
+     * Desactivar/Cerrar una gestión (y desactivar los usuarios postulantes)
+     */
+    public function desactivar(Gestion $gestion): JsonResponse
+    {
+        DB::transaction(function () use ($gestion) {
+            $gestion->update(['activa' => false]);
+            $userIds = Postulante::where('gestion_id', $gestion->id)
+                ->whereNotNull('user_id')
+                ->pluck('user_id');
+            if ($userIds->isNotEmpty()) {
+                \App\Models\User::whereIn('id', $userIds)->update(['active' => false]);
+            }
+        });
+
+        return response()->json([
+            'message' => "La gestión {$gestion->codigo} ha sido desactivada/cerrada. Las cuentas de postulantes han sido desactivadas.",
             'gestion' => $gestion
         ]);
     }

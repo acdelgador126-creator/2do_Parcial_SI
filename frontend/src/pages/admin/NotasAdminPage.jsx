@@ -27,9 +27,10 @@ export default function NotasAdminPage() {
       setMaterias(resM.data.materias || []);
       
       const resG = await api.get('/grupos');
-      setGrupos(resG.data || []);
-      if (resG.data.length > 0) {
-        setGrupoId(resG.data[0].id);
+      const gruposData = Array.isArray(resG.data) ? resG.data : [];
+      setGrupos(gruposData);
+      if (gruposData.length > 0) {
+        setGrupoId(gruposData[0].id);
       }
     } catch (err) {
       console.error(err);
@@ -185,14 +186,14 @@ export default function NotasAdminPage() {
   };
 
   const getNotaExamen = (postulante, materiaId, numExamen) => {
-    const ex = postulante.examenes.find(
+    const ex = postulante.examenes?.find(
       (e) => e.materia_id === materiaId && e.numero_examen === numExamen
     );
     return ex ? ex.nota : '-';
   };
 
   const getPromedioFinal = (postulante, materiaId) => {
-    const nf = postulante.notas_finales.find((n) => n.materia_id === materiaId);
+    const nf = postulante.notasFinales?.find((n) => n.materia_id === materiaId);
     // Mostrar observaciones (ej. "Incompleto - faltan 2 exámenes") si existe
     if (nf && nf.observaciones) {
       return `${nf.promedio} \n ${nf.observaciones}`;

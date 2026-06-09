@@ -1,12 +1,21 @@
 import { useState, useEffect } from 'react';
+import { useAuth } from '../../context/AuthContext';
 import api from '../../api/axios';
 
 export default function AdmisionesPage() {
-  // --- Estado de Gestiones (CU18 parte 1) ---
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'Administrador';
+  // --- Estado de Gestiones (CU18) ---
   const [gestiones, setGestiones] = useState([]);
-  const [nuevaGestion, setNuevaGestion] = useState({ codigo: '', fecha_inicio: '', fecha_fin: '' });
+  const [selectedGestionId, setSelectedGestionId] = useState('new');
+  const [gestionForm, setGestionForm] = useState({
+    codigo: '',
+    fecha_inicio: '',
+    fecha_fin: '',
+    activa: true
+  });
 
-  // --- Estado de Cupos (CU18 parte 2) ---
+  // --- Estado de Cupos ---
   const [carreras, setCarreras] = useState([]);
   const [cuposConfig, setCuposConfig] = useState({});
 
@@ -27,7 +36,7 @@ export default function AdmisionesPage() {
     }
   };
 
-  const fetchCuposYAdmitidos = async () => {
+  const fetchCupos = async () => {
     try {
       const resStats = await api.get('/dashboard/estadisticas');
       setCarreras(resStats.data.cupos || []);
@@ -37,12 +46,26 @@ export default function AdmisionesPage() {
         tempConfig[c.nombre] = c.cupo_maximo;
       });
       setCuposConfig(tempConfig);
+    } catch (err) {
+      console.error('Error cargando cupos:', err);
+    }
+  };
 
+  const fetchAdmitidos = async () => {
+    try {
       const resAdmitidos = await api.get('/reportes/estructurado?tipo=admisiones');
       setAdmitidos(resAdmitidos.data.data || []);
     } catch (err) {
-      console.error('Error cargando cupos/admitidos:', err);
+      console.error('Error cargando admitidos:', err);
+      setMessage({
+        type: 'error',
+        text: err.response?.data?.message || 'No se pudo cargar la lista de admitidos.',
+      });
     }
+  };
+
+  const fetchCuposYAdmitidos = async () => {
+    await Promise.allSettled([fetchCupos(), fetchAdmitidos()]);
   };
 
   useEffect(() => {
@@ -55,39 +78,24 @@ export default function AdmisionesPage() {
     init();
   }, []);
 
-  // ==================== GESTIONES (CU18 parte 1) ====================
-  const crearGestion = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setMessage(null);
-    try {
-      await api.post('/gestiones', nuevaGestion);
-      setMessage({ type: 'success', text: `Gestión "${nuevaGestion.codigo}" creada exitosamente.` });
-      setNuevaGestion({ codigo: '', fecha_inicio: '', fecha_fin: '' });
-      await fetchGestiones();
-    } catch (err) {
-      setMessage({ type: 'error', text: err.response?.data?.message || 'Error al crear la gestión.' });
-    } finally {
-      setLoading(false);
+  // ==================== SELECTION & CHANGES ====================
+  const handleGestionSelectChange = (id) => {
+    setSelectedGestionId(id);
+    if (id === 'new') {
+      setGestionForm({ codigo: '', fecha_inicio: '', fecha_fin: '', activa: true });
+    } else {
+      const g = gestiones.find(item => item.id === parseInt(id));
+      if (g) {
+        setGestionForm({
+          codigo: g.codigo,
+          fecha_inicio: g.fecha_inicio ? g.fecha_inicio.substring(0, 10) : '',
+          fecha_fin: g.fecha_fin ? g.fecha_fin.substring(0, 10) : '',
+          activa: g.activa
+        });
+      }
     }
   };
 
-  const activarGestion = async (id) => {
-    setLoading(true);
-    setMessage(null);
-    try {
-      const res = await api.post(`/gestiones/${id}/activar`);
-      setMessage({ type: 'success', text: res.data.message });
-      await fetchGestiones();
-      await fetchCuposYAdmitidos();
-    } catch (err) {
-      setMessage({ type: 'error', text: err.response?.data?.message || 'Error al activar la gestión.' });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // ==================== CUPOS (CU18 parte 2) ====================
   const handleCupoChange = (carreraNombre, val) => {
     setCuposConfig({
       ...cuposConfig,
@@ -95,24 +103,57 @@ export default function AdmisionesPage() {
     });
   };
 
-  const saveCupos = async (e) => {
+  const saveConfigUnificada = async (e) => {
     e.preventDefault();
     setLoading(true);
     setMessage(null);
     try {
-      const cuposPayload = carreras.map((c) => ({
-        carrera_id: c.nombre === 'Ingenieria Informatica' ? 1
-                    : c.nombre === 'Ingenieria de Sistemas' ? 2
-                    : c.nombre === 'Ingenieria en Redes y Telecomunicaciones' ? 3
-                    : 4,
-        cupo_maximo: cuposConfig[c.nombre] || 0,
+      const defaultCarreras = [
+        { id: 1, nombre: 'Ingenieria Informatica' },
+        { id: 2, nombre: 'Ingenieria de Sistemas' },
+        { id: 3, nombre: 'Ingenieria en Redes y Telecomunicaciones' },
+        { id: 4, nombre: 'Ingenieria en Robotica' }
+      ];
+
+      const cuposPayload = defaultCarreras.map((c) => ({
+        carrera_id: c.id,
+        cupo_maximo: cuposConfig[c.nombre] !== undefined ? cuposConfig[c.nombre] : 0
       }));
 
-      await api.post('/cupos', { cupos: cuposPayload });
-      setMessage({ type: 'success', text: 'Cupos actualizados exitosamente para la gestión activa.' });
+      const payload = {
+        gestion_codigo: gestionForm.codigo,
+        fecha_inicio: gestionForm.fecha_inicio,
+        fecha_fin: gestionForm.fecha_fin,
+        activa: gestionForm.activa,
+        cupos: cuposPayload
+      };
+
+      await api.post('/cupos', payload);
+      setMessage({ type: 'success', text: 'Configuración de gestión y cupos guardada exitosamente.' });
+      
+      await fetchGestiones();
       await fetchCuposYAdmitidos();
+      setSelectedGestionId('new');
+      setGestionForm({ codigo: '', fecha_inicio: '', fecha_fin: '', activa: true });
     } catch (err) {
-      setMessage({ type: 'error', text: err.response?.data?.message || 'Error al guardar los cupos.' });
+      setMessage({ type: 'error', text: err.response?.data?.message || 'Error al guardar la configuración.' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const desactivarGestion = async (id) => {
+    setLoading(true);
+    setMessage(null);
+    try {
+      const res = await api.post(`/gestiones/${id}/desactivar`);
+      setMessage({ type: 'success', text: res.data.message });
+      await fetchGestiones();
+      await fetchCuposYAdmitidos();
+      setSelectedGestionId('new');
+      setGestionForm({ codigo: '', fecha_inicio: '', fecha_fin: '', activa: true });
+    } catch (err) {
+      setMessage({ type: 'error', text: err.response?.data?.message || 'Error al desactivar la gestión.' });
     } finally {
       setLoading(false);
     }
@@ -171,167 +212,164 @@ export default function AdmisionesPage() {
       )}
 
       {resumen && (
-        <div className="glass-panel p-5 rounded-2xl mb-8 border border-emerald-500/25 bg-emerald-950/10">
-          <h3 className="font-bold text-emerald-400 text-sm mb-3">Resultados del Procesamiento Masivo:</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
-            <div className="bg-slate-950/45 p-3 rounded-xl">
-              <span className="text-slate-400 block mb-1">Total Procesados</span>
-              <span className="text-slate-100 font-bold text-base">{resumen.procesados ?? resumen.aprobados_totales ?? '–'}</span>
-            </div>
-            <div className="bg-slate-950/45 p-3 rounded-xl">
-              <span className="text-slate-400 block mb-1">Admitidos en 1ra Opción</span>
-              <span className="text-slate-100 font-bold text-base text-emerald-400">{resumen.admitidos_1ra_opcion}</span>
-            </div>
-            <div className="bg-slate-950/45 p-3 rounded-xl">
-              <span className="text-slate-400 block mb-1">Admitidos en 2da Opción</span>
-              <span className="text-slate-100 font-bold text-base text-blue-400">{resumen.admitidos_2da_opcion}</span>
-            </div>
-            <div className="bg-slate-950/45 p-3 rounded-xl">
-              <span className="text-slate-400 block mb-1">Pendientes de Reasignación</span>
-              <span className="text-slate-100 font-bold text-base text-red-400">{resumen.pendientes_reasignacion}</span>
-            </div>
+        <div className="glass-panel p-4 rounded-xl mb-6 border border-blue-500/20 grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+          <div>
+            <span className="text-[10px] text-slate-500 uppercase block">Procesados</span>
+            <span className="text-lg font-bold text-slate-100">{resumen.procesados ?? 0}</span>
+          </div>
+          <div>
+            <span className="text-[10px] text-slate-500 uppercase block">1ra Opción</span>
+            <span className="text-lg font-bold text-emerald-400">{resumen.admitidos_1ra_opcion ?? 0}</span>
+          </div>
+          <div>
+            <span className="text-[10px] text-slate-500 uppercase block">2da Opción</span>
+            <span className="text-lg font-bold text-blue-400">{resumen.admitidos_2da_opcion ?? 0}</span>
+          </div>
+          <div>
+            <span className="text-[10px] text-slate-500 uppercase block">Pendientes</span>
+            <span className="text-lg font-bold text-amber-400">{resumen.pendientes_reasignacion ?? 0}</span>
           </div>
         </div>
       )}
 
-      {/* ========== PANEL DE GESTIONES (CU18 parte 1) ========== */}
-      <div className="glass-panel p-6 rounded-2xl mb-8">
-        <h2 className="text-lg font-semibold text-slate-200 mb-2">Configuración de Gestión Académica (CU18)</h2>
-        <p className="text-xs text-slate-400 mb-5">Cree y active gestiones. Solo puede haber una gestión activa a la vez. Los postulantes se inscribirán a la gestión activa.</p>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Formulario de nueva gestión */}
-          <form onSubmit={crearGestion} className="space-y-3">
-            <h3 className="text-sm font-medium text-slate-300 mb-2">Crear Nueva Gestión</h3>
-            <div className="flex flex-col gap-1">
-              <label className="text-[10px] text-slate-500 uppercase">Código (ej: 1-2026)</label>
-              <input
-                type="text"
-                value={nuevaGestion.codigo}
-                onChange={(e) => setNuevaGestion({ ...nuevaGestion, codigo: e.target.value })}
-                placeholder="1-2026"
-                className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:border-blue-500 outline-none"
-                required
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="flex flex-col gap-1">
-                <label className="text-[10px] text-slate-500 uppercase">Fecha Inicio</label>
-                <input
-                  type="date"
-                  value={nuevaGestion.fecha_inicio}
-                  onChange={(e) => setNuevaGestion({ ...nuevaGestion, fecha_inicio: e.target.value })}
-                  className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:border-blue-500 outline-none"
-                  required
-                />
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-[10px] text-slate-500 uppercase">Fecha Fin</label>
-                <input
-                  type="date"
-                  value={nuevaGestion.fecha_fin}
-                  onChange={(e) => setNuevaGestion({ ...nuevaGestion, fecha_fin: e.target.value })}
-                  className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:border-blue-500 outline-none"
-                  required
-                />
-              </div>
-            </div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-emerald-600/10 text-emerald-400 border border-emerald-500/25 font-semibold text-xs py-2 rounded-xl hover:bg-emerald-600/20 transition-all cursor-pointer disabled:opacity-50"
-            >
-              Crear Gestión
-            </button>
-          </form>
-
-          {/* Lista de gestiones existentes */}
+      {/* ========== CONFIGURACIÓN UNIFICADA DE GESTIÓN Y CUPOS (CU18) ========== */}
+      <div className={`grid grid-cols-1 gap-8 mb-8 ${isAdmin ? 'lg:grid-cols-3' : ''}`}>
+        {/* Panel de Configuración Unificada (CU18) — solo Administrador */}
+        {isAdmin && (
+        <div className="glass-panel p-6 rounded-2xl lg:col-span-1 flex flex-col justify-between border border-slate-800">
           <div>
-            <h3 className="text-sm font-medium text-slate-300 mb-2">Gestiones Registradas</h3>
-            {gestiones.length === 0 ? (
-              <p className="text-xs text-slate-500">No hay gestiones registradas aún.</p>
-            ) : (
-              <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
-                {gestiones.map((g) => (
-                  <div
-                    key={g.id}
-                    className={`flex items-center justify-between p-3 rounded-xl border text-xs ${
-                      g.activa
-                        ? 'bg-emerald-500/10 border-emerald-500/30'
-                        : 'bg-slate-900/50 border-slate-800'
-                    }`}
-                  >
-                    <div>
-                      <span className={`font-bold ${g.activa ? 'text-emerald-400' : 'text-slate-300'}`}>
-                        {g.codigo}
-                      </span>
-                      <span className="text-slate-500 ml-2">
-                        {new Date(g.fecha_inicio).toLocaleDateString()} – {new Date(g.fecha_fin).toLocaleDateString()}
-                      </span>
-                      {g.activa && (
-                        <span className="ml-2 px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-[9px] font-bold uppercase">
-                          Activa
-                        </span>
-                      )}
-                    </div>
-                    {!g.activa && (
-                      <button
-                        onClick={() => activarGestion(g.id)}
-                        disabled={loading}
-                        className="px-3 py-1 rounded-lg bg-blue-600/10 text-blue-400 border border-blue-500/25 text-[10px] font-semibold hover:bg-blue-600/20 transition-all cursor-pointer disabled:opacity-50"
-                      >
-                        Activar
-                      </button>
-                    )}
-                  </div>
+            <h2 className="text-lg font-semibold text-slate-200 mb-2">Configuración de Sistema (CU18)</h2>
+            <p className="text-xs text-slate-400 mb-6">Cree/edite gestiones y configure sus límites de cupo por carrera en un único paso.</p>
+            
+            <div className="mb-5">
+              <label className="block text-[10px] text-slate-500 uppercase font-semibold mb-1">Seleccionar Gestión</label>
+              <select
+                value={selectedGestionId}
+                onChange={(e) => handleGestionSelectChange(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:border-blue-500 outline-none"
+              >
+                <option value="new">-- Crear Nueva Gestión --</option>
+                {gestiones.map(g => (
+                  <option key={g.id} value={g.id}>
+                    {g.codigo} {g.activa ? '(Activa)' : '(Inactiva/Cerrada)'}
+                  </option>
                 ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+              </select>
+            </div>
 
-      {/* ========== CUPOS + ADMITIDOS ========== */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-        {/* Formulario de Configuración de Cupos (CU18 parte 2) */}
-        <div className="glass-panel p-6 rounded-2xl lg:col-span-1 flex flex-col justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-slate-200 mb-2">Límites de Cupo por Carrera (CU18)</h2>
-            <p className="text-xs text-slate-400 mb-6">Establezca la cantidad máxima de vacantes admitidas por carrera para la gestión vigente.</p>
-            <form onSubmit={saveCupos} className="space-y-4">
-              {carreras.map((c) => (
-                <div key={c.nombre} className="flex flex-col gap-2">
-                  <label className="text-xs text-slate-300 font-medium">{c.nombre}</label>
-                  <div className="flex items-center gap-3">
+            <form onSubmit={saveConfigUnificada} className="space-y-4">
+              <div className="bg-slate-950/20 p-4 rounded-xl border border-slate-800/40 space-y-3">
+                <h3 className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Parámetros de Gestión</h3>
+                
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] text-slate-500 uppercase">Código de Gestión</label>
+                  <input
+                    type="text"
+                    value={gestionForm.codigo}
+                    onChange={(e) => setGestionForm({ ...gestionForm, codigo: e.target.value })}
+                    placeholder="1-2026"
+                    className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:border-blue-500 outline-none"
+                    required
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] text-slate-500 uppercase">Fecha Inicio</label>
                     <input
-                      type="number"
-                      min="0"
-                      value={cuposConfig[c.nombre] !== undefined ? cuposConfig[c.nombre] : c.cupo_maximo}
-                      onChange={(e) => handleCupoChange(c.nombre, e.target.value)}
-                      className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:border-blue-500 outline-none w-24 text-center font-mono"
+                      type="date"
+                      value={gestionForm.fecha_inicio}
+                      onChange={(e) => setGestionForm({ ...gestionForm, fecha_inicio: e.target.value })}
+                      className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:border-blue-500 outline-none"
                       required
                     />
-                    <span className="text-[10px] text-slate-500">
-                      Ocupados: {c.ocupados} | Libres: {c.cupos_disponibles}
-                    </span>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] text-slate-500 uppercase">Fecha Fin</label>
+                    <input
+                      type="date"
+                      value={gestionForm.fecha_fin}
+                      onChange={(e) => setGestionForm({ ...gestionForm, fecha_fin: e.target.value })}
+                      className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:border-blue-500 outline-none"
+                      required
+                    />
                   </div>
                 </div>
-              ))}
-              <div className="pt-4">
+
+                <div className="flex items-center gap-2 pt-1">
+                  <input
+                    type="checkbox"
+                    id="activa"
+                    checked={gestionForm.activa}
+                    onChange={(e) => setGestionForm({ ...gestionForm, activa: e.target.checked })}
+                    className="w-4 h-4 rounded accent-blue-600 bg-slate-900 border-slate-850"
+                  />
+                  <label htmlFor="activa" className="text-xs text-slate-300 select-none cursor-pointer">
+                    Establecer como Gestión Activa
+                  </label>
+                </div>
+              </div>
+
+              <div className="bg-slate-950/20 p-4 rounded-xl border border-slate-800/40 space-y-3">
+                <h3 className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Límites de Cupo</h3>
+                
+                {[
+                  'Ingenieria Informatica',
+                  'Ingenieria de Sistemas',
+                  'Ingenieria en Redes y Telecomunicaciones',
+                  'Ingenieria en Robotica'
+                ].map((nombre) => {
+                  const c = carreras.find(item => item.nombre === nombre);
+                  return (
+                    <div key={nombre} className="flex flex-col gap-1">
+                      <label className="text-[11px] text-slate-400 font-medium">{nombre}</label>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="number"
+                          min="0"
+                          value={cuposConfig[nombre] !== undefined ? cuposConfig[nombre] : 0}
+                          onChange={(e) => handleCupoChange(nombre, e.target.value)}
+                          className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-200 focus:border-blue-500 outline-none w-20 text-center font-mono"
+                          required
+                        />
+                        {c && (
+                          <span className="text-[10px] text-slate-500 font-mono">
+                            Ocupados: {c.ocupados} | Libres: {c.cupos_disponibles}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="pt-2 space-y-2">
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-blue-600/10 text-blue-400 border border-blue-500/25 font-semibold text-xs py-2 rounded-xl hover:bg-blue-600/20 transition-all cursor-pointer"
+                  className="w-full bg-blue-600/15 text-blue-400 border border-blue-500/35 font-semibold text-xs py-2 rounded-xl hover:bg-blue-600/25 transition-all cursor-pointer disabled:opacity-50"
                 >
-                  Guardar Cambios de Cupo
+                  {loading ? 'Guardando...' : 'Guardar Configuración Unificada'}
                 </button>
+
+                {selectedGestionId !== 'new' && (
+                  <button
+                    type="button"
+                    onClick={() => desactivarGestion(selectedGestionId)}
+                    disabled={loading}
+                    className="w-full bg-red-600/10 text-red-400 border border-red-500/25 font-semibold text-xs py-2 rounded-xl hover:bg-red-600/20 transition-all cursor-pointer"
+                  >
+                    Cierre de Gestión (Desactivar)
+                  </button>
+                )}
               </div>
             </form>
           </div>
         </div>
+        )}
 
         {/* Listado de Admitidos y Asignados */}
-        <div className="glass-panel p-6 rounded-2xl lg:col-span-2">
+        <div className={`glass-panel p-6 rounded-2xl ${isAdmin ? 'lg:col-span-2' : ''}`}>
           <h2 className="text-lg font-semibold text-slate-200 mb-4">Postulantes Admitidos a Carreras</h2>
           {loading ? (
             <div className="py-12 text-center text-slate-400 text-sm">Cargando resultados...</div>

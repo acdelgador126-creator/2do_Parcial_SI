@@ -10,6 +10,8 @@ use App\Models\Postulante;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Events\DashboardUpdated;
+
 
 class EvaluacionController extends Controller
 {
@@ -98,11 +100,14 @@ class EvaluacionController extends Controller
             return $examenGuardado;
         });
 
+        event(new DashboardUpdated());
+
         // CU13 - Paso 7: C_Ctrl --> B_Int : + RetornarExito()
         return response()->json([
             'message' => 'Nota registrada y promedio recalculado exitosamente.',
             'examen' => $result,
         ]);
+
     }
 
     /**
@@ -216,12 +221,15 @@ class EvaluacionController extends Controller
             }
         });
 
+        event(new DashboardUpdated());
+
         // CU14 - Paso 9: C_Eval --> B_Nota : + ConfirmarCargaExitosa(resumen)
         return response()->json([
             'message' => 'Procesamiento masivo finalizado.',
             'exitos' => $exitos,
             'errores' => $errores,
         ]);
+
     }
 
     /**
@@ -262,6 +270,8 @@ class EvaluacionController extends Controller
             }
         }
 
+        event(new DashboardUpdated());
+
         // CU15 - Paso 7: C_Ctrl --> B_Console : + RetornarExito()
         return response()->json([
             'message' => "Promedios ponderados calculados exitosamente.",
@@ -295,6 +305,8 @@ class EvaluacionController extends Controller
             }
         }
 
+        event(new DashboardUpdated());
+
         // CU16 - Paso 7: C_Ctrl --> B_Console : + RetornarExito()
         $totalAprobados = Postulante::where('estado', 'Aprobado')->count();
         $totalReprobados = Postulante::where('estado', 'Reprobado')->count();
@@ -308,6 +320,7 @@ class EvaluacionController extends Controller
             'admitidos' => $totalAdmitidos,
             'pendientes' => $totalPendientes,
         ]);
+
     }
 
     /**
@@ -322,7 +335,22 @@ class EvaluacionController extends Controller
         $materiasCount = Materia::count();
         $notasFinales = NotaFinal::with('materia')->where('postulante_id', $postulanteId)->get();
 
-        $tieneTodasLasMaterias = $notasFinales->count() === $materiasCount;
+        $estadoAnterior = $postulante->estado;
+
+        if (in_array($estadoAnterior, ['Admitido', 'Pendiente Reasignacion'], true)) {
+            return;
+        }
+
+        $evaluacionCompleta = $notasFinales->count() === $materiasCount
+            && $notasFinales->every(fn ($nf) => empty($nf->observaciones));
+
+        if (!$evaluacionCompleta) {
+            if (in_array($estadoAnterior, ['Inscrito', 'Verificado'], true)) {
+                $postulante->update(['estado' => 'En Evaluacion']);
+            }
+            return;
+        }
+
         $aproboTodas = true;
         $materiasReprobadas = [];
 
@@ -335,8 +363,7 @@ class EvaluacionController extends Controller
             }
         }
 
-        $nuevoEstado = ($tieneTodasLasMaterias && $aproboTodas) ? 'Aprobado' : 'Reprobado';
-        $estadoAnterior = $postulante->estado;
+        $nuevoEstado = $aproboTodas ? 'Aprobado' : 'Reprobado';
 
         if ($estadoAnterior === 'En Evaluacion' || $estadoAnterior !== $nuevoEstado) {
             $postulante->update(['estado' => $nuevoEstado]);

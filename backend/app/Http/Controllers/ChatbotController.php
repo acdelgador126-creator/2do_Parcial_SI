@@ -22,7 +22,7 @@ class ChatbotController extends Controller
         ]);
 
         $pregunta = trim($validated['pregunta']);
-        $postulanteId = $validated['postulante_id'];
+        $postulanteId = $validated['postulante_id'] ?? null;
         $respuesta = "";
 
         // Intentar detectar si el usuario ingresó un CI en la pregunta para informarle de su estado
@@ -47,28 +47,27 @@ class ChatbotController extends Controller
             }
         } else {
             // Consulta general de ayuda
-            $apiKey = env('OPENAI_API_KEY');
+            $hfSpaceUrl = env('HF_SPACE_URL');
 
-            if (!empty($apiKey)) {
-                // OpenAI API Call
+            if (!empty($hfSpaceUrl)) {
+                // Hugging Face Spaces API Call
                 try {
-                    $response = Http::withToken($apiKey)->post('https://api.openai.com/v1/chat/completions', [
-                        'model' => 'gpt-3.5-turbo',
-                        'messages' => [
-                            [
-                                'role' => 'system',
-                                'content' => 'Eres un chatbot asistente del Curso Preuniversitario (CUP) de la FICCT - UAGRM. Responde de manera concisa y clara. Reglas del CUP: Costo de inscripción: 700 BOB (procesado vía Stripe). Requisitos: Cédula de identidad, Certificado de nacimiento, Título de bachiller legalizado, Formulario de preinscripción. Materias evaluadas: Computación, Matemáticas, Física, Inglés. Exámenes: 3 exámenes por materia (ponderaciones 30%, 30% y 40%). Criterio de aprobación: Debes obtener una nota final mayor o igual a 60 en CADA UNA de las 4 materias de manera individual (no sirve el promedio general). Capacidad máxima por grupo: 70 estudiantes. Docentes: Máximo 4 grupos por docente.'
-                            ],
-                            [
-                                'role' => 'user',
-                                'content' => $pregunta
-                            ]
-                        ],
-                        'temperature' => 0.7
+                    $systemPrompt = 'Eres un chatbot asistente del Curso Preuniversitario (CUP) de la FICCT - UAGRM. Responde de manera concisa y clara en español. Reglas del CUP: Costo de inscripción: 700 BOB (procesado vía Stripe). Requisitos: Cédula de identidad, Certificado de nacimiento, Título de bachiller legalizado, Formulario de preinscripción. Materias evaluadas: Computación, Matemáticas, Física, Inglés. Exámenes: 3 exámenes por materia (ponderaciones 30%, 30% y 40%). Criterio de aprobación: Debes obtener una nota final mayor o igual a 60 en CADA UNA de las 4 materias de manera individual (no sirve el promedio general). Capacidad máxima por grupo: 70 estudiantes. Docentes: Máximo 4 grupos por docente.';
+                    
+                    $fullPrompt = $systemPrompt . "\n\nPregunta: " . $pregunta;
+
+                    $response = Http::post($hfSpaceUrl, [
+                        'model' => 'gemma3:1b',
+                        'prompt' => $fullPrompt,
+                        'stream' => false
                     ]);
 
                     if ($response->successful()) {
-                        $respuesta = $response->json('choices.0.message.content');
+                        $respuesta = $response->json('response');
+                        // Si response no existe, intentar con otros campos comunes
+                        if (empty($respuesta)) {
+                            $respuesta = $response->json('output') ?? $response->json('text') ?? $response->json('generated_text') ?? 'Lo siento, no pude procesar tu respuesta.';
+                        }
                     } else {
                         $respuesta = $this->obtenerRespuestaEstatica($pregunta);
                     }

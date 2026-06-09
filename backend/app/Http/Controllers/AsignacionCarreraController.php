@@ -18,28 +18,33 @@ class AsignacionCarreraController extends Controller
     public function asignacionMasiva(Request $request): JsonResponse
     {
         $user = $request->user();
-        
-        $result = DB::transaction(function () use ($user) {
-            
-            $gestionActiva = \App\Models\Gestion::activa()->first();
-            if ($gestionActiva) {
-                // Limpiar admisiones previas de esta gestión para evitar errores de duplicado (1062)
-                $ids = Postulante::where('gestion_id', $gestionActiva->id)->pluck('id');
-                Admision::whereIn('postulante_id', $ids)->delete();
-                
-                // Reiniciar los cupos al máximo
-                CupoGestion::where('gestion_id', $gestionActiva->id)->update([
-                    'cupos_disponibles' => DB::raw('cupo_maximo')
-                ]);
-            }
 
-            // Obtener postulantes Aprobados, Pendientes o previamente Admitidos
-            $postulantes = Postulante::with(['notasFinales'])->whereIn('estado', ['Aprobado', 'Pendiente Reasignacion', 'Admitido'])->get();
+        $gestionActiva = \App\Models\Gestion::activa()->first();
+        if (!$gestionActiva) {
+            return response()->json(['message' => 'No hay gestión activa configurada.'], 422);
+        }
+
+        $result = DB::transaction(function () use ($user, $gestionActiva) {
+
+            // Limpiar admisiones previas de esta gestión para evitar errores de duplicado (1062)
+            $ids = Postulante::where('gestion_id', $gestionActiva->id)->pluck('id');
+            Admision::whereIn('postulante_id', $ids)->delete();
+            
+            // Reiniciar los cupos al máximo
+            CupoGestion::where('gestion_id', $gestionActiva->id)->update([
+                'cupos_disponibles' => DB::raw('cupo_maximo')
+            ]);
+
+            // Obtener postulantes Aprobados, Pendientes o previamente Admitidos de la gestión activa
+            $postulantes = Postulante::with(['notasFinales'])
+                ->where('gestion_id', $gestionActiva->id)
+                ->whereIn('estado', ['Aprobado', 'Pendiente Reasignacion', 'Admitido'])
+                ->get();
 
             // Calcular promedio general de cada uno y ordenar descendentemente (Meritocracia)
             $postulantes = $postulantes->map(function ($postulante) {
                 $promedioGeneral = $postulante->notasFinales->avg('promedio') ?? 0;
-                $postulante->promedio_general = $promedioGeneral;
+                $postulante->promedio_general = round($promedioGeneral, 2);
                 return $postulante;
             })->sortByDesc('promedio_general');
 
@@ -54,7 +59,7 @@ class AsignacionCarreraController extends Controller
                 $estadisticas['procesados']++;
 
                 // 1ra Opcion
-                $cupo1ra = CupoGestion::where('gestion_id', $postulante->gestion_id)
+                $cupo1ra = CupoGestion::where('gestion_id', $gestionActiva->id)
                     ->where('carrera_id', $postulante->primera_opcion_id)
                     ->lockForUpdate()
                     ->first();
@@ -73,7 +78,7 @@ class AsignacionCarreraController extends Controller
                 }
 
                 // 2da Opcion
-                $cupo2da = CupoGestion::where('gestion_id', $postulante->gestion_id)
+                $cupo2da = CupoGestion::where('gestion_id', $gestionActiva->id)
                     ->where('carrera_id', $postulante->segunda_opcion_id)
                     ->lockForUpdate()
                     ->first();
@@ -95,18 +100,26 @@ class AsignacionCarreraController extends Controller
                 Postulante::where('id', $postulante->id)->update(['estado' => 'Pendiente Reasignacion']);
                 $estadisticas['pendientes_reasignacion']++;
 
-                 BitacoraAcceso::create([
-                     'user_id' => $user ? $user->id : 1,
-                     'ip_address' => request()->ip() ?? '127.0.0.1',
-                     'action' => "Asignación Fallida - Postulante CI {$postulante->ci} sin cupo",
-                 ]);
+                BitacoraAcceso::create([
+                    'user_id' => $user ? $user->id : 1,
+                    'ip_address' => request()->ip() ?? '127.0.0.1',
+                    'action' => "ALERTA_CUPO_AGOTADO: Postulante ID {$postulante->id} (CI: {$postulante->ci}) sin cupo en opciones.",
+                ]);
+
+                // Notificación push al coordinador
+                \App\Models\Notificacion::create([
+                    'usuario_id' => $user ? $user->id : 1,
+                    'tipo_evento' => 'Cupo Agotado',
+                    'mensaje' => "El postulante {$postulante->nombres} {$postulante->apellidos} (CI: {$postulante->ci}) aprobó con {$postulante->promedio_general} pero no tiene cupo en sus opciones.",
+                    'estado' => 'NO_LEIDA',
+                ]);
             }
 
             return $estadisticas;
         });
 
         return response()->json([
-            'message' => 'Asignación masiva finalizada con éxito.',
+            'message' => 'Proceso de asignación de carreras finalizado con éxito.',
             'estadisticas' => $result,
         ]);
     }

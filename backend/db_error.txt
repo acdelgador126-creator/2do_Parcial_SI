@@ -1,0 +1,7 @@
+SQLSTATE[42703]: Undefined column: 7 ERROR:  no existe la columna «id» en la relación «cache» (Connection: pgsql, SQL: SELECT pg_get_serial_sequence(cache, 'id') as seq)
+#0 C:\Users\User\Documents\1-2026\SISTEMA INFORMA\2do_Parcial_SI\backend\vendor\laravel\framework\src\Illuminate\Database\Connection.php(779): Illuminate\Database\Connection->runQueryCallback('SELECT pg_get_s...', Array, Object(Closure))
+#1 C:\Users\User\Documents\1-2026\SISTEMA INFORMA\2do_Parcial_SI\backend\vendor\laravel\framework\src\Illuminate\Database\Connection.php(398): Illuminate\Database\Connection->run('SELECT pg_get_s...', Array, Object(Closure))
+#2 C:\Users\User\Documents\1-2026\SISTEMA INFORMA\2do_Parcial_SI\backend\vendor\laravel\framework\src\Illuminate\Database\DatabaseManager.php(495): Illuminate\Database\Connection->select('SELECT pg_get_s...', Array)
+#3 C:\Users\User\Documents\1-2026\SISTEMA INFORMA\2do_Parcial_SI\backend\vendor\laravel\framework\src\Illuminate\Support\Facades\Facade.php(361): Illuminate\Database\DatabaseManager->__call('select', Array)
+#4 C:\Users\User\Documents\1-2026\SISTEMA INFORMA\2do_Parcial_SI\backend\run_sql_files.php(30): Illuminate\Support\Facades\Facade::__callStatic('select', Array)
+#5 {main}

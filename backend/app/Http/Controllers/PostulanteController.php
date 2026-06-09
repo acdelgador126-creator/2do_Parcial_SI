@@ -8,6 +8,7 @@ use App\Models\RequisitoDocumental;
 use App\Services\VerificacionExternaService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class PostulanteController extends Controller
 {
@@ -15,13 +16,33 @@ class PostulanteController extends Controller
      * CU05 + CU08: Registrar postulante (con deteccion automatica de recurrente)
      *
      * Seq_CU08: Sistema busca CI en BD → si existe, carga datos previos → marca recurrente
-     * Seq_CU05: Si no existe, registra nuevo → estado "Preinscrito"
      */
     public function store(Request $request): JsonResponse
     {
         // CU05 - Paso 6b: B_Int -> C_Ctrl : + store(request)
         // CU08 - Paso 2: B_Int -> C_Ctrl : + buscarPorCi(request)
-        $existente = Postulante::where('ci', $request->ci)->first();
+        
+        $gestion = Gestion::activa()->first();
+        if (! $gestion) {
+            return response()->json([
+                'message' => 'No hay periodo de inscripcion activo.',
+            ], 422);
+        }
+
+        // Buscar postulante existente por CI, email o título de bachiller (repitente/recurrente)
+        $existente = Postulante::where('ci', $request->ci)
+            ->orWhere('email', $request->email)
+            ->when($request->filled('titulo_bachiller'), function ($q) use ($request) {
+                $q->orWhere('titulo_bachiller', $request->titulo_bachiller);
+            })
+            ->first();
+
+        // Si existe en la gestión activa, retornar error de duplicado
+        if ($existente && $existente->gestion_id === $gestion->id) {
+            return response()->json([
+                'message' => 'El postulante con este CI, correo o título de bachiller ya se encuentra registrado para la gestión actual.',
+            ], 422);
+        }
         
         $emailRule = 'required|email|max:150';
         if (!$existente) {
@@ -67,15 +88,8 @@ class PostulanteController extends Controller
             'turno_preferencia.in' => 'El turno seleccionado no es válido.',
         ]);
 
-        $gestion = Gestion::activa()->first();
-        if (! $gestion) {
-            return response()->json([
-                'message' => 'No hay periodo de inscripcion activo.',
-            ], 422);
-        }
-
         if ($existente) {
-            if ($existente->gestion_id !== $gestion->id) {
+            DB::transaction(function () use ($existente, $validated, $gestion) {
                 // Opción B (Destructiva): Limpiar el historial anterior para evitar colisiones 1062
                 \App\Models\Examen::where('postulante_id', $existente->id)->delete();
                 \App\Models\NotaFinal::where('postulante_id', $existente->id)->delete();
@@ -85,14 +99,21 @@ class PostulanteController extends Controller
                 
                 // Regenerar requisitos en blanco para la nueva gestión
                 RequisitoDocumental::create(['postulante_id' => $existente->id]);
-            }
 
-            // Ya participó antes -> actualizar datos y marcar recurrente
-            $existente->update(array_merge($validated, [
-                'gestion_id' => $gestion->id,
-                'estado' => 'Preinscrito',
-                'recurrente' => true,
-            ]));
+                // Ya participó antes -> actualizar datos y marcar recurrente
+                $existente->update(array_merge($validated, [
+                    'gestion_id' => $gestion->id,
+                    'estado' => 'Preinscrito',
+                    'recurrente' => true,
+                ]));
+
+                // Desactivar el usuario postulante existente (active = false) hasta que pague la matrícula
+                $user = \App\Models\User::where('email', $existente->email)->first();
+                if ($user) {
+                    $user->update(['active' => false]);
+                    $existente->update(['user_id' => $user->id]);
+                }
+            });
 
             return response()->json([
                 'message' => 'Postulante recurrente detectado. Datos actualizados para la nueva gestion.',
@@ -271,8 +292,10 @@ class PostulanteController extends Controller
         // Eliminar asignaciones de grupo
         \App\Models\AsignacionGrupo::where('postulante_id', $postulante->id)->delete();
 
-        // Eliminar notificaciones
-        \App\Models\Notificacion::where('postulante_id', $postulante->id)->delete();
+        // Eliminar notificaciones del usuario asociado
+        if ($postulante->user_id) {
+            \App\Models\Notificacion::where('usuario_id', $postulante->user_id)->delete();
+        }
 
         // Finalmente eliminar el postulante
         $postulante->delete();

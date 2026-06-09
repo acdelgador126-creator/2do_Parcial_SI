@@ -13,6 +13,9 @@ use App\Models\Grupo;
 use App\Models\NotaFinal;
 use App\Models\Postulante;
 use App\Models\User;
+use App\Exports\ReporteVozExport;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -29,22 +32,46 @@ class ReporteController extends Controller
      */
     public function configurarCupos(Request $request): JsonResponse
     {
-        // CU18 - Paso 2: B_Int -> C_Ctrl : + store(request)
-        $validated = $request->validate([
+        $rules = [
             'cupos' => 'required|array',
             'cupos.*.carrera_id' => 'required|exists:carreras,id',
             'cupos.*.cupo_maximo' => 'required|integer|min:0',
-        ]);
+        ];
 
-        $gestion = Gestion::activa()->first();
-        if (!$gestion) {
-            return response()->json(['message' => 'No hay gestión activa configurada.'], 422);
+        // Validar campos opcionales de gestión si se envían conjuntamente
+        if ($request->has('gestion_codigo')) {
+            $rules['gestion_codigo'] = 'required|string|max:10';
+            $rules['fecha_inicio'] = 'required|date';
+            $rules['fecha_fin'] = 'required|date|after:fecha_inicio';
+            $rules['activa'] = 'required|boolean';
+        }
+
+        $validated = $request->validate($rules);
+
+        if ($request->has('gestion_codigo')) {
+            $gestion = Gestion::firstOrNew(['codigo' => $validated['gestion_codigo']]);
+            $gestion->fecha_inicio = $validated['fecha_inicio'];
+            $gestion->fecha_fin = $validated['fecha_fin'];
+
+            $newActiva = (bool) $validated['activa'];
+            $gestion->activa = $newActiva;
+            $gestion->save();
+
+            if ($newActiva) {
+                Gestion::where('id', '!=', $gestion->id)->update(['activa' => false]);
+            } else {
+                $this->desactivarPostulantesDeGestion($gestion->id);
+            }
+        } else {
+            $gestion = Gestion::activa()->first();
+            if (!$gestion) {
+                return response()->json(['message' => 'No hay gestión activa configurada.'], 422);
+            }
         }
 
         DB::transaction(function () use ($validated, $gestion) {
             foreach ($validated['cupos'] as $c) {
-                // CU18 - Paso 3: C_Ctrl -> E_Cupo : + updateOrCreate(datos)
-                // En la bd, la tabla mapeada es cupos_gestion
+                $ocupados = $this->calcularCuposOcupados($gestion->id, $c['carrera_id']);
                 DB::table('cupos_gestion')->updateOrInsert(
                     [
                         'gestion_id' => $gestion->id,
@@ -52,16 +79,15 @@ class ReporteController extends Controller
                     ],
                     [
                         'cupo_maximo' => $c['cupo_maximo'],
-                        // Se reinician los disponibles si no había registros, o se recalculan
-                        'cupos_disponibles' => $c['cupo_maximo'] - $this->calcularCuposOcupados($gestion->id, $c['carrera_id']),
+                        'cupos_disponibles' => max(0, $c['cupo_maximo'] - $ocupados),
                     ]
                 );
             }
         });
 
-        // CU18 - Paso 4: C_Ctrl --> B_Int : + RetornarConfirmacion()
         return response()->json([
-            'message' => 'Cupos configurados exitosamente para la gestion actual.',
+            'message' => 'Configuración de gestión y cupos guardada exitosamente.',
+            'gestion' => $gestion->fresh(),
         ]);
     }
 
@@ -217,18 +243,21 @@ class ReporteController extends Controller
         // CU22 - Paso 3: C_Rep -> E_Post : + get()
         // CU22 - Paso 4: E_Post --> C_Rep : + DistribucionInscritos
         // Contar únicamente estudiantes matriculados (excluyendo Preinscritos y Verificados sin pago)
+        $estadosInscritos = ['Inscrito', 'En Evaluacion', 'Aprobado', 'Reprobado', 'Pendiente Reasignacion', 'Admitido'];
         $totalInscritos = Postulante::where('gestion_id', $gestion->id)
-            ->whereIn('estado', ['Inscrito', 'En Evaluacion', 'Aprobado', 'Reprobado', 'Pendiente Reasignacion'])
+            ->whereIn('estado', $estadosInscritos)
             ->count();
         $inscritosPorSexo = Postulante::where('gestion_id', $gestion->id)
-            ->whereIn('estado', ['Inscrito', 'En Evaluacion', 'Aprobado', 'Reprobado', 'Pendiente Reasignacion'])
+            ->whereIn('estado', $estadosInscritos)
             ->select('sexo', DB::raw('count(*) as total'))
             ->groupBy('sexo')
             ->get();
 
         // CU22 - Paso 5: C_Rep -> E_Nota : + get()
         // CU22 - Paso 6: E_Nota --> C_Rep : + RendimientoYTasas
-        $aprobados = Postulante::where('gestion_id', $gestion->id)->where('estado', 'Aprobado')->count();
+        $aprobados = Postulante::where('gestion_id', $gestion->id)
+            ->whereIn('estado', ['Aprobado', 'Admitido'])
+            ->count();
         $reprobados = Postulante::where('gestion_id', $gestion->id)->where('estado', 'Reprobado')->count();
         $enEvaluacion = Postulante::where('gestion_id', $gestion->id)->where('estado', 'En Evaluacion')->count();
         $preinscritos = Postulante::where('gestion_id', $gestion->id)->where('estado', 'Preinscrito')->count();
@@ -240,28 +269,35 @@ class ReporteController extends Controller
                 $join->on('carreras.id', '=', 'cupos_gestion.carrera_id')
                      ->where('cupos_gestion.gestion_id', '=', $gestion->id);
             })
-            ->select('carreras.nombre', 
+            ->select('carreras.id', 'carreras.nombre', 
                 DB::raw('COALESCE(cupos_gestion.cupo_maximo, 0) as cupo_maximo'), 
                 DB::raw('COALESCE(cupos_gestion.cupos_disponibles, 0) as cupos_disponibles')
             )
             ->get()
-            ->map(function ($c) {
-                $c->ocupados = $c->cupo_maximo - $c->cupos_disponibles;
+            ->map(function ($c) use ($gestion) {
+                // Contar admitidos reales (aprobados) que ya tienen admisión en esta carrera y gestión
+                $c->ocupados = DB::table('admisiones')
+                    ->join('postulantes', 'admisiones.postulante_id', '=', 'postulantes.id')
+                    ->where('admisiones.carrera_id', $c->id)
+                    ->where('postulantes.gestion_id', $gestion->id)
+                    ->count();
                 $c->porcentaje_llenado = $c->cupo_maximo > 0 ? round(($c->ocupados / $c->cupo_maximo) * 100, 2) : 0;
                 return $c;
             });
 
         // Ocupación de grupos
         $gruposOcupacion = Grupo::where('gestion_id', $gestion->id)
+            ->with('aula')
             ->get()
             ->map(function ($g) {
                 $cant = DB::table('asignaciones_grupo')->where('grupo_id', $g->id)->count();
+                $capacidad = $g->aula?->capacidad ?: 70;
                 return [
                     'id' => $g->id,
                     'numero' => $g->numero,
                     'turno' => $g->turno,
                     'estudiantes' => $cant,
-                    'porcentaje' => round(($cant / 70) * 100, 2),
+                    'porcentaje' => $capacidad > 0 ? round(($cant / $capacidad) * 100, 2) : 0,
                 ];
             });
 
@@ -271,7 +307,7 @@ class ReporteController extends Controller
             ->join('grupos', 'asignaciones_grupo.grupo_id', '=', 'grupos.id')
             ->where('grupos.gestion_id', $gestion->id)
             ->select('grupos.numero', 'grupos.turno', 
-                DB::raw("COUNT(CASE WHEN postulantes.estado = 'Aprobado' THEN 1 END) as aprobados"),
+                DB::raw("COUNT(CASE WHEN postulantes.estado IN ('Aprobado', 'Admitido') THEN 1 END) as aprobados"),
                 DB::raw("COUNT(*) as total")
             )
             ->groupBy('grupos.id', 'grupos.numero', 'grupos.turno')
@@ -300,6 +336,54 @@ class ReporteController extends Controller
         // CU22 - Paso 9: C_Rep --> B_Dash : + EnviarDatosEstadisticos()
         return response()->json($stats);
     }
+
+    /**
+     * CU22: Consultar Dashboard Estadístico en Tiempo Real (Caso B: Postulante consulta sus Notas Individuales)
+     *
+     * Seq_CU22: Postulante → IU_Dashboard → CTR_Reportes.getNotasIndividuales(postulanteId)
+     *   → CE_Postulante.find(postulanteId) → datosPostulante
+     *   → CE_Examen.getExamenes(postulanteId) → notasExamenes
+     *   → CE_NotaFinal.getNotasFinales(postulanteId) → promediosFinales
+     *   → EnviarNotasIndividuales()
+     */
+    public function getNotasIndividuales(Request $request, $postulanteId = null): JsonResponse
+    {
+        // CU22 - Caso B - Paso 2: B_Dash -> C_Rep : + getNotasIndividuales(postulanteId)
+        $user = $request->user();
+        
+        if ($user->role === 'Postulante') {
+            $postulante = Postulante::where('user_id', $user->id)->first();
+            if (!$postulante) {
+                return response()->json(['message' => 'No se encontró el expediente del postulante.'], 404);
+            }
+            $postulanteId = $postulante->id;
+        } else {
+            if (!$postulanteId) {
+                return response()->json(['message' => 'Se requiere especificar el ID del postulante.'], 400);
+            }
+            $postulante = Postulante::find($postulanteId);
+            if (!$postulante) {
+                return response()->json(['message' => 'Postulante no encontrado.'], 404);
+            }
+        }
+
+        // Paso 3: C_Rep -> E_Post : + find(postulanteId)
+        // Paso 5: C_Rep -> E_Exam : + getExamenes(postulanteId)
+        // Paso 7: C_Rep -> E_Nota : + getNotasFinales(postulanteId)
+        $postulante->load([
+            'primeraOpcion',
+            'segundaOpcion',
+            'gestion',
+            'asignacionGrupo.grupo',
+            'examenes.materia',
+            'notasFinales.materia',
+            'admision.carrera'
+        ]);
+
+        // Paso 9: C_Rep --> B_Dash : + EnviarNotasIndividuales()
+        return response()->json($postulante);
+    }
+
 
     /**
      * CU19: Generar Reporte Estructurado
@@ -527,61 +611,258 @@ class ReporteController extends Controller
             'texto' => 'required|string',
         ]);
 
-        $texto = strtolower(trim($request->texto));
+        $texto = $this->normalizarTextoVoz($request->texto);
+        $filtros = $this->extraerFiltrosVoz($texto);
+
+        if (!$this->tieneFiltrosActivos($filtros)) {
+            return response()->json([
+                'filtros_extraidos' => $filtros,
+                'resultados' => [],
+                'mensaje' => 'No se reconoció ningún filtro válido. Ejemplos: "aprobados de sistemas", "preinscritos en la noche", "reprobados de informática en la tarde".',
+                'transcripcion_normalizada' => $texto,
+            ]);
+        }
+
+        // CU21 - Paso 5: C_Ctrl -> E_Data : + EjecutarConsultaGenerada()
+        // CU21 - Paso 6: E_Data --> C_Ctrl : + ResultadosSQL
+        $resultados = $this->buildVoiceQuery($filtros);
+
+        // CU21 - Paso 7: C_Ctrl --> B_Int : + RetornarResultados()
+        return response()->json([
+            'filtros_extraidos' => $filtros,
+            'resultados' => $resultados,
+            'mensaje' => null,
+            'transcripcion_normalizada' => $texto,
+        ]);
+    }
+
+    /**
+     * Analizador local cognitivo basado en expresiones regulares
+     */
+    private function normalizarTextoVoz(string $texto): string
+    {
+        $texto = mb_strtolower(trim($texto), 'UTF-8');
+        $texto = str_replace(
+            ['á', 'é', 'í', 'ó', 'ú', 'ü', 'ñ'],
+            ['a', 'e', 'i', 'o', 'u', 'u', 'n'],
+            $texto
+        );
+
+        return preg_replace('/\s+/', ' ', $texto) ?? $texto;
+    }
+
+    private function extraerFiltrosVoz(string $texto): array
+    {
+        $filtros = $this->parsearVozRegex($texto);
         $apiKey = env('OPENAI_API_KEY');
 
+        if (empty($apiKey)) {
+            return $this->normalizarFiltrosVoz($filtros);
+        }
+
+        try {
+            $response = Http::timeout(12)->withToken($apiKey)->post('https://api.openai.com/v1/chat/completions', [
+                'model' => 'gpt-3.5-turbo',
+                'messages' => [
+                    [
+                        'role' => 'system',
+                        'content' => 'Eres un procesador de comandos de voz para el CUP de la FICCT. Extrae filtros del texto y responde SOLO JSON válido con claves: estado, carrera, turno. Valores permitidos — estado: Preinscrito, Verificado, Inscrito, En Evaluacion, Aprobado, Reprobado, Admitido, Pendiente Reasignacion; carrera: Informatica, Sistemas, Redes, Robotica; turno: Manana, Tarde, Noche. Usa null si no se menciona. Ejemplo: "aprobados de sistemas en la manana" -> {"estado":"Aprobado","carrera":"Sistemas","turno":"Manana"}',
+                    ],
+                    ['role' => 'user', 'content' => $texto],
+                ],
+                'temperature' => 0.0,
+            ]);
+
+            if ($response->successful()) {
+                $content = $response->json('choices.0.message.content', '');
+                if (preg_match('/\{.*\}/s', $content, $matches)) {
+                    $json = json_decode($matches[0], true);
+                    if (is_array($json)) {
+                        foreach (['estado', 'carrera', 'turno'] as $clave) {
+                            if (!empty($json[$clave]) && empty($filtros[$clave])) {
+                                $filtros[$clave] = $json[$clave];
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            // Mantener filtros locales ya detectados
+        }
+
+        return $this->normalizarFiltrosVoz($filtros);
+    }
+
+    private function normalizarFiltrosVoz(array $filtros): array
+    {
+        $estados = [
+            'preinscrito' => 'Preinscrito',
+            'verificado' => 'Verificado',
+            'inscrito' => 'Inscrito',
+            'en evaluacion' => 'En Evaluacion',
+            'aprobado' => 'Aprobado',
+            'reprobado' => 'Reprobado',
+            'admitido' => 'Admitido',
+            'pendiente reasignacion' => 'Pendiente Reasignacion',
+        ];
+
+        $carreras = [
+            'informatica' => 'Informatica',
+            'sistemas' => 'Sistemas',
+            'redes' => 'Redes',
+            'robotica' => 'Robotica',
+        ];
+
+        $turnos = [
+            'manana' => 'Manana',
+            'tarde' => 'Tarde',
+            'noche' => 'Noche',
+        ];
+
+        $estado = $filtros['estado'] ?? null;
+        if ($estado) {
+            $key = $this->normalizarTextoVoz($estado);
+            $filtros['estado'] = $estados[$key] ?? $estado;
+        }
+
+        $carrera = $filtros['carrera'] ?? null;
+        if ($carrera) {
+            $key = $this->normalizarTextoVoz($carrera);
+            $filtros['carrera'] = $carreras[$key] ?? $carrera;
+        }
+
+        $turno = $filtros['turno'] ?? null;
+        if ($turno) {
+            $key = $this->normalizarTextoVoz($turno);
+            $filtros['turno'] = $turnos[$key] ?? $turno;
+        }
+
+        return [
+            'estado' => $filtros['estado'] ?? null,
+            'carrera' => $filtros['carrera'] ?? null,
+            'turno' => $filtros['turno'] ?? null,
+        ];
+    }
+
+    private function tieneFiltrosActivos(array $filtros): bool
+    {
+        return !empty($filtros['estado']) || !empty($filtros['carrera']) || !empty($filtros['turno']);
+    }
+
+    private function parsearVozRegex(string $texto): array
+    {
         $filtros = [
             'estado' => null,
             'carrera' => null,
             'turno' => null,
         ];
 
-        // CU21 - Paso 3: C_Ctrl -> B_IA : + TraducirIntencionASQL(audio)
-        // CU21 - Paso 4: B_IA --> C_Ctrl : + RetornarConsultaEstructurada()
-        if (!empty($apiKey)) {
-            // Llamar a OpenAI API para parsear intenciones cognitivas
-            try {
-                $response = Http::withToken($apiKey)->post('https://api.openai.com/v1/chat/completions', [
-                    'model' => 'gpt-3.5-turbo',
-                    'messages' => [
-                        [
-                            'role' => 'system',
-                            'content' => 'Eres un procesador cognitivo de comandos de voz para el CUP de la FICCT. Tu tarea es extraer filtros del comando de voz del usuario en formato JSON. Los filtros posibles son: "estado" (Preinscrito, Verificado, Inscrito, En Evaluacion, Aprobado, Reprobado, Pendiente Reasignacion), "carrera" (Informatica, Sistemas, Redes, Robotica) y "turno" (Manana, Tarde, Noche). Devuelve ÚNICAMENTE un objeto JSON válido con estas claves. Si no se menciona alguna, déjala null. Ejemplo de comando: "muéstrame los aprobados de sistemas en la mañana" -> {"estado": "Aprobado", "carrera": "Sistemas", "turno": "Manana"}'
-                        ],
-                        [
-                            'role' => 'user',
-                            'content' => $texto
-                        ]
-                    ],
-                    'temperature' => 0.0
-                ]);
+        // Estado (orden: términos más específicos primero)
+        if (preg_match('/pre\s*inscrit/', $texto)) {
+            $filtros['estado'] = 'Preinscrito';
+        } elseif (preg_match('/pendiente|reasignacion/', $texto)) {
+            $filtros['estado'] = 'Pendiente Reasignacion';
+        } elseif (preg_match('/en\s+evaluacion|evaluacion/', $texto)) {
+            $filtros['estado'] = 'En Evaluacion';
+        } elseif (preg_match('/\badmitid/', $texto)) {
+            $filtros['estado'] = 'Admitido';
+        } elseif (preg_match('/\baprobados?|\baprobado\b/', $texto)) {
+            $filtros['estado'] = 'Aprobado';
+        } elseif (preg_match('/\breprobados?|\breprobado\b/', $texto)) {
+            $filtros['estado'] = 'Reprobado';
+        } elseif (preg_match('/\bverificados?|\bverificado\b/', $texto)) {
+            $filtros['estado'] = 'Verificado';
+        } elseif (preg_match('/\binscritos?|\binscrito\b/', $texto)) {
+            $filtros['estado'] = 'Inscrito';
+        }
 
-                if ($response->successful()) {
-                    $json = json_decode($response->json('choices.0.message.content'), true);
-                    if ($json) {
-                        $filtros = array_merge($filtros, $json);
-                    }
-                }
-            } catch (\Exception $e) {
-                // Fallback a regex si falla la API
-                $filtros = $this->parsearVozRegex($texto);
+        // Carrera
+        if (preg_match('/sistemas?/', $texto)) {
+            $filtros['carrera'] = 'Sistemas';
+        } elseif (preg_match('/informatica|informatic/', $texto)) {
+            $filtros['carrera'] = 'Informatica';
+        } elseif (preg_match('/redes|telecom/', $texto)) {
+            $filtros['carrera'] = 'Redes';
+        } elseif (preg_match('/robotica|robot/', $texto)) {
+            $filtros['carrera'] = 'Robotica';
+        }
+
+        // Turno
+        if (preg_match('/\bmanana\b|\bmañana\b/', $texto)) {
+            $filtros['turno'] = 'Manana';
+        } elseif (preg_match('/\btarde\b/', $texto)) {
+            $filtros['turno'] = 'Tarde';
+        } elseif (preg_match('/\bnoche\b/', $texto)) {
+            $filtros['turno'] = 'Noche';
+        }
+
+        return $filtros;
+    }
+
+    /**
+     * CU21 — Exportar resultados de voz a PDF o Excel
+     */
+    public function exportarReporteVoz(Request $request)
+    {
+        $request->validate([
+            'filtros' => 'required|array',
+            'formato' => 'required|in:pdf,excel',
+        ]);
+
+        $filtros = $this->normalizarFiltrosVoz(array_merge(
+            ['estado' => null, 'carrera' => null, 'turno' => null],
+            $request->filtros
+        ));
+
+        if (!$this->tieneFiltrosActivos($filtros)) {
+            return response()->json([
+                'message' => 'Debe ejecutar primero un comando de voz con filtros reconocidos antes de exportar.',
+            ], 422);
+        }
+
+        $resultados = $this->buildVoiceQuery($filtros);
+
+        if ($request->formato === 'pdf') {
+            $pdf = Pdf::loadView('reportes.reporte_voz_pdf', [
+                'titulo' => 'Reporte por Comando de Voz (IA)',
+                'fecha' => now()->format('Y-m-d H:i:s'),
+                'filtros' => $filtros,
+                'resultados' => $resultados,
+            ])->setPaper('letter', 'landscape');
+
+            return $pdf->download('reporte_voz_' . time() . '.pdf');
+        }
+
+        // Excel
+        return Excel::download(new ReporteVozExport($resultados), 'reporte_voz_' . time() . '.xlsx');
+    }
+
+    /**
+     * Construir la consulta de voz reutilizable desde filtros extraídos por IA
+     */
+    private function buildVoiceQuery(array $filtros)
+    {
+        $gestion = Gestion::activa()->first();
+        if (!$gestion) {
+            return collect();
+        }
+
+        $query = Postulante::query()
+            ->where('gestion_id', $gestion->id)
+            ->with(['primeraOpcion', 'segundaOpcion', 'gestion', 'admision.carrera']);
+
+        if (!empty($filtros['estado'])) {
+            $estado = $filtros['estado'];
+            if ($estado === 'Aprobado') {
+                $query->whereIn('estado', ['Aprobado', 'Admitido']);
+            } else {
+                $query->where('estado', $estado);
             }
-        } else {
-            // Fallback cognitivo local con expresiones regulares en PHP
-            $filtros = $this->parsearVozRegex($texto);
         }
-
-        // CU21 - Paso 5: C_Ctrl -> E_Data : + EjecutarConsultaGenerada()
-        // CU21 - Paso 6: E_Data --> C_Ctrl : + ResultadosSQL
-        $query = Postulante::query()->with(['primeraOpcion', 'segundaOpcion', 'gestion', 'admision.carrera']);
-
-        if ($filtros['estado']) {
-            $query->where('estado', $filtros['estado']);
-        }
-        if ($filtros['turno']) {
+        if (!empty($filtros['turno'])) {
             $query->where('turno_preferencia', $filtros['turno']);
         }
-        if ($filtros['carrera']) {
+        if (!empty($filtros['carrera'])) {
             $cName = $filtros['carrera'];
             $carrera = Carrera::where('nombre', 'ilike', "%{$cName}%")->first();
             if ($carrera) {
@@ -592,65 +873,10 @@ class ReporteController extends Controller
             }
         }
 
-        $resultados = $query->get()->map(function ($p) {
+        return $query->get()->map(function ($p) {
             $p->promedio_general = round(NotaFinal::where('postulante_id', $p->id)->avg('promedio') ?? 0.0, 2);
             return $p;
         });
-
-        // CU21 - Paso 7: C_Ctrl --> B_Int : + RetornarResultados()
-        return response()->json([
-            'filtros_extraidos' => $filtros,
-            'resultados' => $resultados,
-        ]);
-    }
-
-    /**
-     * Analizador local cognitivo basado en expresiones regulares
-     */
-    private function parsearVozRegex(string $texto): array
-    {
-        $filtros = [
-            'estado' => null,
-            'carrera' => null,
-            'turno' => null,
-        ];
-
-        // Extraer Estado
-        if (str_contains($texto, 'aprobado')) {
-            $filtros['estado'] = 'Aprobado';
-        } elseif (str_contains($texto, 'reprobado')) {
-            $filtros['estado'] = 'Reprobado';
-        } elseif (str_contains($texto, 'inscrito')) {
-            $filtros['estado'] = 'Inscrito';
-        } elseif (str_contains($texto, 'preinscrito')) {
-            $filtros['estado'] = 'Preinscrito';
-        } elseif (str_contains($texto, 'evaluacion') || str_contains($texto, 'evaluación')) {
-            $filtros['estado'] = 'En Evaluacion';
-        } elseif (str_contains($texto, 'pendiente')) {
-            $filtros['estado'] = 'Pendiente Reasignacion';
-        }
-
-        // Extraer Carrera
-        if (str_contains($texto, 'sistemas')) {
-            $filtros['carrera'] = 'Sistemas';
-        } elseif (str_contains($texto, 'informatica') || str_contains($texto, 'informática')) {
-            $filtros['carrera'] = 'Informatica';
-        } elseif (str_contains($texto, 'redes') || str_contains($texto, 'telecomunicaciones')) {
-            $filtros['carrera'] = 'Redes';
-        } elseif (str_contains($texto, 'robotica') || str_contains($texto, 'robótica')) {
-            $filtros['carrera'] = 'Robotica';
-        }
-
-        // Extraer Turno
-        if (str_contains($texto, 'mañana') || str_contains($texto, 'manana')) {
-            $filtros['turno'] = 'Manana';
-        } elseif (str_contains($texto, 'tarde')) {
-            $filtros['turno'] = 'Tarde';
-        } elseif (str_contains($texto, 'noche')) {
-            $filtros['turno'] = 'Noche';
-        }
-
-        return $filtros;
     }
 
     private function calcularCuposOcupados($gestionId, $carreraId): int
@@ -660,5 +886,16 @@ class ReporteController extends Controller
                 $q->where('gestion_id', $gestionId);
             })
             ->count();
+    }
+
+    private function desactivarPostulantesDeGestion(int $gestionId): void
+    {
+        $userIds = Postulante::where('gestion_id', $gestionId)
+            ->whereNotNull('user_id')
+            ->pluck('user_id');
+
+        if ($userIds->isNotEmpty()) {
+            User::whereIn('id', $userIds)->update(['active' => false]);
+        }
     }
 }

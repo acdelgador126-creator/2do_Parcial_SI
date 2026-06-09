@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import api from '../api/axios';
+import { getPasswordPolicyError, validatePasswordPolicy } from '../utils/passwordPolicy';
 
 /**
  * CU03 - Restablecer Contraseña (Paso 7-10 del flujo principal)
@@ -22,6 +23,11 @@ export default function ResetPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
+  const passwordPolicy = validatePasswordPolicy(password);
+  const passwordIsValid = passwordPolicy.isValid;
+  const passwordsMatch = password === passwordConfirmation && passwordConfirmation.length > 0;
+  const canSubmit = passwordIsValid && passwordsMatch && token && email;
+
   // Validar que tenemos token y email al cargar
   useEffect(() => {
     if (!token || !email) {
@@ -35,8 +41,9 @@ export default function ResetPasswordPage() {
     setMessage('');
 
     // Validación local: CU03 flujo principal paso 8
-    if (password.length < 8) {
-      setError('La contraseña debe tener al menos 8 caracteres.');
+    const policyError = getPasswordPolicyError(password);
+    if (policyError) {
+      setError(policyError);
       return;
     }
 
@@ -64,7 +71,10 @@ export default function ResetPasswordPage() {
       setTimeout(() => navigate('/login'), 3000);
     } catch (err) {
       // CU03 - Excepción E2: Token expirado o inválido
-      const serverMessage = err.response?.data?.message;
+      const serverMessage =
+        err.response?.data?.message
+        || err.response?.data?.errors?.password?.[0]
+        || err.response?.data?.errors?.password_confirmation?.[0];
       setError(serverMessage || 'Error al restablecer la contraseña. El enlace puede haber expirado.');
     } finally {
       setLoading(false);
@@ -135,15 +145,25 @@ export default function ResetPasswordPage() {
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Mínimo 8 caracteres"
+                  placeholder="Ej: MiClave2026!"
                   className="w-full bg-slate-900/80 border border-slate-700/50 rounded-xl px-4 py-3 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200"
                   required
                   minLength={8}
                   autoFocus
                 />
-                {password.length > 0 && password.length < 8 && (
-                  <p className="text-xs text-amber-400 mt-1.5 ml-1">Faltan {8 - password.length} caracteres</p>
-                )}
+                <ul className="mt-3 space-y-1.5">
+                  {passwordPolicy.checks.map((check) => (
+                    <li
+                      key={check.key}
+                      className={`text-xs flex items-center gap-2 ${
+                        check.passed ? 'text-emerald-400' : password.length > 0 ? 'text-amber-400' : 'text-slate-500'
+                      }`}
+                    >
+                      <span>{check.passed ? '✓' : '○'}</span>
+                      {check.label}
+                    </li>
+                  ))}
+                </ul>
               </div>
 
               <div className="mb-6">
@@ -162,14 +182,14 @@ export default function ResetPasswordPage() {
                 {passwordConfirmation.length > 0 && password !== passwordConfirmation && (
                   <p className="text-xs text-red-400 mt-1.5 ml-1">Las contraseñas no coinciden</p>
                 )}
-                {passwordConfirmation.length >= 8 && password === passwordConfirmation && (
+                {passwordsMatch && passwordIsValid && (
                   <p className="text-xs text-emerald-400 mt-1.5 ml-1">✓ Las contraseñas coinciden</p>
                 )}
               </div>
 
               <button
                 type="submit"
-                disabled={loading || password.length < 8 || password !== passwordConfirmation}
+                disabled={loading || !canSubmit}
                 className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white py-3 rounded-xl font-semibold transition-all duration-300 btn-premium shadow-lg shadow-emerald-600/15 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer mb-4"
               >
                 {loading ? (
