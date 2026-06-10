@@ -39,7 +39,7 @@ rm -rf /tmp/backend-temp
 
 # 5. Ejecutar composer install en la raíz para garantizar la carpeta vendor en producción
 echo "--> Instalando dependencias de PHP (composer install)..."
-composer install --no-dev --optimize-autoloader
+composer install --no-dev --optimize-autoloader --ignore-platform-req=php
 
 echo "=========================================================="
 echo "=== ¡PROYECTO REORGANIZADO PARA LA RAÍZ CON ÉXITO! ==="
