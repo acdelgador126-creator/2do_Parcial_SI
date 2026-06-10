@@ -1,326 +1,314 @@
 @startuml ModeloConceptual_CUP_FICCT
-' Modelo Conceptual de Datos — alineado con BASE_DE_DATOS/FICCT_v2.sql
-' Pegar en https://www.planttext.com/ y pulsar Refresh
+' Modelo Conceptual — FICCT_v2.sql
+' Visualizar en: https://www.planttext.com/
 
-skinparam backgroundColor #FFFFFF
+hide circle
 skinparam shadowing false
 skinparam roundCorner 0
+skinparam backgroundColor #FFFFFF
+skinparam linetype ortho
 skinparam classAttributeIconSize 0
+skinparam nodesep 30
+skinparam ranksep 40
+
 skinparam class {
-  BackgroundColor #F8FAFC
-  BorderColor #1E40AF
-  ArrowColor #334155
-  FontSize 10
+  BackgroundColor #FFFFFF
+  BorderColor #000000
+  ArrowColor #000000
+  FontColor #000000
+  HeaderBackgroundColor #FFFFFF
+  AttributeFontColor #000000
 }
-skinparam packageStyle rectangle
+
 skinparam package {
-  BackgroundColor #EFF6FF
-  BorderColor #1E40AF
-  FontStyle bold
+  BackgroundColor #FFFFFF
+  BorderColor #000000
+  FontColor #000000
 }
 
-title Modelo Conceptual de Datos — CUP-FICCT\n(Esquema PostgreSQL — FICCT_v2.sql)
+title Diagrama de Clases — Modelo Conceptual CUP-FICCT
 
-' =============================================================================
-package "Autenticacion y Seguridad" as P_Auth {
+' -----------------------------------------------------------------------------
 
-  class users <<Entity>> {
-    +id : bigserial PK
-    +name : varchar(255)
-    +email : varchar(255) UNIQUE
-    +email_verified_at : timestamp
-    +password : varchar(255)
-    +remember_token : varchar(100)
-    +created_at : timestamp
-    +updated_at : timestamp
-    +role : varchar(50)
-    +active : boolean
-    +intentos_fallidos : integer
-    +bloqueado_hasta : timestamp
-  }
-
-  class bitacora_accesos <<Entity>> {
-    +id : bigserial PK
-    +user_id : bigint FK
-    +ip_address : varchar(45)
-    +action : varchar(255)
-    +created_at : timestamp
-  }
-
-  class notificaciones <<Entity>> {
-    +id : bigserial PK
-    +usuario_id : bigint FK
-    +tipo_evento : varchar(50)
-    +mensaje : text
-    +estado : varchar(15)
-    +fecha_generacion : timestamp
-    +fecha_lectura : timestamp
-  }
+class User {
+  - id : Long
+  - name : String
+  - email : String
+  - password : String
+  - role : String
+  - active : Boolean
+  - intentosFallidos : Int
+  - bloqueadoHasta : Date
+  --
+  + iniciarSesion() : Boolean
+  + cerrarSesion() : void
+  + validarCredenciales() : Boolean
+  + bloquearCuenta() : void
 }
 
-' =============================================================================
-package "Registro de Postulantes" as P_Post {
-
-  class postulantes <<Entity>> {
-    +id : bigserial PK
-    +ci : varchar(20) UNIQUE
-    +nombres : varchar(150)
-    +apellidos : varchar(150)
-    +fecha_nacimiento : date
-    +sexo : char(1)
-    +direccion : varchar(255)
-    +telefono : varchar(20)
-    +email : varchar(150)
-    +colegio_procedencia : varchar(150)
-    +ciudad : varchar(100)
-    +titulo_bachiller : varchar(255)
-    +primera_opcion_id : bigint FK
-    +segunda_opcion_id : bigint FK
-    +turno_preferencia : varchar(20)
-    +gestion_id : bigint FK
-    +estado : varchar(50)
-    +recurrente : boolean
-    +user_id : bigint FK
-    +created_at : timestamp
-    +updated_at : timestamp
-  }
-
-  class requisitos_documentales <<Entity>> {
-    +id : bigserial PK
-    +postulante_id : bigint FK UNIQUE
-    +ci_digitalizado : boolean
-    +certificado_nacimiento : boolean
-    +titulo_bachiller_legalizado : boolean
-    +formulario_preinscripcion : boolean
-    +verificado_bd_externa : boolean
-    +updated_at : timestamp
-  }
-
-  class pagos <<Entity>> {
-    +id : bigserial PK
-    +postulante_id : bigint FK
-    +stripe_checkout_id : varchar(255) UNIQUE
-    +monto : numeric(10,2)
-    +estado_pago : varchar(50)
-    +fecha_pago : timestamp
-  }
-
-  class conversaciones_chatbot <<Entity>> {
-    +id : bigserial PK
-    +postulante_id : bigint FK
-    +pregunta : text
-    +respuesta : text
-    +resuelta : boolean
-    +fecha : timestamp
-  }
+class BitacoraAcceso {
+  - id : Long
+  - ipAddress : String
+  - action : String
+  - createdAt : Date
+  --
+  + registrarAcceso() : void
 }
 
-' =============================================================================
-package "Admision a Carreras" as P_Admi {
-
-  class gestiones <<Entity>> {
-    +id : bigserial PK
-    +codigo : varchar(10) UNIQUE
-    +activa : boolean
-    +fecha_inicio : date
-    +fecha_fin : date
-    +created_at : timestamp
-  }
-
-  class carreras <<Entity>> {
-    +id : bigserial PK
-    +nombre : varchar(100) UNIQUE
-    +codigo : varchar(10) UNIQUE
-  }
-
-  class cupos_gestion <<Entity>> {
-    +id : bigserial PK
-    +gestion_id : bigint FK
-    +carrera_id : bigint FK
-    +cupo_maximo : integer
-    +cupos_disponibles : integer
-    +created_at : timestamp
-  }
-
-  class admisiones <<Entity>> {
-    +id : bigserial PK
-    +postulante_id : bigint FK UNIQUE
-    +carrera_id : bigint FK
-    +via : varchar(50)
-    +fecha_admision : timestamp
-  }
+class Notificacion {
+  - id : Long
+  - tipoEvento : String
+  - mensaje : Text
+  - estado : String
+  - fechaGeneracion : Date
+  - fechaLectura : Date
+  --
+  + marcarComoLeida() : void
 }
 
-' =============================================================================
-package "Planificacion Academica" as P_Plan {
-
-  class aulas <<Entity>> {
-    +id : bigserial PK
-    +nombre : varchar(50)
-    +capacidad : integer
-    +ubicacion : varchar(100)
-  }
-
-  class grupos <<Entity>> {
-    +id : bigserial PK
-    +numero : integer
-    +gestion_id : bigint FK
-    +turno : varchar(20)
-    +aula_id : bigint FK
-    +created_at : timestamp
-  }
-
-  class asignaciones_grupo <<Entity>> {
-    +id : bigserial PK
-    +postulante_id : bigint FK UNIQUE
-    +grupo_id : bigint FK
-    +created_at : timestamp
-  }
-
-  class materias <<Entity>> {
-    +id : bigserial PK
-    +nombre : varchar(50) UNIQUE
-    +codigo : varchar(10) UNIQUE
-  }
-
-  class docentes <<Entity>> {
-    +id : bigserial PK
-    +ci : varchar(20) UNIQUE
-    +nombres : varchar(150)
-    +apellidos : varchar(150)
-    +especialidad : varchar(100)
-    +grado_academico : varchar(100)
-    +correo : varchar(150)
-    +telefono : varchar(30)
-    +fecha_nacimiento : date
-    +area_id : bigint FK
-    +estado : varchar(30)
-    +hoja_vida_path : varchar(255)
-    +respaldos_path : varchar(255)
-    +motivo_rechazo : text
-    +user_id : bigint FK
-    +created_at : timestamp
-  }
-
-  class especialidades <<Entity>> {
-    +id : bigserial PK
-    +docente_id : bigint FK
-    +nombre : varchar(150)
-    +area_id : bigint FK
-    +created_at : timestamp
-  }
-
-  class asignaciones_docente <<Entity>> {
-    +id : bigserial PK
-    +docente_id : bigint FK
-    +grupo_id : bigint FK
-    +materia_id : bigint FK
-    +created_at : timestamp
-  }
-
-  class horarios_grupo_materia <<Entity>> {
-    +id : bigserial PK
-    +grupo_id : bigint FK
-    +materia_id : bigint FK
-    +dia_semana : smallint
-    +hora_inicio : time
-    +hora_fin : time
-    +created_at : timestamp
-  }
-
-  class preguntas_simulacro <<Entity>> {
-    +id : bigserial PK
-    +materia_id : bigint FK
-    +enunciado : text
-    +opciones : text
-    +respuesta_correcta : varchar(255)
-    +created_at : timestamp
-  }
+class GestionAcademica {
+  - id : Long
+  - codigo : String
+  - activa : Boolean
+  - fechaInicio : Date
+  - fechaFin : Date
+  - createdAt : Date
+  --
+  + estaVigente() : Boolean
+  + activar() : void
 }
 
-' =============================================================================
-package "Evaluacion Academica" as P_Eval {
-
-  class examenes <<Entity>> {
-    +id : bigserial PK
-    +postulante_id : bigint FK
-    +materia_id : bigint FK
-    +numero_examen : integer
-    +nota : numeric(5,2)
-    +created_at : timestamp
-  }
-
-  class notas_finales <<Entity>> {
-    +id : bigserial PK
-    +postulante_id : bigint FK
-    +materia_id : bigint FK
-    +promedio : numeric(5,2)
-    +estado : varchar(20)
-    +updated_at : timestamp
-    +observaciones : varchar(255)
-  }
-
-  class auditoria_notas <<Entity>> {
-    +id : bigserial PK
-    +examen_id : bigint FK
-    +usuario_modificador_id : bigint FK
-    +nota_anterior : numeric(5,2)
-    +nota_nueva : numeric(5,2)
-    +motivo : text
-    +fecha_modificacion : timestamp
-  }
+class Carrera {
+  - id : Long
+  - nombre : String
+  - codigo : String
 }
 
-' =============================================================================
-' Relaciones (Foreign Keys de FICCT_v2.sql)
-' =============================================================================
+class CupoGestion {
+  - id : Long
+  - cupoMaximo : Integer
+  - cuposDisponibles : Integer
+  - createdAt : Date
+  --
+  + verificarDisponibilidad() : Boolean
+  + decrementarCupo() : void
+}
 
-users "1" -- "0..*" bitacora_accesos
-users "1" -- "0..*" notificaciones
-users "1" -- "0..1" postulantes
-users "1" -- "0..1" docentes
-users "1" -- "0..*" auditoria_notas
+class Admision {
+  - id : Long
+  - via : String
+  - fechaAdmision : Date
+  --
+  + ejecutarAsignacion() : void
+  + reasignarCarrera() : void
+}
 
-gestiones "1" -- "0..*" postulantes
-gestiones "1" -- "0..*" grupos
-gestiones "1" -- "0..*" cupos_gestion
+class Postulante {
+  - id : Long
+  - ci : String
+  - nombres : String
+  - apellidos : String
+  - fechaNacimiento : Date
+  - sexo : Char
+  - direccion : String
+  - ciudad : String
+  - telefono : String
+  - email : String
+  - colegioProcedencia : String
+  - tituloBachiller : String
+  - turnoPreferencia : String
+  - estado : String
+  - recurrente : Boolean
+  - createdAt : Date
+  - updatedAt : Date
+  --
+  + registrar() : void
+  + verificarRequisitos() : Boolean
+  + detectarRecurrente() : Boolean
+  + cambiarEstado() : void
+}
 
-carreras "1" -- "0..*" postulantes : primera_opcion
-carreras "1" -- "0..*" postulantes : segunda_opcion
-carreras "1" -- "0..*" cupos_gestion
-carreras "1" -- "0..*" admisiones
+class RequisitosDocumentales {
+  - id : Long
+  - ciDigitalizado : Boolean
+  - certificadoNacimiento : Boolean
+  - tituloBachillerLegalizado : Boolean
+  - formularioPreinscripcion : Boolean
+  - verificadoBdExterna : Boolean
+  - updatedAt : Date
+  --
+  + estaCompleto() : Boolean
+}
 
-postulantes "1" -- "1" requisitos_documentales
-postulantes "1" -- "0..*" pagos
-postulantes "1" -- "0..1" asignaciones_grupo
-postulantes "1" -- "0..1" admisiones
-postulantes "1" -- "0..*" examenes
-postulantes "1" -- "0..*" notas_finales
-postulantes "1" -- "0..*" conversaciones_chatbot
+class Pago {
+  - id : Long
+  - monto : Decimal
+  - estadoPago : String
+  - stripeCheckoutId : String
+  - fechaPago : Date
+  --
+  + confirmarPago() : void
+  + verificarEstado() : String
+}
 
-aulas "1" -- "0..*" grupos
-grupos "1" -- "0..*" asignaciones_grupo
-grupos "1" -- "0..*" asignaciones_docente
-grupos "1" -- "0..*" horarios_grupo_materia
+class ConversacionChatbot {
+  - id : Long
+  - pregunta : Text
+  - respuesta : Text
+  - resuelta : Boolean
+  - fecha : Date
+  --
+  + resolver() : void
+}
 
-docentes "1" -- "0..*" asignaciones_docente
-docentes "1" -- "0..*" especialidades
-materias "1" -- "0..*" asignaciones_docente
-materias "1" -- "0..*" horarios_grupo_materia
-materias "1" -- "0..1" docentes : area
-materias "1" -- "0..*" especialidades : area
-materias "1" -- "0..*" examenes
-materias "1" -- "0..*" notas_finales
-materias "1" -- "0..*" preguntas_simulacro
+class Aula {
+  - id : Long
+  - nombre : String
+  - capacidad : Integer
+  - ubicacion : String
+}
 
-examenes "1" -- "0..*" auditoria_notas
+class Grupo {
+  - id : Long
+  - numero : Integer
+  - turno : String
+  - createdAt : Date
+  --
+  + estaCompleto() : Boolean
+  + agregarEstudiante() : void
+  + calcularCantidadGrupos() : Integer
+}
 
-note bottom of P_Auth
-  Tablas de infraestructura Laravel (no incluidas
-  en el modelo de negocio): cache, cache_locks,
-  jobs, job_batches, failed_jobs, migrations,
-  password_reset_tokens, personal_access_tokens,
-  sessions
-end note
+class AsignacionGrupo {
+  - id : Long
+  - createdAt : Date
+  --
+  + asignar() : void
+}
+
+class Materia {
+  - id : Long
+  - nombre : String
+  - codigo : String
+}
+
+class Docente {
+  - id : Long
+  - ci : String
+  - nombres : String
+  - apellidos : String
+  - especialidad : String
+  - gradoAcademico : String
+  - correo : String
+  - telefono : String
+  - fechaNacimiento : Date
+  - estado : String
+  - createdAt : Date
+  --
+  + getCargaHoraria() : Integer
+  + puedeAsignarGrupo() : Boolean
+}
+
+class Especialidad {
+  - id : Long
+  - nombre : String
+  - createdAt : Date
+}
+
+class AsignacionDocente {
+  - id : Long
+  - createdAt : Date
+  --
+  + asignar() : void
+}
+
+class HorarioGrupoMateria {
+  - id : Long
+  - diaSemana : Integer
+  - horaInicio : Time
+  - horaFin : Time
+  - createdAt : Date
+}
+
+class PreguntaSimulacro {
+  - id : Long
+  - enunciado : Text
+  - opciones : Text
+  - respuestaCorrecta : String
+  - createdAt : Date
+}
+
+class Examen {
+  - id : Long
+  - numeroExamen : Integer
+  - nota : Decimal
+  - createdAt : Date
+  --
+  + validarRangoNota() : Boolean
+  + calcularNotaPonderada() : Decimal
+}
+
+class NotaFinal {
+  - id : Long
+  - promedio : Decimal
+  - estado : String
+  - observaciones : String
+  - updatedAt : Date
+  --
+  + calcularPromedio() : Decimal
+  + determinarEstado() : String
+}
+
+class AuditoriaNota {
+  - id : Long
+  - notaAnterior : Decimal
+  - notaNueva : Decimal
+  - motivo : Text
+  - fechaModificacion : Date
+  --
+  + registrarCambio() : void
+}
+
+' --- Relaciones ---
+
+User "1" -- "0..*" BitacoraAcceso : registra
+User "1" -- "0..*" Notificacion : recibe
+User "1" -- "0..1" Postulante : es
+User "1" -- "0..1" Docente : es
+User "1" -- "0..*" AuditoriaNota : modifica
+
+GestionAcademica "1" -- "0..*" Postulante : convoca
+GestionAcademica "1" -- "0..*" Grupo : organiza
+GestionAcademica "1" -- "0..*" CupoGestion : define
+
+Carrera "1" -- "0..*" CupoGestion : tiene
+Carrera "1" -- "0..*" Admision : recibe
+Carrera "1" -- "0..*" Postulante : primera opcion
+Carrera "1" -- "0..*" Postulante : segunda opcion
+
+Postulante "1" -- "1" RequisitosDocumentales : cumple
+Postulante "1" -- "0..*" Pago : realiza
+Postulante "1" -- "0..1" AsignacionGrupo : asignado en
+Postulante "1" -- "0..1" Admision : admitido en
+Postulante "1" -- "0..*" Examen : rinde
+Postulante "1" -- "0..*" NotaFinal : obtiene
+Postulante "1" -- "0..*" ConversacionChatbot : consulta
+
+Aula "1" -- "0..*" Grupo : alberga
+Grupo "1" -- "0..*" AsignacionGrupo : contiene
+Grupo "1" -- "0..*" AsignacionDocente : requiere
+Grupo "1" -- "0..*" HorarioGrupoMateria : programado
+
+Docente "1" -- "0..*" AsignacionDocente : imparte
+Docente "1" -- "0..*" Especialidad : declara
+Materia "1" -- "0..*" Docente : area
+Materia "1" -- "0..*" AsignacionDocente : dicta
+Materia "1" -- "0..*" HorarioGrupoMateria : horario
+Materia "1" -- "0..*" Especialidad : area
+Materia "1" -- "0..*" Examen : evalua
+Materia "1" -- "0..*" NotaFinal : resultados
+Materia "1" -- "0..*" PreguntaSimulacro : banco
+
+Examen "1" -- "0..*" AuditoriaNota : auditada
 
 @enduml
