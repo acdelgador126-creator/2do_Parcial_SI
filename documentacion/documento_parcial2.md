@@ -1099,7 +1099,7 @@ Los cinco diagramas de actividad presentados evidencian las siguientes **fallas 
 
 ### 4.1.2 Lista de Casos de Uso
 
-Derivados estrictamente del bloque de alcance del proyecto (sección 1.4) y de los módulos funcionales definidos, se enuncian los **23 Casos de Uso** que sostendrán el flujo completo del sistema de admisión del CUP:
+Derivados estrictamente del bloque de alcance del proyecto (sección 1.4) y de los módulos funcionales definidos, se enuncian los **25 Casos de Uso** que sostendrán el flujo completo del sistema de admisión del CUP:
 
 - **CU01**: Iniciar Sesión en la Plataforma
 - **CU02**: Cerrar Sesión Activa
@@ -1124,12 +1124,14 @@ Derivados estrictamente del bloque de alcance del proyecto (sección 1.4) y de l
 - **CU21**: Generar Reporte por Comando de Voz (IA)
 - **CU22**: Consultar Dashboard Estadístico en Tiempo Real
 - **CU23**: Realizar Simulacro de Examen (Práctica)
+- **CU24**: Registrar Postulación de Docente
+- **CU25**: Aceptar Postulación de Docente
 
 ---
 
 ## 4.2 Priorizar Casos de Uso
 
-Siguiendo las directrices del **Proceso Unificado de Desarrollo de Software (Jacobson, Booch, Rumbaugh)**, la construcción del modelo priorizó la mitigación de riesgos arquitectónicos (Architecture-Centric). El flujo de trabajo divide los 23 Casos de Uso en **2 Ciclos Iterativos Incrementales**, alineados con las fechas de presentación establecidas por la cátedra:
+Siguiendo las directrices del **Proceso Unificado de Desarrollo de Software (Jacobson, Booch, Rumbaugh)**, la construcción del modelo priorizó la mitigación de riesgos arquitectónicos (Architecture-Centric). El flujo de trabajo divide los 25 Casos de Uso en **2 Ciclos Iterativos Incrementales**, alineados con las fechas de presentación establecidas por la cátedra:
 
 | # CU | Caso de Uso                            | Prioridad |
 | ---- | -------------------------------------- | --------- |
@@ -1156,6 +1158,8 @@ Siguiendo las directrices del **Proceso Unificado de Desarrollo de Software (Jac
 | CU21 | Reporte por Voz (IA)                   | Baja      |
 | CU22 | Dashboard Estadístico                  | Alta      |
 | CU23 | Realizar Simulacro                     | Baja      |
+| CU24 | Registrar Postulación de Docente       | Alta      |
+| CU25 | Aceptar Postulación de Docente         | Alta      |
 
 ### Distribución por Ciclo
 
@@ -1163,7 +1167,7 @@ Siguiendo las directrices del **Proceso Unificado de Desarrollo de Software (Jac
 
 > **Justificación (PUDS) / Contexto:** Mitiga el riesgo arquitectónico fundacional. Sin seguridad, registro de postulantes y organización de grupos, no existe proceso de admisión operable. Este ciclo implementa la columna vertebral del sistema.
 
-- **Actores Implicados:** Administrador, Coordinador, Postulante, Pasarela Stripe.
+- **Actores Implicados:** Administrador, Coordinador, Postulante, Docente, Pasarela Stripe.
 
 **Casos de Uso del Ciclo #1:**
 
@@ -1182,6 +1186,8 @@ Siguiendo las directrices del **Proceso Unificado de Desarrollo de Software (Jac
 | CU11 | Asignar Postulantes a Grupos      | Alta      | Dependencia directa de CU10; completa el flujo de inscripción              |
 | CU12 | Asignar Docente a Grupo           | Alta      | Sin docentes asignados, no hay quién evalúe                                |
 | CU23 | Realizar Simulacro                | Baja      | Funcionalidad de práctica para el postulante; no afecta evaluación oficial |
+| CU24 | Registrar Postulación de Docente  | Alta      | Alimenta el plantel docente; prerrequisito de CU25 y CU12                  |
+| CU25 | Aceptar Postulación de Docente    | Alta      | Habilita docentes válidos (especialidad ↔ área); sin esto no hay CU12      |
 
 **Ciclo #2 — Gestión Académica, Reportes y Admisión**
 
@@ -1679,6 +1685,88 @@ CU23 ..> Evaluar : <<include>>
 
 ---
 
+#### CU24: Registrar Postulación de Docente
+
+**A. Estructura del Modelo de CU (Diagrama Específico)**
+
+```plantuml
+@startuml
+left to right direction
+actor "Aspirante a Docente" as Doc
+rectangle "Sistema CUP - FICCT" {
+  usecase "CU24: Registrar Postulación de Docente" as CU24
+  usecase "Validar Datos No Duplicados (CI/Correo)" as Validar
+  usecase "Seleccionar Especialidad y Área" as Area
+}
+Doc --> CU24
+CU24 ..> Validar : <<include>>
+CU24 ..> Area : <<include>>
+@enduml
+```
+
+**B. Ficha de Especificación del Caso de Uso**
+
+| Campo               | Descripción                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **CASO DE USO**     | CU24 — Registrar Postulación de Docente.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| **PROPÓSITO**       | Capturar los datos personales y académicos del aspirante a docente del CUP, registrando su postulación con la especialidad y el área (materia) en la que desea enseñar, generando su expediente en estado "Pendiente de Revisión".                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| **DESCRIPCIÓN**     | El aspirante a docente accede de forma pública (sin autenticación previa) al portal de convocatoria docente. Completa sus datos personales (CI, nombres, apellidos, correo, teléfono), su grado académico y, lo más importante, declara su **especialidad** y selecciona el **área/materia** en la que desea enseñar (Computación, Matemáticas, Inglés o Física), adjuntando su hoja de vida y respaldos académicos. Antes de procesar el registro, el sistema verifica que el CI y el correo no estén duplicados. La postulación NO genera una cuenta de usuario: queda almacenada en estado "Pendiente de Revisión" a la espera de ser evaluada y aceptada por el Administrador o Coordinador (CU25).                                                                                                                  |
+| **ACTORES**         | Tablas de BD (`docentes`, `especialidades`, `areas` / `materias`).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| **ACTOR INICIADOR** | Aspirante a Docente (Público).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| **PRECONDICIÓN**    | El período de convocatoria docente debe estar abierto (configurado por el Administrador). No requiere inicio de sesión.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| **FLUJO PRINCIPAL** | 1. El aspirante accede al portal y hace clic en "Postular como Docente". 2. El sistema despliega el formulario de postulación con los campos: CI, nombres, apellidos, fecha de nacimiento, correo electrónico, teléfono, grado académico, especialidad y el área/materia en la que desea enseñar (Computación, Matemáticas, Inglés, Física), además de la carga de hoja de vida y respaldos. 3. El aspirante completa los campos y adjunta los documentos. 4. El sistema ejecuta `<<include>>` la validación de que el CI y el correo no estén ya registrados como docente. 5. El sistema valida que se haya declarado una especialidad y seleccionado al menos un área. 6. El sistema registra la postulación en la tabla `docentes` con estado "Pendiente de Revisión". 7. El sistema muestra el mensaje: "Su postulación fue registrada exitosamente y será revisada por la coordinación". |
+| **POST CONDICIÓN**  | La postulación del docente queda registrada con estado "Pendiente de Revisión", vinculada a su especialidad y área declaradas, lista para ser evaluada en CU25. Aún no existe cuenta de usuario asociada.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| **EXCEPCIONES**     | *E1: Convocatoria cerrada.* "La convocatoria docente para la gestión [X] no está habilitada". *E2: CI ya registrado como docente.* "Ya existe una postulación o un docente registrado con este CI". *E3: Correo duplicado.* "Este correo electrónico ya está asociado a otra postulación docente". *E4: Sin especialidad/área.* "Debe declarar su especialidad y seleccionar el área en la que desea enseñar".                                                                                                                                                                                                                                                                                                                                                                                                       |
+
+**C. Prototipo UI (Directriz)**
+
+> Formulario público de postulación docente en tarjeta blanca amplia con tipografía limpia (Inter/Roboto). Campos para datos personales, un selector de "Grado Académico", un campo de "Especialidad" y un selector de "Área en la que desea enseñar" (Computación, Matemáticas, Inglés, Física), además de una zona de arrastre para adjuntar hoja de vida y respaldos. Botón principal "Enviar Postulación" en azul institucional y mensaje de confirmación tras el envío indicando que la postulación quedará en revisión.
+
+---
+
+#### CU25: Aceptar Postulación de Docente
+
+**A. Estructura del Modelo de CU (Diagrama Específico)**
+
+```plantuml
+@startuml
+left to right direction
+actor "Administrador" as Admin
+actor "Coordinador" as Coord
+rectangle "Sistema CUP - FICCT" {
+  usecase "CU25: Aceptar Postulación de Docente" as CU25
+  usecase "Validar Especialidad vs Área" as ValidarEsp
+  usecase "Crear Cuenta de Usuario (Rol Docente)" as CrearUser
+  usecase "Rechazar Postulación (con motivo)" as Rechazar
+}
+Admin --> CU25
+Coord --> CU25
+CU25 ..> ValidarEsp : <<include>>
+CU25 ..> CrearUser : <<include>>
+CU25 <.. Rechazar : <<extend>>
+@enduml
+```
+
+**B. Ficha de Especificación del Caso de Uso**
+
+| Campo               | Descripción                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **CASO DE USO**     | CU25 — Aceptar Postulación de Docente.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| **PROPÓSITO**       | Permitir al Administrador o Coordinador revisar y validar las postulaciones de docentes, aceptando únicamente a quienes acrediten una especialidad correspondiente al área en la que desean enseñar, y generando su cuenta de usuario con rol Docente.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| **DESCRIPCIÓN**     | El Administrador o Coordinador accede al módulo de "Revisión de Postulaciones Docentes" y consulta las postulaciones en estado "Pendiente de Revisión". Revisa los datos, la hoja de vida y los respaldos de cada aspirante y valida la **regla de negocio crítica**: el docente debe poseer una especialidad que corresponda al área/materia en la que se postula (p. ej. una especialidad en Álgebra/Cálculo para postular a Matemáticas). Si la especialidad es coherente con el área, **acepta** la postulación: el sistema cambia el estado a "Aceptado", crea automáticamente la cuenta de usuario con rol "Docente" (credenciales autogeneradas y enviadas por correo) y deja al docente habilitado para ser asignado a grupos y materias (CU12). Si la especialidad no corresponde al área o faltan respaldos, **rechaza** la postulación indicando el motivo.                                  |
+| **ACTORES**         | Tablas de BD (`docentes`, `users`, `especialidades`, `areas` / `materias`), Servicio SMTP de correo.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| **ACTOR INICIADOR** | Administrador o Coordinador Académico.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| **PRECONDICIÓN**    | El actor debe estar autenticado (CU01) con rol Administrador o Coordinador. Debe existir al menos una postulación docente en estado "Pendiente de Revisión" (CU24).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| **FLUJO PRINCIPAL** | 1. El actor ingresa al módulo "Gestión de Docentes" → "Postulaciones Pendientes". 2. El sistema despliega la grilla de postulaciones en estado "Pendiente de Revisión" con su especialidad y área declaradas. 3. El actor selecciona una postulación y presiona "Revisar". 4. El sistema muestra el detalle del aspirante (datos, hoja de vida, respaldos, especialidad y área). 5. El sistema ejecuta `<<include>>` la validación de coincidencia entre la especialidad del docente y el área a la que postula. 6. Si la especialidad corresponde al área, el actor presiona "Aceptar Postulación". 7. El sistema cambia el estado del docente a "Aceptado". 8. El sistema ejecuta `<<include>>` la creación de la cuenta de usuario en `users` con rol "Docente" y credenciales autogeneradas. 9. El sistema envía un correo al docente con sus accesos y muestra: "Docente aceptado y notificado correctamente". |
+| **POST CONDICIÓN**  | El docente queda con estado "Aceptado" y con una cuenta de usuario activa de rol "Docente". Queda habilitado para ser asignado a grupos y materias (CU12) conforme a su especialidad.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| **EXCEPCIONES**     | *E1: Especialidad no corresponde al área.* El sistema advierte: "La especialidad del docente [X] no corresponde al área [Y]. No es posible aceptar la postulación en esta área". *E2: Respaldos incompletos.* El sistema impide la aceptación: "La postulación no cuenta con los respaldos académicos requeridos". *E3: Rechazo de postulación (`<<extend>>`).* El actor presiona "Rechazar", el sistema solicita el motivo, cambia el estado a "Rechazado" y notifica al aspirante por correo. *E4: Docente ya aceptado.* "Esta postulación ya fue procesada anteriormente".                                                                                                                                                                                                                                          |
+
+**C. Prototipo UI (Directriz)**
+
+> Vista de administración de "Revisión de Postulaciones Docentes" con sidebar institucional y panel principal. Tabla de postulaciones pendientes con columnas Nombre, CI, Especialidad, Área Postulada y un Badge de estado ("Pendiente" en ámbar). Al abrir el detalle, mostrar una ficha del aspirante con su hoja de vida embebida y un indicador semántico de validación "Especialidad ↔ Área" (verde si coincide, rojo si no). Dos botones de acción: "Aceptar Postulación" (verde, crea la cuenta de usuario) y "Rechazar" (rojo, abre un modal para capturar el motivo).
+
+---
+
 ### 4.3.2 CICLO 2: Gestión Académica, Reportes y Admisión
 
 #### CU13: Registrar Notas de Examen por el Administrador (Individual)
@@ -2113,6 +2201,14 @@ CU22 ..> WS : <<include>>
 *Prompt a ingresar textual en tu IA de mockups (Google/Uizard/Figma):*
 > "Diseñar una Interfaz Web de Examen y Simulacro en Línea para el postulante del CUP-FICCT, optimizada para pantalla de computadora y enfocada en la usabilidad, eliminando distracciones. El diseño debe ser en tonos grises claros y blancos con acentos azules. En la parte superior, una barra de navegación fija que aloje el logo del simulacro, el nombre de la materia activa ('Física Básica'), y en el extremo derecho un temporizador digital con cuenta regresiva destacado en rojo suave ('Tiempo Restante: 45:18') acompañado de un ícono de reloj de arena. En el panel central, centrar una tarjeta blanca con bordes redondeados y sombra suave. La tarjeta muestra el bloque de pregunta activa: un encabezado grande 'Pregunta 12 de 40' en gris secundario, seguido del enunciado de la pregunta con tipografía grande e impecable, y abajo un listado vertical de 4 opciones de respuesta de opción múltiple representadas por grandes botones interactivos con bordes redondeados (el botón seleccionado debe tener un fondo azul institucional claro y un borde azul intenso). En la base del formulario, botones de navegación inferiores espaciados: a la izquierda 'Anterior Pregunta' (secundario en gris) y a la derecha 'Siguiente Pregunta' (primario en azul oscuro), además de un botón flotante 'Finalizar Simulacro'."
 
+**CU24 - Registrar Postulación de Docente**
+*Prompt a ingresar textual en tu IA de mockups (Google/Uizard/Figma):*
+> "Diseñar una Interfaz de Formulario de Postulación Docente para uso Web/Desktop, de estilo corporativo, limpio y profesional, con tipografía moderna (Inter/Roboto). En la parte superior, un encabezado 'Convocatoria Docente CUP-FICCT' con un subtítulo motivador. En el centro, una tarjeta blanca amplia con bordes redondeados y sombra sutil que contiene un formulario público con campos obligatorios para: Carnet de Identidad (CI), Nombres, Apellidos, Fecha de Nacimiento, Correo Electrónico, Teléfono y un Dropdown de 'Grado Académico' (Licenciatura, Maestría, Doctorado). A continuación, una sección destacada titulada 'Perfil Académico' con un campo de texto para la 'Especialidad' y un selector de chips/tarjetas para el 'Área en la que desea enseñar' (Computación, Matemáticas, Inglés, Física). Debajo, una zona de arrastre (Drag & Drop) con bordes punteados azules para adjuntar la Hoja de Vida y respaldos académicos en PDF. En la base, un botón de acción destacado en azul institucional con el texto 'Enviar Postulación'. Al enviar, debe mostrar una vista de confirmación con un ícono de check verde y el mensaje 'Su postulación fue registrada y será revisada por la coordinación'."
+
+**CU25 - Aceptar Postulación de Docente**
+*Prompt a ingresar textual en tu IA de mockups (Google/Uizard/Figma):*
+> "Diseñar una Vista de Administración Web de estilo moderno para la 'Revisión y Aceptación de Postulaciones Docentes' del sistema CUP-FICCT, basada en Material Design 3, con un Sidebar izquierdo azul oscuro y un Panel de Contenido principal gris claro. En el panel principal, un encabezado 'Postulaciones Docentes Pendientes' y una tabla de datos (Data Grid) con columnas para Nombre Completo, CI, Especialidad, Área Postulada y un Badge de Estado (ámbar para 'Pendiente'). Al hacer clic en una fila, abrir un panel lateral o modal de detalle que muestre la ficha completa del aspirante con su hoja de vida embebida y, de forma muy prominente, un componente de validación 'Especialidad ↔ Área' con semáforo (verde con check si la especialidad corresponde al área, rojo con advertencia si no corresponde). En el pie del detalle, dos botones claramente diferenciados: 'Aceptar Postulación' (verde esmeralda, que al confirmarse crea automáticamente la cuenta de usuario con rol Docente y envía las credenciales por correo) y 'Rechazar' (rojo semántico, que abre un pequeño modal solicitando el motivo del rechazo)."
+
 ---
 
 ### 4.4.2 Prototipos de Interfaz — CICLO 2
@@ -2204,6 +2300,8 @@ rectangle "SISTEMA CUP-FICCT — CICLO #1" {
     usecase "CU10: Calcular Grupos" as CU10
     usecase "CU11: Asignar Postulantes\na Grupos" as CU11
     usecase "CU12: Asignar Docente\na Grupo y Materia" as CU12
+    usecase "CU24: Registrar\nPostulación de Docente" as CU24
+    usecase "CU25: Aceptar\nPostulación de Docente" as CU25
   }
 }
 
@@ -2216,12 +2314,14 @@ Admin --> CU09
 Admin --> CU10
 Admin --> CU11
 Admin --> CU12
+Admin --> CU25
 
 Coord --> CU01
 Coord --> CU02
 Coord --> CU03
 Coord --> CU09
 Coord --> CU12
+Coord --> CU25
 
 Post --> CU01
 Post --> CU02
@@ -2235,6 +2335,7 @@ Doc --> CU01
 Doc --> CU02
 Doc --> CU03
 Doc --> CU09
+Doc --> CU24
 
 CU07 --> Stripe
 CU06 --> SEGIP
@@ -2246,6 +2347,8 @@ CU06 --> SEDUCA
 CU05 ..> CU08 : <<include>>
 CU05 ..> CU06 : <<include>>
 CU07 ..> CU06 : <<include>>
+CU25 ..> CU24 : <<include>>
+CU25 ..> CU04 : <<include>>
 
 @enduml
 ```
@@ -2382,11 +2485,11 @@ package "Paquete_Reportes_IA" as P_Rep <<nuevo>>
 
 ### 5.1.3 Relación entre Paquetes y Casos de Uso
 
-Esta sección establece la trazabilidad inequívoca entre los paquetes arquitectónicos y los 23 Casos de Uso (CU) definidos para el sistema, divididos rigurosamente según su ciclo de implementación. La inclusión lógica se modela mediante diagramas de paquetes UML que encapsulan los casos de uso específicos y relaciones estereotipadas `<<trace>>` que documentan cómo colaboran las clases de análisis internas para realizar el comportamiento solicitado en la fase de análisis.
+Esta sección establece la trazabilidad inequívoca entre los paquetes arquitectónicos y los 25 Casos de Uso (CU) definidos para el sistema, divididos rigurosamente según su ciclo de implementación. La inclusión lógica se modela mediante diagramas de paquetes UML que encapsulan los casos de uso específicos y relaciones estereotipadas `<<trace>>` que documentan cómo colaboran las clases de análisis internas para realizar el comportamiento solicitado en la fase de análisis.
 
 #### A. Relacionar Paquetes y Casos de Uso — CICLO 1
 
-**Descripción del diagrama:** Mapea la distribución de los 13 casos de uso correspondientes al Ciclo 1. Cada caso de uso está contenido de forma lógica e inalterada dentro del paquete correspondiente, garantizando el principio de **cohesión funcional**.
+**Descripción del diagrama:** Mapea la distribución de los 15 casos de uso correspondientes al Ciclo 1. Cada caso de uso está contenido de forma lógica e inalterada dentro del paquete correspondiente, garantizando el principio de **cohesión funcional**.
 
 ```plantuml
 @startuml Paquetes_CU_Ciclo1
@@ -2414,6 +2517,8 @@ package "Paquete_Planificacion_Academica" as P_Plan {
   usecase "CU11: Asignar Postulantes" as CU11
   usecase "CU12: Asignar Docente" as CU12
   usecase "CU23: Simulacro Examen" as CU23
+  usecase "CU24: Registrar Postulación Docente" as CU24
+  usecase "CU25: Aceptar Postulación Docente" as CU25
 }
 
 ' Trazabilidad interna
@@ -2432,12 +2537,14 @@ P_Plan ..> CU10 : <<trace>>
 P_Plan ..> CU11 : <<trace>>
 P_Plan ..> CU12 : <<trace>>
 P_Plan ..> CU23 : <<trace>>
+P_Plan ..> CU24 : <<trace>>
+P_Plan ..> CU25 : <<trace>>
 @enduml
 ```
 
 *   **Trazabilidad en `Paquete_Autenticacion`:** Este paquete asume la trazabilidad directa de la seguridad transaccional del sistema: el inicio de sesión seguro (CU01), el cierre de sesión y destrucción de tokens JWT (CU02), el flujo automatizado de recuperación de credenciales (CU03) y la administración de perfiles y permisos RBAC del personal (CU04).
 *   **Trazabilidad en `Paquete_Registro_Postulantes`:** Asume la trazabilidad del proceso de registro y formalización del postulante: el alta en formulario web (CU05), la validación biométrica y documental externa con bases públicas (CU06), el cobro digital integrado mediante la pasarela Stripe Checkout (CU07), la prevención sistemática de registros duplicados por CI (CU08) y la grilla de búsqueda avanzada con filtros rápidos (CU09).
-*   **Trazabilidad en `Paquete_Planificacion_Academica`:** Mapea el algoritmo de balanceo y planificación docente: la generación matemática de grupos de 70 personas (CU10), el balanceo equitativo de postulantes por aulas (CU11), la vinculación de docentes calificados sin solapamiento de horarios (CU12) y el simulacro de examen interactivo para familiarizar al postulante con la interfaz del sistema (CU23).
+*   **Trazabilidad en `Paquete_Planificacion_Academica`:** Mapea el algoritmo de balanceo y planificación docente: la generación matemática de grupos de 70 personas (CU10), el balanceo equitativo de postulantes por aulas (CU11), la vinculación de docentes calificados sin solapamiento de horarios (CU12), el simulacro de examen interactivo para familiarizar al postulante con la interfaz del sistema (CU23), el alta pública de postulaciones de docentes con su especialidad y área (CU24) y la revisión y aceptación de docentes validando la coincidencia especialidad ↔ área con la consecuente creación de su cuenta (CU25).
 
 #### B. Relacionar Paquetes y Casos de Uso — CICLO 2
 
@@ -2896,6 +3003,73 @@ C_Plan --> E_Asig : 10: + create(datos)
 C_Plan --> E_Post : 11: + update(['estado' => 'En Evaluacion'])
 C_Plan --> B_Grup : 12: + ConfirmarAsignacionExitosa()
 B_Grup --> Act : 13: + MostrarGruposConPostulantes()
+@enduml
+```
+
+#### Realización de Análisis para CU24: Registrar Postulación de Docente
+
+**Descripción detallada de la colaboración y dinámica:**
+El flujo inicia cuando el actor *Aspirante a Docente* completa el formulario público en la `IU_PostulacionDocente`. La frontera delega al `CTR_Docentes`, el cual primero valida en la entidad `CE_Docente` que el CI y el correo no se encuentren duplicados. Si la validación es exitosa, el controlador obtiene el área/materia seleccionada desde `CE_Materia`, registra la postulación en `CE_Docente` con estado "Pendiente de Revisión" y persiste la especialidad declarada en `CE_Especialidad`. Finalmente, la interfaz confirma el envío de la postulación al aspirante.
+
+```plantuml
+@startuml Com_CU24
+left to right direction
+skinparam actorStyle awesome
+skinparam backgroundColor transparent
+
+actor "Aspirante a Docente" as Act
+boundary "IU_PostulacionDocente" as B_Int
+control "CTR_Docentes" as C_Ctrl
+entity "CE_Docente" as E_Doc
+entity "CE_Especialidad" as E_Esp
+entity "CE_Materia" as E_Mat
+
+Act --> B_Int : 1: + CompletarFormulario(datos, especialidad, areaId)
+Act --> B_Int : 2: + ClicEnviarPostulacion()
+B_Int --> C_Ctrl : 3: + store(request)
+C_Ctrl --> E_Doc : 4: + where('ci', ci)->orWhere('correo', correo)
+E_Doc --> C_Ctrl : 5: + ResultadoValidacion
+C_Ctrl --> E_Mat : 6: + findOrFail(area_id)
+E_Mat --> C_Ctrl : 7: + DatosArea
+C_Ctrl --> E_Doc : 8: + create(['estado' => 'Pendiente de Revision'])
+C_Ctrl --> E_Esp : 9: + create(['docente_id' => id, 'nombre' => especialidad])
+C_Ctrl --> B_Int : 10: + RetornarExito()
+B_Int --> Act : 11: + MostrarConfirmacionPostulacion()
+@enduml
+```
+
+#### Realización de Análisis para CU25: Aceptar Postulación de Docente
+
+**Descripción detallada de la colaboración y dinámica:**
+El flujo inicia cuando el actor *Administrador* o *Coordinador* interactúa con la `IU_RevisionDocentes` para revisar una postulación pendiente. La frontera delega al `CTR_Docentes`, el cual recupera la postulación y su especialidad desde `CE_Docente` y `CE_Especialidad`, y obtiene el área desde `CE_Materia`. El controlador ejecuta el auto-mensaje `ValidarEspecialidadVsArea()` para verificar la regla de negocio crítica (la especialidad debe corresponder al área). Si coincide, actualiza el estado del docente a "Aceptado" y crea la cuenta de usuario con rol "Docente" en la entidad `CE_Usuario`, dejándolo habilitado para CU12. Finalmente, la interfaz confirma la aceptación y la notificación al docente.
+
+```plantuml
+@startuml Com_CU25
+left to right direction
+skinparam actorStyle awesome
+skinparam backgroundColor transparent
+
+actor "Administrador / Coordinador" as Act
+boundary "IU_RevisionDocentes" as B_Int
+control "CTR_Docentes" as C_Ctrl
+entity "CE_Docente" as E_Doc
+entity "CE_Especialidad" as E_Esp
+entity "CE_Materia" as E_Mat
+entity "CE_Usuario" as E_Usu
+
+Act --> B_Int : 1: + SeleccionarPostulacion(docenteId)
+B_Int --> C_Ctrl : 2: + revisar(docenteId)
+C_Ctrl --> E_Doc : 3: + findOrFail(docente_id)
+E_Doc --> C_Ctrl : 4: + DatosDocente
+C_Ctrl --> E_Esp : 5: + where('docente_id', docente_id)
+E_Esp --> C_Ctrl : 6: + Especialidad
+C_Ctrl --> E_Mat : 7: + findOrFail(area_id)
+E_Mat --> C_Ctrl : 8: + DatosArea
+C_Ctrl --> C_Ctrl : 8.1: + ValidarEspecialidadVsArea(especialidad, area.nombre)
+C_Ctrl --> E_Doc : 9: + update(['estado' => 'Aceptado'])
+C_Ctrl --> E_Usu : 10: + create(['rol' => 'Docente', 'activo' => true])
+C_Ctrl --> B_Int : 11: + ConfirmarAceptacion()
+B_Int --> Act : 12: + MostrarDocenteAceptado()
 @enduml
 ```
 
@@ -3836,6 +4010,138 @@ class PreguntaSimulacro <<Entity>> {
 ActorPostulante - InterfazSimulacro
 InterfazSimulacro - ControladorSimulacro
 ControladorSimulacro - PreguntaSimulacro
+@enduml
+```
+
+##### CU24: Registrar Postulación de Docente
+```plantuml
+@startuml CU24_Analisis
+allowmixing
+left to right direction
+skinparam classAttributeIconSize 0
+
+actor "ASPIRANTE A DOCENTE" as ActorDocente
+
+class InterfazPostulacionDocente <<Boundary>> {
+  +ci
+  +nombres
+  +apellidos
+  +correo
+  +telefono
+  +grado_academico
+  +especialidad
+  +areaId
+  --
+  +completarFormulario(datos)
+  +enviarPostulacion()
+  +mostrarConfirmacionPostulacion()
+  +mostrarError(mensaje)
+}
+
+class ControladorDocentes <<Control>> {
+  --
+  +store(request)
+}
+
+class Docente <<Entity>> {
+  +id
+  +ci
+  +nombres
+  +apellidos
+  +correo
+  +telefono
+  +grado_academico
+  +estado
+  +area_id
+}
+
+class Especialidad <<Entity>> {
+  +id
+  +docente_id
+  +nombre
+  +area_id
+}
+
+class Materia <<Entity>> {
+  +id
+  +nombre
+}
+
+ActorDocente - InterfazPostulacionDocente
+InterfazPostulacionDocente - ControladorDocentes
+ControladorDocentes - Docente
+ControladorDocentes - Especialidad
+ControladorDocentes - Materia
+@enduml
+```
+
+##### CU25: Aceptar Postulación de Docente
+```plantuml
+@startuml CU25_Analisis
+allowmixing
+left to right direction
+skinparam classAttributeIconSize 0
+
+actor "ADMINISTRADOR" as ActorAdmin
+actor "COORDINADOR" as ActorCoord
+
+class InterfazRevisionDocentes <<Boundary>> {
+  +docenteId
+  +motivoRechazo
+  --
+  +seleccionarPostulacion(docenteId)
+  +aceptarPostulacion()
+  +rechazarPostulacion(motivo)
+  +mostrarDocenteAceptado()
+  +mostrarValidacionEspecialidad()
+}
+
+class ControladorDocentes <<Control>> {
+  --
+  +revisar(docenteId)
+  +aceptar(docenteId)
+  +rechazar(docenteId, motivo)
+  +validarEspecialidadVsArea(especialidad, area)
+}
+
+class Docente <<Entity>> {
+  +id
+  +ci
+  +nombres
+  +apellidos
+  +correo
+  +estado
+  +area_id
+}
+
+class Especialidad <<Entity>> {
+  +id
+  +docente_id
+  +nombre
+  +area_id
+}
+
+class Materia <<Entity>> {
+  +id
+  +nombre
+}
+
+class User <<Entity>> {
+  +id
+  +name
+  +email
+  +password
+  +role
+  +active
+}
+
+ActorAdmin - InterfazRevisionDocentes
+ActorCoord - InterfazRevisionDocentes
+InterfazRevisionDocentes - ControladorDocentes
+ControladorDocentes - Docente
+ControladorDocentes - Especialidad
+ControladorDocentes - Materia
+ControladorDocentes - User
 @enduml
 ```
 
@@ -5108,6 +5414,91 @@ activate C_Ctrl
 C_Ctrl --> B_Int : 9: + RetornarNotaSimulacro()
 deactivate C_Ctrl
 B_Int --> Act : 10: + MostrarResultadosSimulacro()
+deactivate B_Int
+@enduml
+```
+
+#### 24. Diagrama de Secuencia para CU24: Registrar Postulación de Docente
+
+```plantuml
+@startuml Seq_CU24
+skinparam actorStyle awesome
+skinparam backgroundColor transparent
+
+actor "Aspirante a Docente" as Act
+participant "IU_PostulacionDocente" as B_Int
+participant "CTR_Docentes" as C_Ctrl
+participant "CE_Docente" as E_Doc
+participant "CE_Materia" as E_Mat
+participant "CE_Especialidad" as E_Esp
+
+Act -> B_Int : 1: + CompletarFormulario(datos, especialidad, areaId)
+activate B_Int
+Act -> B_Int : 2: + ClicEnviarPostulacion()
+B_Int -> C_Ctrl : 3: + store(request)
+activate C_Ctrl
+C_Ctrl -> E_Doc : 4: + where('ci', ci)->orWhere('correo', correo)
+activate E_Doc
+E_Doc --> C_Ctrl : 5: + ResultadoValidacion
+deactivate E_Doc
+C_Ctrl -> E_Mat : 6: + findOrFail(area_id)
+activate E_Mat
+E_Mat --> C_Ctrl : 7: + DatosArea
+deactivate E_Mat
+C_Ctrl -> E_Doc : 8: + create(['estado' => 'Pendiente de Revision'])
+activate E_Doc
+deactivate E_Doc
+C_Ctrl -> E_Esp : 9: + create(['docente_id' => id, 'nombre' => especialidad])
+activate E_Esp
+deactivate E_Esp
+C_Ctrl --> B_Int : 10: + RetornarExito()
+deactivate C_Ctrl
+B_Int --> Act : 11: + MostrarConfirmacionPostulacion()
+deactivate B_Int
+@enduml
+```
+
+#### 25. Diagrama de Secuencia para CU25: Aceptar Postulación de Docente
+
+```plantuml
+@startuml Seq_CU25
+skinparam actorStyle awesome
+skinparam backgroundColor transparent
+
+actor "Administrador / Coordinador" as Act
+participant "IU_RevisionDocentes" as B_Int
+participant "CTR_Docentes" as C_Ctrl
+participant "CE_Docente" as E_Doc
+participant "CE_Especialidad" as E_Esp
+participant "CE_Materia" as E_Mat
+participant "CE_Usuario" as E_Usu
+
+Act -> B_Int : 1: + SeleccionarPostulacion(docenteId)
+activate B_Int
+B_Int -> C_Ctrl : 2: + revisar(docenteId)
+activate C_Ctrl
+C_Ctrl -> E_Doc : 3: + findOrFail(docente_id)
+activate E_Doc
+E_Doc --> C_Ctrl : 4: + DatosDocente
+deactivate E_Doc
+C_Ctrl -> E_Esp : 5: + where('docente_id', docente_id)
+activate E_Esp
+E_Esp --> C_Ctrl : 6: + Especialidad
+deactivate E_Esp
+C_Ctrl -> E_Mat : 7: + findOrFail(area_id)
+activate E_Mat
+E_Mat --> C_Ctrl : 8: + DatosArea
+deactivate E_Mat
+C_Ctrl -> C_Ctrl : 8.1: + ValidarEspecialidadVsArea(especialidad, area.nombre)
+C_Ctrl -> E_Doc : 9: + update(['estado' => 'Aceptado'])
+activate E_Doc
+deactivate E_Doc
+C_Ctrl -> E_Usu : 10: + create(['rol' => 'Docente', 'activo' => true])
+activate E_Usu
+deactivate E_Usu
+C_Ctrl --> B_Int : 11: + ConfirmarAceptacion()
+deactivate C_Ctrl
+B_Int --> Act : 12: + MostrarDocenteAceptado()
 deactivate B_Int
 @enduml
 ```

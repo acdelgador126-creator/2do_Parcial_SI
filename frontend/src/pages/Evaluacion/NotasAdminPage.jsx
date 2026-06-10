@@ -193,7 +193,7 @@ export default function NotasAdminPage() {
   };
 
   const getPromedioFinal = (postulante, materiaId) => {
-    const nf = postulante.notasFinales?.find((n) => n.materia_id === materiaId);
+    const nf = (postulante.notas_finales || postulante.notasFinales)?.find((n) => n.materia_id === materiaId);
     // Mostrar observaciones (ej. "Incompleto - faltan 2 exámenes") si existe
     if (nf && nf.observaciones) {
       return `${nf.promedio} \n ${nf.observaciones}`;

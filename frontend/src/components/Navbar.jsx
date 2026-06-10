@@ -40,8 +40,10 @@ const packageDefinitions = [
       </svg>
     ),
     links: [
+      { to: '/admin/postulaciones-docentes', label: 'Revisar Postulaciones Docentes', subtitle: 'CU25: Aceptar o rechazar aspirantes', roles: ['Administrador', 'Coordinador'] },
       { to: '/admin/grupos', label: 'Grupos', subtitle: 'CU10/11: Calcular y balancear', roles: ['Administrador', 'Coordinador'] },
       { to: '/admin/docentes', label: 'Docentes', subtitle: 'CU12: Vincular sin solapamiento', roles: ['Administrador', 'Coordinador'] },
+      { to: '/mi-horario', label: 'Mi Horario', subtitle: 'Carga horaria asignada', roles: ['Postulante', 'Docente'] },
       { to: '/simulacro', label: 'Simulacro Examen', subtitle: 'CU23: Prueba interactiva', roles: ['Postulante'] }
     ]
   },

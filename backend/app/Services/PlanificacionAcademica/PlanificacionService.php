@@ -12,6 +12,10 @@ class PlanificacionService
 {
     private const MAX_POR_GRUPO = 70;
 
+    public function __construct(
+        private HorarioGrupoMateriaService $horarioGrupoMateriaService
+    ) {}
+
     /**
      * CU10: Calculo automatico de grupos + asignacion masiva.
      */
@@ -63,12 +67,14 @@ class PlanificacionService
                     $aula = $aulas[$aulaIndex % $aulas->count()];
                     $aulaIndex++;
 
-                    $gruposNuevos[] = Grupo::create([
+                    $gruposNuevos[] = $grupo = Grupo::create([
                         'numero' => $ultimoNumero + $i,
                         'gestion_id' => $gestionId,
                         'turno' => $turno,
                         'aula_id' => $aula->id,
                     ]);
+
+                    $this->horarioGrupoMateriaService->generarHorariosPorDefecto($grupo);
                 }
                 $gruposCreados += $cantGrupos;
 

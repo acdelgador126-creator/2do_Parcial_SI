@@ -10,12 +10,15 @@ import UsersPage from './pages/Autenticacion/UsersPage';
 import BusquedaPostulantesPage from './pages/RegistroPostulantes/BusquedaPostulantesPage';
 import GruposPage from './pages/PlanificacionAcademica/GruposPage';
 import DocentesPage from './pages/PlanificacionAcademica/DocentesPage';
+import PostulacionDocentePage from './pages/PlanificacionAcademica/PostulacionDocentePage';
+import PostulacionesDocentesPage from './pages/PlanificacionAcademica/PostulacionesDocentesPage';
 import NotasAdminPage from './pages/Evaluacion/NotasAdminPage';
 import AdmisionesPage from './pages/AdmisionCarreras/AdmisionesPage';
 import ReportesPage from './pages/ReportesIA/ReportesPage';
 import PreinscripcionPage from './pages/RegistroPostulantes/PreinscripcionPage';
 import InscripcionPage from './pages/RegistroPostulantes/InscripcionPage';
 import SimulacroPage from './pages/PlanificacionAcademica/SimulacroPage';
+import MiHorarioPage from './pages/PlanificacionAcademica/MiHorarioPage';
 import Pago from './pages/RegistroPostulantes/Pago';
 import PagoExitoso from './pages/RegistroPostulantes/PagoExitoso';
 import PagoCancelado from './pages/RegistroPostulantes/PagoCancelado';
@@ -45,6 +48,9 @@ export default function App() {
             <Route path="/admin/docentes" element={
               <ProtectedRoute roles={['Administrador', 'Coordinador']}><DocentesPage /></ProtectedRoute>
             } />
+            <Route path="/admin/postulaciones-docentes" element={
+              <ProtectedRoute roles={['Administrador', 'Coordinador']}><PostulacionesDocentesPage /></ProtectedRoute>
+            } />
             <Route path="/admin/notas" element={
               <ProtectedRoute roles={['Administrador']}><NotasAdminPage /></ProtectedRoute>
             } />
@@ -55,13 +61,17 @@ export default function App() {
               <ProtectedRoute roles={['Administrador', 'Coordinador']}><ReportesPage /></ProtectedRoute>
             } />
 
-            {/* Postulante (Protegido) */}
+            {/* Postulante / Docente */}
             <Route path="/simulacro" element={
               <ProtectedRoute roles={['Postulante']}><SimulacroPage /></ProtectedRoute>
+            } />
+            <Route path="/mi-horario" element={
+              <ProtectedRoute roles={['Postulante', 'Docente']}><MiHorarioPage /></ProtectedRoute>
             } />
           </Route>
 
           {/* Rutas Publicas de Registro y Pago */}
+          <Route path="/postulacion-docente" element={<PostulacionDocentePage />} />
           <Route path="/preinscripcion" element={<PreinscripcionPage />} />
           <Route path="/inscripcion" element={<InscripcionPage />} />
           <Route path="/inscripcion/pago/:postulanteId" element={<Pago />} />

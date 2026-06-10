@@ -107,6 +107,13 @@ export default function LoginPage() {
           >
             Iniciar Registro
           </Link>
+
+          <Link
+            to="/postulacion-docente"
+            className="w-full block text-center mt-3 text-slate-400 hover:text-blue-300 py-2 rounded-xl font-semibold transition-all duration-300 cursor-pointer text-xs"
+          >
+            ¿Eres docente? Postula aquí
+          </Link>
         </form>
 
         <p className="text-center text-xs text-slate-500 mt-6">

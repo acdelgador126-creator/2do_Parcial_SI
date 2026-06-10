@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import api from '../../api/axios';
 
 export default function ReportesPage() {
@@ -8,6 +8,12 @@ export default function ReportesPage() {
   const [estado, setEstado] = useState('');
   const [turno, setTurno] = useState('');
   const [recurrente, setRecurrente] = useState('');
+  const [sexo, setSexo] = useState('');
+  const [grupoIdDin, setGrupoIdDin] = useState('');
+  const [ciudad, setCiudad] = useState('');
+  const [promedioMin, setPromedioMin] = useState('');
+  const [promedioMax, setPromedioMax] = useState('');
+  const [grupos, setGrupos] = useState([]);
   const [dataDinamica, setDataDinamica] = useState([]);
   
   // Control por Voz (CU21)
@@ -19,11 +25,24 @@ export default function ReportesPage() {
   const [textoComando, setTextoComando] = useState('');
 
   const [loading, setLoading] = useState(false);
+  const [exportingVoz, setExportingVoz] = useState(null);
   const [message, setMessage] = useState(null);
 
   const tieneFiltrosVoz = extractedFilters && (
-    extractedFilters.estado || extractedFilters.carrera || extractedFilters.turno
+    extractedFilters.estado || extractedFilters.carrera || extractedFilters.turno || extractedFilters.sexo
   );
+
+  useEffect(() => {
+    const fetchGrupos = async () => {
+      try {
+        const res = await api.get('/grupos');
+        setGrupos(Array.isArray(res.data) ? res.data : []);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchGrupos();
+  }, []);
 
   const procesarComandoVoz = async (text) => {
     const trimmed = text?.trim();
@@ -81,10 +100,15 @@ export default function ReportesPage() {
     try {
       // CU20 - Paso 2: B_Int -> C_Ctrl : + generarDinamico(request)
       const res = await api.post('/reportes/dinamico', {
-        carrera_id: carreraId,
-        estado: estado,
-        turno: turno,
+        carrera_id: carreraId || null,
+        estado: estado || null,
+        turno: turno || null,
         recurrente: recurrente !== '' ? (recurrente === '1') : null,
+        sexo: sexo || null,
+        grupo_id: grupoIdDin || null,
+        ciudad: ciudad || null,
+        promedio_min: promedioMin || null,
+        promedio_max: promedioMax || null,
       });
       // CU20 - Paso 6: B_Int --> Act : + RenderizarDataGrid()
       setDataDinamica(res.data || []);
@@ -164,14 +188,31 @@ export default function ReportesPage() {
     document.body.removeChild(link);
   };
 
+  const parseExportError = async (err) => {
+    const data = err.response?.data;
+    if (data instanceof Blob) {
+      try {
+        const text = await data.text();
+        const json = JSON.parse(text);
+        return json.message || 'Error al generar el archivo.';
+      } catch {
+        return 'Error al generar el archivo. Verifique que el backend tenga las dependencias instaladas (composer install).';
+      }
+    }
+    return err.response?.data?.message || err.message || 'Error al exportar el reporte de voz.';
+  };
+
   const exportarVoz = async (formato) => {
     if (!tieneFiltrosVoz) {
       setMessage({
         type: 'error',
-        text: 'Primero dicte o escriba un comando con filtros reconocidos (estado, carrera o turno).',
+        text: 'Primero dicte o escriba un comando con filtros reconocidos (estado, carrera, turno o sexo).',
       });
       return;
     }
+
+    setExportingVoz(formato);
+    setMessage(null);
 
     try {
       const res = await api.post('/reportes/comando-voz/exportar', {
@@ -201,8 +242,10 @@ export default function ReportesPage() {
       console.error('Error exportando:', err);
       setMessage({
         type: 'error',
-        text: err.message || err.response?.data?.message || 'Error al exportar el reporte de voz.',
+        text: await parseExportError(err),
       });
+    } finally {
+      setExportingVoz(null);
     }
   };
 
@@ -340,6 +383,7 @@ export default function ReportesPage() {
                 {extractedFilters.estado && <span className="bg-blue-600/10 text-blue-400 px-1.5 py-0.5 rounded">Estado: {extractedFilters.estado}</span>}
                 {extractedFilters.carrera && <span className="bg-emerald-600/10 text-emerald-400 px-1.5 py-0.5 rounded">Carrera: {extractedFilters.carrera}</span>}
                 {extractedFilters.turno && <span className="bg-purple-600/10 text-purple-400 px-1.5 py-0.5 rounded">Turno: {extractedFilters.turno}</span>}
+                {extractedFilters.sexo && <span className="bg-pink-600/10 text-pink-400 px-1.5 py-0.5 rounded">Sexo: {extractedFilters.sexo === 'M' ? 'Masculino' : 'Femenino'}</span>}
                 {!tieneFiltrosVoz && (
                   <span className="bg-amber-600/10 text-amber-400 px-1.5 py-0.5 rounded">Ninguno — reformule el comando</span>
                 )}
@@ -365,17 +409,17 @@ export default function ReportesPage() {
                     </button>
                     <button
                       onClick={() => exportarVoz('pdf')}
-                      disabled={!tieneFiltrosVoz}
+                      disabled={!tieneFiltrosVoz || exportingVoz}
                       className="px-3 py-1 rounded-lg bg-red-600/10 text-red-400 border border-red-500/25 text-[10px] font-bold hover:bg-red-600/25 transition-all cursor-pointer disabled:opacity-40"
                     >
-                      PDF
+                      {exportingVoz === 'pdf' ? 'Generando…' : 'PDF'}
                     </button>
                     <button
                       onClick={() => exportarVoz('excel')}
-                      disabled={!tieneFiltrosVoz}
+                      disabled={!tieneFiltrosVoz || exportingVoz}
                       className="px-3 py-1 rounded-lg bg-green-600/10 text-green-400 border border-green-500/25 text-[10px] font-bold hover:bg-green-600/25 transition-all cursor-pointer disabled:opacity-40"
                     >
-                      Excel
+                      {exportingVoz === 'excel' ? 'Generando…' : 'Excel'}
                     </button>
                   </div>
                 </div>
@@ -387,10 +431,14 @@ export default function ReportesPage() {
                       <tr className="border-b border-slate-800 text-slate-400 uppercase tracking-widest text-[10px] font-bold">
                         <th className="py-2 px-2">Postulante</th>
                         <th className="py-2 px-2">CI</th>
+                        <th className="py-2 px-2">Sexo</th>
                         <th className="py-2 px-2">Estado</th>
                         <th className="py-2 px-2">Turno</th>
+                        <th className="py-2 px-2">Grupo</th>
                         <th className="py-2 px-2">1ra Opción</th>
+                        <th className="py-2 px-2">2da Opción</th>
                         <th className="py-2 px-2">Asignada</th>
+                        <th className="py-2 px-2">Vía</th>
                         <th className="py-2 px-2">Promedio</th>
                       </tr>
                     </thead>
@@ -399,16 +447,22 @@ export default function ReportesPage() {
                         <tr key={p.id} className="border-b border-slate-800/40 hover:bg-slate-900/10 text-slate-300">
                           <td className="py-2 px-2 font-medium">{p.apellidos}, {p.nombres}</td>
                           <td className="py-2 px-2 font-mono">{p.ci}</td>
+                          <td className="py-2 px-2">{p.sexo === 'M' ? 'M' : 'F'}</td>
                           <td className="py-2 px-2">
                             <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
                               p.estado === 'Aprobado' ? 'bg-emerald-500/10 text-emerald-400'
+                              : p.estado === 'Admitido' ? 'bg-cyan-500/10 text-cyan-400'
                               : p.estado === 'Reprobado' ? 'bg-red-500/10 text-red-400'
+                              : p.estado === 'Pendiente Reasignacion' ? 'bg-amber-500/10 text-amber-400'
                               : 'bg-blue-500/10 text-blue-400'
                             }`}>{p.estado}</span>
                           </td>
                           <td className="py-2 px-2">{p.turno_preferencia}</td>
-                          <td className="py-2 px-2 text-slate-400">{p.primeraOpcion?.nombre || '-'}</td>
+                          <td className="py-2 px-2 text-slate-400">{p.asignacion_grupo?.grupo ? `G${p.asignacion_grupo.grupo.numero} (${p.asignacion_grupo.grupo.turno})` : '-'}</td>
+                          <td className="py-2 px-2 text-slate-400">{(p.primera_opcion || p.primeraOpcion)?.nombre || '-'}</td>
+                          <td className="py-2 px-2 text-slate-400">{(p.segunda_opcion || p.segundaOpcion)?.nombre || '-'}</td>
                           <td className="py-2 px-2 text-slate-200 font-semibold">{p.admision?.carrera?.nombre || '-'}</td>
+                          <td className="py-2 px-2 text-slate-400">{p.admision?.via || '-'}</td>
                           <td className="py-2 px-2 font-mono font-bold text-slate-200">{p.promedio_general || '-'}</td>
                         </tr>
                       ))}
@@ -426,69 +480,136 @@ export default function ReportesPage() {
         <h2 className="text-lg font-semibold text-slate-200 mb-2">Generador de Consultas Dinámicas (CU20)</h2>
         <p className="text-xs text-slate-400 mb-6">Seleccione los criterios de búsqueda para compilar un reporte interactivo personalizado.</p>
         
-        <form onSubmit={getDinamico} className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end mb-8 border-b border-slate-800 pb-6">
-          <div>
-            <label className="block text-xs font-semibold text-slate-400 mb-2">Estado Académico</label>
-            <select
-              value={estado}
-              onChange={(e) => setEstado(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:border-blue-500 outline-none"
-            >
-              <option value="">Cualquiera</option>
-              <option value="Preinscrito">Preinscrito</option>
-              <option value="Verificado">Verificado</option>
-              <option value="Inscrito">Inscrito</option>
-              <option value="En Evaluacion">En Evaluación</option>
-              <option value="Aprobado">Aprobado</option>
-              <option value="Reprobado">Reprobado</option>
-            </select>
+        <form onSubmit={getDinamico} className="space-y-4 mb-8 border-b border-slate-800 pb-6">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+            <div>
+              <label className="block text-xs font-semibold text-slate-400 mb-2">Estado Académico</label>
+              <select
+                value={estado}
+                onChange={(e) => setEstado(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:border-blue-500 outline-none"
+              >
+                <option value="">Cualquiera</option>
+                <option value="Preinscrito">Preinscrito</option>
+                <option value="Verificado">Verificado</option>
+                <option value="Inscrito">Inscrito</option>
+                <option value="En Evaluacion">En Evaluación</option>
+                <option value="Aprobado">Aprobado</option>
+                <option value="Reprobado">Reprobado</option>
+                <option value="Admitido">Admitido</option>
+                <option value="Pendiente Reasignacion">Pendiente Reasignación</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-400 mb-2">{estado === 'Admitido' ? 'Carrera Asignada' : 'Carrera (Opción)'}</label>
+              <select
+                value={carreraId}
+                onChange={(e) => setCarreraId(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:border-blue-500 outline-none"
+              >
+                <option value="">Cualquiera</option>
+                <option value="1">Ingeniería Informática</option>
+                <option value="2">Ingeniería de Sistemas</option>
+                <option value="3">Ingeniería en Redes y Telecomunicaciones</option>
+                <option value="4">Ingeniería en Robótica</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-400 mb-2">Turno</label>
+              <select
+                value={turno}
+                onChange={(e) => setTurno(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:border-blue-500 outline-none"
+              >
+                <option value="">Cualquiera</option>
+                <option value="Manana">Mañana</option>
+                <option value="Tarde">Tarde</option>
+                <option value="Noche">Noche</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-400 mb-2">Sexo</label>
+              <select
+                value={sexo}
+                onChange={(e) => setSexo(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:border-blue-500 outline-none"
+              >
+                <option value="">Cualquiera</option>
+                <option value="M">Masculino</option>
+                <option value="F">Femenino</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-400 mb-2">Tipo Postulante</label>
+              <select
+                value={recurrente}
+                onChange={(e) => setRecurrente(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:border-blue-500 outline-none"
+              >
+                <option value="">Cualquiera</option>
+                <option value="0">Nuevos</option>
+                <option value="1">Recurrentes</option>
+              </select>
+            </div>
           </div>
-          <div>
-            <label className="block text-xs font-semibold text-slate-400 mb-2">Carrera Elegida (ID)</label>
-            <select
-              value={carreraId}
-              onChange={(e) => setCarreraId(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:border-blue-500 outline-none"
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+            <div>
+              <label className="block text-xs font-semibold text-slate-400 mb-2">Grupo</label>
+              <select
+                value={grupoIdDin}
+                onChange={(e) => setGrupoIdDin(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:border-blue-500 outline-none"
+              >
+                <option value="">Cualquiera</option>
+                {grupos.map((g) => (
+                  <option key={g.id} value={g.id}>Grupo {g.numero} ({g.turno})</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-400 mb-2">Ciudad</label>
+              <input
+                type="text"
+                value={ciudad}
+                onChange={(e) => setCiudad(e.target.value)}
+                placeholder="Ej: Santa Cruz"
+                className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:border-blue-500 outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-400 mb-2">Promedio Mín.</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                max="100"
+                value={promedioMin}
+                onChange={(e) => setPromedioMin(e.target.value)}
+                placeholder="0"
+                className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:border-blue-500 outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-400 mb-2">Promedio Máx.</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                max="100"
+                value={promedioMax}
+                onChange={(e) => setPromedioMax(e.target.value)}
+                placeholder="100"
+                className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:border-blue-500 outline-none"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-blue-600 text-white font-semibold text-xs py-2.5 rounded-xl hover:bg-blue-500 transition-colors disabled:opacity-50 cursor-pointer"
             >
-              <option value="">Cualquiera</option>
-              <option value="1">Ingeniería Informática</option>
-              <option value="2">Ingeniería de Sistemas</option>
-              <option value="3">Ingeniería en Redes y Telecomunicaciones</option>
-              <option value="4">Ingeniería en Robótica</option>
-            </select>
+              Buscar Datos
+            </button>
           </div>
-          <div>
-            <label className="block text-xs font-semibold text-slate-400 mb-2">Turno</label>
-            <select
-              value={turno}
-              onChange={(e) => setTurno(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:border-blue-500 outline-none"
-            >
-              <option value="">Cualquiera</option>
-              <option value="Manana">Mañana</option>
-              <option value="Tarde">Tarde</option>
-              <option value="Noche">Noche</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-slate-400 mb-2">Tipo Postulante</label>
-            <select
-              value={recurrente}
-              onChange={(e) => setRecurrente(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:border-blue-500 outline-none"
-            >
-              <option value="">Cualquiera</option>
-              <option value="0">Nuevos</option>
-              <option value="1">Recurrentes</option>
-            </select>
-          </div>
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-blue-600 text-white font-semibold text-xs py-2.5 rounded-xl hover:bg-blue-500 transition-colors disabled:opacity-50 cursor-pointer"
-          >
-            Buscar Datos
-          </button>
         </form>
 
         {loading ? (
@@ -512,10 +633,14 @@ export default function ReportesPage() {
                   <tr className="border-b border-slate-800 text-slate-400 uppercase tracking-widest text-[10px] font-bold">
                     <th className="py-2 px-2">Postulante</th>
                     <th className="py-2 px-2">CI</th>
+                    <th className="py-2 px-2">Sexo</th>
                     <th className="py-2 px-2">Estado</th>
                     <th className="py-2 px-2">Turno</th>
+                    <th className="py-2 px-2">Grupo</th>
                     <th className="py-2 px-2">1ra Opción</th>
+                    <th className="py-2 px-2">2da Opción</th>
                     <th className="py-2 px-2">Asignada</th>
+                    <th className="py-2 px-2">Vía</th>
                     <th className="py-2 px-2">Promedio</th>
                   </tr>
                 </thead>
@@ -524,16 +649,22 @@ export default function ReportesPage() {
                     <tr key={p.id} className="border-b border-slate-800/40 hover:bg-slate-900/10 text-slate-300">
                       <td className="py-2 px-2 font-medium">{p.apellidos}, {p.nombres}</td>
                       <td className="py-2 px-2 font-mono">{p.ci}</td>
+                      <td className="py-2 px-2">{p.sexo === 'M' ? 'M' : 'F'}</td>
                       <td className="py-2 px-2">
                         <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
-                          p.estado === 'Aprobado' ? 'bg-emerald-500/10 text-emerald-400' 
-                          : p.estado === 'Reprobado' ? 'bg-red-500/10 text-red-400' 
+                          p.estado === 'Aprobado' ? 'bg-emerald-500/10 text-emerald-400'
+                          : p.estado === 'Admitido' ? 'bg-cyan-500/10 text-cyan-400'
+                          : p.estado === 'Reprobado' ? 'bg-red-500/10 text-red-400'
+                          : p.estado === 'Pendiente Reasignacion' ? 'bg-amber-500/10 text-amber-400'
                           : 'bg-blue-500/10 text-blue-400'
                         }`}>{p.estado}</span>
                       </td>
                       <td className="py-2 px-2">{p.turno_preferencia}</td>
-                      <td className="py-2 px-2 text-slate-400">{p.primeraOpcion?.nombre || '-'}</td>
+                      <td className="py-2 px-2 text-slate-400">{p.asignacion_grupo?.grupo ? `G${p.asignacion_grupo.grupo.numero} (${p.asignacion_grupo.grupo.turno})` : '-'}</td>
+                      <td className="py-2 px-2 text-slate-400">{(p.primera_opcion || p.primeraOpcion)?.nombre || '-'}</td>
+                      <td className="py-2 px-2 text-slate-400">{(p.segunda_opcion || p.segundaOpcion)?.nombre || '-'}</td>
                       <td className="py-2 px-2 text-slate-200 font-semibold">{p.admision?.carrera?.nombre || '-'}</td>
+                      <td className="py-2 px-2 text-slate-400">{p.admision?.via || '-'}</td>
                       <td className="py-2 px-2 font-mono font-bold text-slate-200">{p.promedio_general || '-'}</td>
                     </tr>
                   ))}

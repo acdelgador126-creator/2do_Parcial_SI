@@ -1,6 +1,9 @@
     -- ==============================================================================
     -- DDL DE CREACION DE BASE DE DATOS - SISTEMA CUP FICCT
-    -- MOTOR: PostgreSQL
+    -- MOTOR: PostgreSQL 16+
+    -- Esquema alineado con las migraciones Laravel del repositorio (33 migraciones).
+    -- Diagrama conceptual PlantUML: BASE_DE_DATOS/modelo_conceptual_bd.puml
+    -- Visualizar en: https://www.planttext.com/
     -- ==============================================================================
 
     BEGIN;
@@ -72,7 +75,7 @@
         fecha_admision timestamp(0) without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
 
-    -- Tabla: docentes
+    -- Tabla: docentes (CU12 + CU24/CU25 postulacion docente)
     CREATE TABLE docentes (
         id bigserial PRIMARY KEY,
         ci character varying(20) NOT NULL,
@@ -81,7 +84,34 @@
         especialidad character varying(100) NOT NULL,
         grado_academico character varying(100) NOT NULL,
         correo character varying(150) NOT NULL,
+        telefono character varying(30),
+        fecha_nacimiento date,
+        area_id bigint,
+        estado character varying(30) NOT NULL DEFAULT 'Aceptado',
+        hoja_vida_path character varying(255),
+        respaldos_path character varying(255),
+        motivo_rechazo text,
         user_id bigint,
+        created_at timestamp(0) without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    -- Tabla: especialidades (CU24 — especialidades declaradas por el aspirante docente)
+    CREATE TABLE especialidades (
+        id bigserial PRIMARY KEY,
+        docente_id bigint NOT NULL,
+        nombre character varying(150) NOT NULL,
+        area_id bigint,
+        created_at timestamp(0) without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    -- Tabla: horarios_grupo_materia (CU12 — carga horaria institucional fija por grupo/materia)
+    CREATE TABLE horarios_grupo_materia (
+        id bigserial PRIMARY KEY,
+        grupo_id bigint NOT NULL,
+        materia_id bigint NOT NULL,
+        dia_semana smallint NOT NULL,
+        hora_inicio time(0) without time zone NOT NULL,
+        hora_fin time(0) without time zone NOT NULL,
         created_at timestamp(0) without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -379,6 +409,15 @@
 
     -- docentes
     ALTER TABLE docentes ADD CONSTRAINT docentes_user_id_foreign FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL;
+    ALTER TABLE docentes ADD CONSTRAINT docentes_area_id_foreign FOREIGN KEY (area_id) REFERENCES materias(id) ON DELETE SET NULL;
+
+    -- especialidades
+    ALTER TABLE especialidades ADD CONSTRAINT especialidades_docente_id_foreign FOREIGN KEY (docente_id) REFERENCES docentes(id) ON DELETE CASCADE;
+    ALTER TABLE especialidades ADD CONSTRAINT especialidades_area_id_foreign FOREIGN KEY (area_id) REFERENCES materias(id) ON DELETE SET NULL;
+
+    -- horarios_grupo_materia
+    ALTER TABLE horarios_grupo_materia ADD CONSTRAINT horarios_grupo_materia_grupo_id_foreign FOREIGN KEY (grupo_id) REFERENCES grupos(id) ON DELETE CASCADE;
+    ALTER TABLE horarios_grupo_materia ADD CONSTRAINT horarios_grupo_materia_materia_id_foreign FOREIGN KEY (materia_id) REFERENCES materias(id) ON DELETE CASCADE;
 
     -- preguntas_simulacro
     ALTER TABLE preguntas_simulacro ADD CONSTRAINT preguntas_simulacro_materia_id_foreign FOREIGN KEY (materia_id) REFERENCES materias(id) ON DELETE CASCADE;
@@ -416,5 +455,6 @@
     CREATE INDEX sessions_last_activity_index ON public.sessions USING btree (last_activity);
     CREATE INDEX sessions_user_id_index ON public.sessions USING btree (user_id);
     CREATE UNIQUE INDEX users_email_unique ON public.users USING btree (email);
+    CREATE UNIQUE INDEX horario_grupo_materia_dia_unique ON public.horarios_grupo_materia USING btree (grupo_id, materia_id, dia_semana);
 
     COMMIT;

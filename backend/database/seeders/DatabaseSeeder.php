@@ -204,5 +204,8 @@ class DatabaseSeeder extends Seeder
             }
         }
         $this->command->info("Sincronización de secuencias completada con éxito.");
+
+        // Horarios institucionales fijos por grupo/materia (carga horaria del CUP)
+        $this->call(HorariosGrupoMateriaSeeder::class);
     }
 }

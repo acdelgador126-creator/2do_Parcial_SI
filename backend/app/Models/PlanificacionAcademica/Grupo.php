@@ -30,6 +30,11 @@ class Grupo extends Model
         return $this->hasMany(AsignacionDocente::class);
     }
 
+    public function horarios()
+    {
+        return $this->hasMany(HorarioGrupoMateria::class);
+    }
+
     public function cantidadEstudiantes(): int
     {
         return $this->asignaciones()->count();

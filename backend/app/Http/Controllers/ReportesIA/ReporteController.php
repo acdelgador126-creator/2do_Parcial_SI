@@ -376,7 +376,8 @@ class ReporteController extends Controller
             'primeraOpcion',
             'segundaOpcion',
             'gestion',
-            'asignacionGrupo.grupo',
+            'asignacionGrupo.grupo.docentes.docente',
+            'asignacionGrupo.grupo.docentes.materia',
             'examenes.materia',
             'notasFinales.materia',
             'admision.carrera'
@@ -568,23 +569,48 @@ class ReporteController extends Controller
     public function generarDinamico(Request $request): JsonResponse
     {
         // CU20 - Paso 2: B_Int -> C_Ctrl : + generarDinamico(request)
-        $query = Postulante::query()->with(['primeraOpcion', 'segundaOpcion', 'gestion', 'admision.carrera']);
+        $query = Postulante::query()->with(['primeraOpcion', 'segundaOpcion', 'gestion', 'admision.carrera', 'asignacionGrupo.grupo']);
 
         if ($request->filled('estado')) {
-            $query->where('estado', $request->estado);
+            $est = $request->estado;
+            if ($est === 'Admitido') {
+                $query->whereIn('estado', ['Admitido']);
+            } else {
+                $query->where('estado', $est);
+            }
         }
         if ($request->filled('carrera_id')) {
             $cId = $request->carrera_id;
-            $query->where(function ($q) use ($cId) {
-                $q->where('primera_opcion_id', $cId)
-                  ->orWhere('segunda_opcion_id', $cId);
-            });
+            $estadoFiltro = $request->estado ?? '';
+            if ($estadoFiltro === 'Admitido') {
+                // Filtrar por carrera ASIGNADA en admisiones (no por opción elegida)
+                $query->whereHas('admision', function ($q) use ($cId) {
+                    $q->where('carrera_id', $cId);
+                });
+            } else {
+                $query->where(function ($q) use ($cId) {
+                    $q->where('primera_opcion_id', $cId)
+                      ->orWhere('segunda_opcion_id', $cId);
+                });
+            }
         }
         if ($request->filled('turno')) {
             $query->where('turno_preferencia', $request->turno);
         }
         if ($request->filled('recurrente')) {
             $query->where('recurrente', $request->boolean('recurrente'));
+        }
+        if ($request->filled('sexo')) {
+            $query->where('sexo', $request->sexo);
+        }
+        if ($request->filled('grupo_id')) {
+            $grupoId = $request->grupo_id;
+            $query->whereHas('asignacionGrupo', function ($q) use ($grupoId) {
+                $q->where('grupo_id', $grupoId);
+            });
+        }
+        if ($request->filled('ciudad')) {
+            $query->where('ciudad', 'ilike', '%' . $request->ciudad . '%');
         }
 
         // CU20 - Paso 3: C_Ctrl -> E_Data : + ConsultarBaseDeDatosBI(parametros)
@@ -594,8 +620,18 @@ class ReporteController extends Controller
             return $p;
         });
 
+        // Filtros de promedio (post-query ya que se calcula dinámicamente)
+        if ($request->filled('promedio_min')) {
+            $min = floatval($request->promedio_min);
+            $postulantes = $postulantes->filter(fn($p) => $p->promedio_general >= $min);
+        }
+        if ($request->filled('promedio_max')) {
+            $max = floatval($request->promedio_max);
+            $postulantes = $postulantes->filter(fn($p) => $p->promedio_general <= $max);
+        }
+
         // CU20 - Paso 5: C_Ctrl --> B_Int : + RetornarTablaResultados()
-        return response()->json($postulantes);
+        return response()->json($postulantes->values());
     }
 
     /**
@@ -668,7 +704,7 @@ class ReporteController extends Controller
                 'messages' => [
                     [
                         'role' => 'system',
-                        'content' => 'Eres un procesador de comandos de voz para el CUP de la FICCT. Extrae filtros del texto y responde SOLO JSON válido con claves: estado, carrera, turno. Valores permitidos — estado: Preinscrito, Verificado, Inscrito, En Evaluacion, Aprobado, Reprobado, Admitido, Pendiente Reasignacion; carrera: Informatica, Sistemas, Redes, Robotica; turno: Manana, Tarde, Noche. Usa null si no se menciona. Ejemplo: "aprobados de sistemas en la manana" -> {"estado":"Aprobado","carrera":"Sistemas","turno":"Manana"}',
+                        'content' => 'Eres un procesador de comandos de voz para el CUP de la FICCT. Extrae filtros del texto y responde SOLO JSON válido con claves: estado, carrera, turno, sexo. Valores permitidos — estado: Preinscrito, Verificado, Inscrito, En Evaluacion, Aprobado, Reprobado, Admitido, Pendiente Reasignacion; carrera: Informatica, Sistemas, Redes, Robotica; turno: Manana, Tarde, Noche; sexo: M, F. Usa null si no se menciona. Ejemplo: "admitidos de sistemas en la manana" -> {"estado":"Admitido","carrera":"Sistemas","turno":"Manana","sexo":null}',
                     ],
                     ['role' => 'user', 'content' => $texto],
                 ],
@@ -680,7 +716,7 @@ class ReporteController extends Controller
                 if (preg_match('/\{.*\}/s', $content, $matches)) {
                     $json = json_decode($matches[0], true);
                     if (is_array($json)) {
-                        foreach (['estado', 'carrera', 'turno'] as $clave) {
+                        foreach (['estado', 'carrera', 'turno', 'sexo'] as $clave) {
                             if (!empty($json[$clave]) && empty($filtros[$clave])) {
                                 $filtros[$clave] = $json[$clave];
                             }
@@ -721,6 +757,19 @@ class ReporteController extends Controller
             'noche' => 'Noche',
         ];
 
+        $sexos = [
+            'm' => 'M',
+            'masculino' => 'M',
+            'hombres' => 'M',
+            'hombre' => 'M',
+            'varones' => 'M',
+            'varon' => 'M',
+            'f' => 'F',
+            'femenino' => 'F',
+            'mujeres' => 'F',
+            'mujer' => 'F',
+        ];
+
         $estado = $filtros['estado'] ?? null;
         if ($estado) {
             $key = $this->normalizarTextoVoz($estado);
@@ -739,16 +788,23 @@ class ReporteController extends Controller
             $filtros['turno'] = $turnos[$key] ?? $turno;
         }
 
+        $sexo = $filtros['sexo'] ?? null;
+        if ($sexo) {
+            $key = $this->normalizarTextoVoz($sexo);
+            $filtros['sexo'] = $sexos[$key] ?? $sexo;
+        }
+
         return [
             'estado' => $filtros['estado'] ?? null,
             'carrera' => $filtros['carrera'] ?? null,
             'turno' => $filtros['turno'] ?? null,
+            'sexo' => $filtros['sexo'] ?? null,
         ];
     }
 
     private function tieneFiltrosActivos(array $filtros): bool
     {
-        return !empty($filtros['estado']) || !empty($filtros['carrera']) || !empty($filtros['turno']);
+        return !empty($filtros['estado']) || !empty($filtros['carrera']) || !empty($filtros['turno']) || !empty($filtros['sexo']);
     }
 
     private function parsearVozRegex(string $texto): array
@@ -757,6 +813,7 @@ class ReporteController extends Controller
             'estado' => null,
             'carrera' => null,
             'turno' => null,
+            'sexo' => null,
         ];
 
         // Estado (orden: términos más específicos primero)
@@ -778,8 +835,8 @@ class ReporteController extends Controller
             $filtros['estado'] = 'Inscrito';
         }
 
-        // Carrera
-        if (preg_match('/sistemas?/', $texto)) {
+        // Carrera (orden: más específico primero para evitar falsos positivos)
+        if (preg_match('/\bsistemas?\b/', $texto)) {
             $filtros['carrera'] = 'Sistemas';
         } elseif (preg_match('/informatica|informatic/', $texto)) {
             $filtros['carrera'] = 'Informatica';
@@ -798,6 +855,13 @@ class ReporteController extends Controller
             $filtros['turno'] = 'Noche';
         }
 
+        // Sexo
+        if (preg_match('/\bmujeres\b|\bmujer\b|\bfemenin/', $texto)) {
+            $filtros['sexo'] = 'F';
+        } elseif (preg_match('/\bhombres\b|\bhombre\b|\bmasculin|\bvarones?\b/', $texto)) {
+            $filtros['sexo'] = 'M';
+        }
+
         return $filtros;
     }
 
@@ -812,7 +876,7 @@ class ReporteController extends Controller
         ]);
 
         $filtros = $this->normalizarFiltrosVoz(array_merge(
-            ['estado' => null, 'carrera' => null, 'turno' => null],
+            ['estado' => null, 'carrera' => null, 'turno' => null, 'sexo' => null],
             $request->filtros
         ));
 
@@ -826,11 +890,15 @@ class ReporteController extends Controller
 
         if ($request->formato === 'pdf') {
             $pdf = Pdf::loadView('reportes.reporte_voz_pdf', [
-                'titulo' => 'Reporte por Comando de Voz (IA)',
-                'fecha' => now()->format('Y-m-d H:i:s'),
+                'titulo' => 'Reporte por Comando de Voz (IA — CU21)',
+                'fecha' => now()->format('d/m/Y H:i:s'),
                 'filtros' => $filtros,
                 'resultados' => $resultados,
-            ])->setPaper('letter', 'landscape');
+            ])
+                ->setPaper('letter', 'landscape')
+                ->setOption('isHtml5ParserEnabled', true)
+                ->setOption('isRemoteEnabled', false)
+                ->setOption('defaultFont', 'DejaVu Sans');
 
             return $pdf->download('reporte_voz_' . time() . '.pdf');
         }
@@ -851,7 +919,7 @@ class ReporteController extends Controller
 
         $query = Postulante::query()
             ->where('gestion_id', $gestion->id)
-            ->with(['primeraOpcion', 'segundaOpcion', 'gestion', 'admision.carrera']);
+            ->with(['primeraOpcion', 'segundaOpcion', 'gestion', 'admision.carrera', 'asignacionGrupo.grupo']);
 
         if (!empty($filtros['estado'])) {
             $estado = $filtros['estado'];
@@ -864,14 +932,26 @@ class ReporteController extends Controller
         if (!empty($filtros['turno'])) {
             $query->where('turno_preferencia', $filtros['turno']);
         }
+        if (!empty($filtros['sexo'])) {
+            $query->where('sexo', $filtros['sexo']);
+        }
         if (!empty($filtros['carrera'])) {
             $cName = $filtros['carrera'];
             $carrera = Carrera::where('nombre', 'ilike', "%{$cName}%")->first();
             if ($carrera) {
-                $query->where(function ($q) use ($carrera) {
-                    $q->where('primera_opcion_id', $carrera->id)
-                      ->orWhere('segunda_opcion_id', $carrera->id);
-                });
+                $estadoFiltro = $filtros['estado'] ?? '';
+                // Si busca admitidos, filtrar por carrera ASIGNADA en tabla admisiones
+                if ($estadoFiltro === 'Admitido') {
+                    $query->whereHas('admision', function ($q) use ($carrera) {
+                        $q->where('carrera_id', $carrera->id);
+                    });
+                } else {
+                    // Para otros estados, filtrar por preferencia de carrera
+                    $query->where(function ($q) use ($carrera) {
+                        $q->where('primera_opcion_id', $carrera->id)
+                          ->orWhere('segunda_opcion_id', $carrera->id);
+                    });
+                }
             }
         }
 

@@ -1,0 +1,326 @@
+@startuml ModeloConceptual_CUP_FICCT
+' Modelo Conceptual de Datos — alineado con BASE_DE_DATOS/FICCT_v2.sql
+' Pegar en https://www.planttext.com/ y pulsar Refresh
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundCorner 0
+skinparam classAttributeIconSize 0
+skinparam class {
+  BackgroundColor #F8FAFC
+  BorderColor #1E40AF
+  ArrowColor #334155
+  FontSize 10
+}
+skinparam packageStyle rectangle
+skinparam package {
+  BackgroundColor #EFF6FF
+  BorderColor #1E40AF
+  FontStyle bold
+}
+
+title Modelo Conceptual de Datos — CUP-FICCT\n(Esquema PostgreSQL — FICCT_v2.sql)
+
+' =============================================================================
+package "Autenticacion y Seguridad" as P_Auth {
+
+  class users <<Entity>> {
+    +id : bigserial PK
+    +name : varchar(255)
+    +email : varchar(255) UNIQUE
+    +email_verified_at : timestamp
+    +password : varchar(255)
+    +remember_token : varchar(100)
+    +created_at : timestamp
+    +updated_at : timestamp
+    +role : varchar(50)
+    +active : boolean
+    +intentos_fallidos : integer
+    +bloqueado_hasta : timestamp
+  }
+
+  class bitacora_accesos <<Entity>> {
+    +id : bigserial PK
+    +user_id : bigint FK
+    +ip_address : varchar(45)
+    +action : varchar(255)
+    +created_at : timestamp
+  }
+
+  class notificaciones <<Entity>> {
+    +id : bigserial PK
+    +usuario_id : bigint FK
+    +tipo_evento : varchar(50)
+    +mensaje : text
+    +estado : varchar(15)
+    +fecha_generacion : timestamp
+    +fecha_lectura : timestamp
+  }
+}
+
+' =============================================================================
+package "Registro de Postulantes" as P_Post {
+
+  class postulantes <<Entity>> {
+    +id : bigserial PK
+    +ci : varchar(20) UNIQUE
+    +nombres : varchar(150)
+    +apellidos : varchar(150)
+    +fecha_nacimiento : date
+    +sexo : char(1)
+    +direccion : varchar(255)
+    +telefono : varchar(20)
+    +email : varchar(150)
+    +colegio_procedencia : varchar(150)
+    +ciudad : varchar(100)
+    +titulo_bachiller : varchar(255)
+    +primera_opcion_id : bigint FK
+    +segunda_opcion_id : bigint FK
+    +turno_preferencia : varchar(20)
+    +gestion_id : bigint FK
+    +estado : varchar(50)
+    +recurrente : boolean
+    +user_id : bigint FK
+    +created_at : timestamp
+    +updated_at : timestamp
+  }
+
+  class requisitos_documentales <<Entity>> {
+    +id : bigserial PK
+    +postulante_id : bigint FK UNIQUE
+    +ci_digitalizado : boolean
+    +certificado_nacimiento : boolean
+    +titulo_bachiller_legalizado : boolean
+    +formulario_preinscripcion : boolean
+    +verificado_bd_externa : boolean
+    +updated_at : timestamp
+  }
+
+  class pagos <<Entity>> {
+    +id : bigserial PK
+    +postulante_id : bigint FK
+    +stripe_checkout_id : varchar(255) UNIQUE
+    +monto : numeric(10,2)
+    +estado_pago : varchar(50)
+    +fecha_pago : timestamp
+  }
+
+  class conversaciones_chatbot <<Entity>> {
+    +id : bigserial PK
+    +postulante_id : bigint FK
+    +pregunta : text
+    +respuesta : text
+    +resuelta : boolean
+    +fecha : timestamp
+  }
+}
+
+' =============================================================================
+package "Admision a Carreras" as P_Admi {
+
+  class gestiones <<Entity>> {
+    +id : bigserial PK
+    +codigo : varchar(10) UNIQUE
+    +activa : boolean
+    +fecha_inicio : date
+    +fecha_fin : date
+    +created_at : timestamp
+  }
+
+  class carreras <<Entity>> {
+    +id : bigserial PK
+    +nombre : varchar(100) UNIQUE
+    +codigo : varchar(10) UNIQUE
+  }
+
+  class cupos_gestion <<Entity>> {
+    +id : bigserial PK
+    +gestion_id : bigint FK
+    +carrera_id : bigint FK
+    +cupo_maximo : integer
+    +cupos_disponibles : integer
+    +created_at : timestamp
+  }
+
+  class admisiones <<Entity>> {
+    +id : bigserial PK
+    +postulante_id : bigint FK UNIQUE
+    +carrera_id : bigint FK
+    +via : varchar(50)
+    +fecha_admision : timestamp
+  }
+}
+
+' =============================================================================
+package "Planificacion Academica" as P_Plan {
+
+  class aulas <<Entity>> {
+    +id : bigserial PK
+    +nombre : varchar(50)
+    +capacidad : integer
+    +ubicacion : varchar(100)
+  }
+
+  class grupos <<Entity>> {
+    +id : bigserial PK
+    +numero : integer
+    +gestion_id : bigint FK
+    +turno : varchar(20)
+    +aula_id : bigint FK
+    +created_at : timestamp
+  }
+
+  class asignaciones_grupo <<Entity>> {
+    +id : bigserial PK
+    +postulante_id : bigint FK UNIQUE
+    +grupo_id : bigint FK
+    +created_at : timestamp
+  }
+
+  class materias <<Entity>> {
+    +id : bigserial PK
+    +nombre : varchar(50) UNIQUE
+    +codigo : varchar(10) UNIQUE
+  }
+
+  class docentes <<Entity>> {
+    +id : bigserial PK
+    +ci : varchar(20) UNIQUE
+    +nombres : varchar(150)
+    +apellidos : varchar(150)
+    +especialidad : varchar(100)
+    +grado_academico : varchar(100)
+    +correo : varchar(150)
+    +telefono : varchar(30)
+    +fecha_nacimiento : date
+    +area_id : bigint FK
+    +estado : varchar(30)
+    +hoja_vida_path : varchar(255)
+    +respaldos_path : varchar(255)
+    +motivo_rechazo : text
+    +user_id : bigint FK
+    +created_at : timestamp
+  }
+
+  class especialidades <<Entity>> {
+    +id : bigserial PK
+    +docente_id : bigint FK
+    +nombre : varchar(150)
+    +area_id : bigint FK
+    +created_at : timestamp
+  }
+
+  class asignaciones_docente <<Entity>> {
+    +id : bigserial PK
+    +docente_id : bigint FK
+    +grupo_id : bigint FK
+    +materia_id : bigint FK
+    +created_at : timestamp
+  }
+
+  class horarios_grupo_materia <<Entity>> {
+    +id : bigserial PK
+    +grupo_id : bigint FK
+    +materia_id : bigint FK
+    +dia_semana : smallint
+    +hora_inicio : time
+    +hora_fin : time
+    +created_at : timestamp
+  }
+
+  class preguntas_simulacro <<Entity>> {
+    +id : bigserial PK
+    +materia_id : bigint FK
+    +enunciado : text
+    +opciones : text
+    +respuesta_correcta : varchar(255)
+    +created_at : timestamp
+  }
+}
+
+' =============================================================================
+package "Evaluacion Academica" as P_Eval {
+
+  class examenes <<Entity>> {
+    +id : bigserial PK
+    +postulante_id : bigint FK
+    +materia_id : bigint FK
+    +numero_examen : integer
+    +nota : numeric(5,2)
+    +created_at : timestamp
+  }
+
+  class notas_finales <<Entity>> {
+    +id : bigserial PK
+    +postulante_id : bigint FK
+    +materia_id : bigint FK
+    +promedio : numeric(5,2)
+    +estado : varchar(20)
+    +updated_at : timestamp
+    +observaciones : varchar(255)
+  }
+
+  class auditoria_notas <<Entity>> {
+    +id : bigserial PK
+    +examen_id : bigint FK
+    +usuario_modificador_id : bigint FK
+    +nota_anterior : numeric(5,2)
+    +nota_nueva : numeric(5,2)
+    +motivo : text
+    +fecha_modificacion : timestamp
+  }
+}
+
+' =============================================================================
+' Relaciones (Foreign Keys de FICCT_v2.sql)
+' =============================================================================
+
+users "1" -- "0..*" bitacora_accesos
+users "1" -- "0..*" notificaciones
+users "1" -- "0..1" postulantes
+users "1" -- "0..1" docentes
+users "1" -- "0..*" auditoria_notas
+
+gestiones "1" -- "0..*" postulantes
+gestiones "1" -- "0..*" grupos
+gestiones "1" -- "0..*" cupos_gestion
+
+carreras "1" -- "0..*" postulantes : primera_opcion
+carreras "1" -- "0..*" postulantes : segunda_opcion
+carreras "1" -- "0..*" cupos_gestion
+carreras "1" -- "0..*" admisiones
+
+postulantes "1" -- "1" requisitos_documentales
+postulantes "1" -- "0..*" pagos
+postulantes "1" -- "0..1" asignaciones_grupo
+postulantes "1" -- "0..1" admisiones
+postulantes "1" -- "0..*" examenes
+postulantes "1" -- "0..*" notas_finales
+postulantes "1" -- "0..*" conversaciones_chatbot
+
+aulas "1" -- "0..*" grupos
+grupos "1" -- "0..*" asignaciones_grupo
+grupos "1" -- "0..*" asignaciones_docente
+grupos "1" -- "0..*" horarios_grupo_materia
+
+docentes "1" -- "0..*" asignaciones_docente
+docentes "1" -- "0..*" especialidades
+materias "1" -- "0..*" asignaciones_docente
+materias "1" -- "0..*" horarios_grupo_materia
+materias "1" -- "0..1" docentes : area
+materias "1" -- "0..*" especialidades : area
+materias "1" -- "0..*" examenes
+materias "1" -- "0..*" notas_finales
+materias "1" -- "0..*" preguntas_simulacro
+
+examenes "1" -- "0..*" auditoria_notas
+
+note bottom of P_Auth
+  Tablas de infraestructura Laravel (no incluidas
+  en el modelo de negocio): cache, cache_locks,
+  jobs, job_batches, failed_jobs, migrations,
+  password_reset_tokens, personal_access_tokens,
+  sessions
+end note
+
+@enduml

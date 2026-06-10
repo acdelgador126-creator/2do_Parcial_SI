@@ -73,11 +73,38 @@ class GrupoController extends Controller
         }
 
         $grupos = Grupo::where('gestion_id', $gestion->id)
-            ->with(['aula', 'docentes.docente', 'docentes.materia'])
+            ->with([
+                'aula',
+                'docentes.docente',
+                'docentes.materia',
+                'horarios.materia',
+            ])
             ->withCount('asignaciones as total_estudiantes')
             ->orderBy('turno')
             ->orderBy('numero')
-            ->get();
+            ->get()
+            ->map(function ($grupo) {
+                $grupo->horarios_por_materia = $grupo->horarios
+                    ->groupBy('materia_id')
+                    ->map(function ($items, $materiaId) {
+                        $materia = $items->first()->materia;
+
+                        return [
+                            'materia_id' => (int) $materiaId,
+                            'materia' => $materia?->nombre,
+                            'franjas' => $items->map(fn ($h) => [
+                                'dia_nombre' => $h->dia_nombre,
+                                'hora_inicio' => substr((string) $h->hora_inicio, 0, 5),
+                                'hora_fin' => substr((string) $h->hora_fin, 0, 5),
+                            ])->values(),
+                        ];
+                    })
+                    ->values();
+
+                unset($grupo->horarios);
+
+                return $grupo;
+            });
 
         return response()->json($grupos);
     }

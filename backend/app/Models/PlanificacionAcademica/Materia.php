@@ -8,4 +8,9 @@ class Materia extends Model
 {
     public $timestamps = false;
     protected $fillable = ['nombre', 'codigo'];
+
+    public function horarios()
+    {
+        return $this->hasMany(HorarioGrupoMateria::class);
+    }
 }

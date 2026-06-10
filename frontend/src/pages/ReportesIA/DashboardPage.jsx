@@ -8,6 +8,7 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const [stats, setStats] = useState(null);
   const [postulanteInfo, setPostulanteInfo] = useState(null);
+  const [pendientesDocentes, setPendientesDocentes] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -17,9 +18,16 @@ export default function DashboardPage() {
       setError(null);
       if (['Administrador', 'Coordinador', 'Docente'].includes(user?.role)) {
         // CU22 - Paso 2: B_Dash -> C_Rep : + getEstadisticas()
-        const res = await api.get('/dashboard/estadisticas');
+        const requests = [api.get('/dashboard/estadisticas')];
+        if (['Administrador', 'Coordinador'].includes(user?.role)) {
+          requests.push(api.get('/postulaciones-docentes', { params: { estado: 'Pendiente de Revision' } }));
+        }
+        const [res, resPend] = await Promise.all(requests);
         // CU22 - Paso 9: C_Rep --> B_Dash : + EnviarDatosEstadisticos()
         setStats(res.data);
+        if (resPend) {
+          setPendientesDocentes(resPend.data?.total ?? 0);
+        }
       } else if (user?.role === 'Postulante') {
         // CU22 - Caso B - Paso 2: B_Dash -> C_Rep : + getNotasIndividuales()
         const res = await api.get('/dashboard/notas-individuales');
@@ -47,6 +55,7 @@ export default function DashboardPage() {
     { title: 'Usuarios', desc: 'Administrar accesos, roles y cuentas.', path: '/admin/usuarios' },
     { title: 'Postulantes', desc: 'Búsqueda avanzada y verificación de expedientes.', path: '/admin/postulantes' },
     { title: 'Planificación de Grupos', desc: 'Distribución y asignación automática por turnos.', path: '/admin/grupos' },
+    { title: 'Postulaciones Docentes', desc: 'Revisar aspirantes, validar especialidad vs área y aceptar o rechazar (CU25).', path: '/admin/postulaciones-docentes' },
     { title: 'Gestión Docente', desc: 'Asignación de materias a paralelos y control de cátedras.', path: '/admin/docentes' },
     { title: 'Calificaciones', desc: 'Registrar notas individuales e importar CSV de laboratorios.', path: '/admin/notas' },
     { title: 'Admisiones & Cupos', desc: 'Establecer límites de vacantes y ejecutar algoritmo de ingreso.', path: '/admin/admisiones' },
@@ -84,19 +93,51 @@ export default function DashboardPage() {
       { label: 'Física', key: 'FISICA' },
       { label: 'Inglés', key: 'INGLES' },
     ];
-    const matchMateria = (nombre, key) =>
-      nombre?.toUpperCase() === key || nombre?.toUpperCase() === key.slice(0, -1);
+
+    const normalizarMateria = (nombre) =>
+      (nombre || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toUpperCase();
+
+    const matchMateria = (nombre, key) => {
+      const n = normalizarMateria(nombre);
+      return n === key || n === key.slice(0, -1) || n.startsWith(key.slice(0, 4));
+    };
+
+    const examenes = postulanteInfo.examenes || [];
+    const notasFinales = postulanteInfo.notas_finales || postulanteInfo.notasFinales || [];
+    const asignacionGrupo = postulanteInfo.asignacion_grupo || postulanteInfo.asignacionGrupo;
 
     const getNotaExamenPost = (mKey, examNum) => {
-      const ex = postulanteInfo.examenes?.find(
+      const ex = examenes.find(
         (e) => matchMateria(e.materia?.nombre, mKey) && e.numero_examen === examNum
       );
-      return ex ? ex.nota : '-';
+      return ex != null ? Number(ex.nota).toFixed(2) : '-';
     };
 
     const getPromedioMateriaPost = (mKey) => {
-      const nf = postulanteInfo.notasFinales?.find((n) => matchMateria(n.materia?.nombre, mKey));
-      return nf ? nf.promedio : '-';
+      const nf = notasFinales.find((n) => matchMateria(n.materia?.nombre, mKey));
+      if (nf?.promedio != null && nf.promedio !== '') {
+        return Number(nf.promedio).toFixed(2);
+      }
+
+      const p1 = getNotaExamenPost(mKey, 1);
+      const p2 = getNotaExamenPost(mKey, 2);
+      const ef = getNotaExamenPost(mKey, 3);
+      if (p1 === '-' || p2 === '-' || ef === '-') return '-';
+
+      const promedio = Number(p1) * 0.3 + Number(p2) * 0.3 + Number(ef) * 0.4;
+      return promedio.toFixed(2);
+    };
+
+    const docentesGrupo = asignacionGrupo?.grupo?.docentes || [];
+
+    const getDocenteMateria = (mKey) => {
+      const asig = docentesGrupo.find((a) => matchMateria(a.materia?.nombre, mKey));
+      if (!asig?.docente) return '—';
+      const { nombres, apellidos } = asig.docente;
+      return `${nombres} ${apellidos}`.trim();
     };
 
     return (
@@ -118,8 +159,8 @@ export default function DashboardPage() {
           <div>
             <span className="text-xs text-slate-500 block mb-1">Grupo Asignado</span>
             <span className="text-sm font-semibold text-slate-200">
-              {postulanteInfo.asignacionGrupo?.grupo
-                ? `Grupo ${postulanteInfo.asignacionGrupo.grupo.numero} (${postulanteInfo.asignacionGrupo.grupo.turno})`
+              {asignacionGrupo?.grupo
+                ? `Grupo ${asignacionGrupo.grupo.numero} (${asignacionGrupo.grupo.turno})`
                 : 'Sin grupo asignado.'}
             </span>
           </div>
@@ -153,12 +194,16 @@ export default function DashboardPage() {
 
         {/* Planilla de Notas del Estudiante */}
         <div className="glass-panel p-6 rounded-2xl">
-          <h2 className="text-lg font-semibold text-slate-200 mb-4">Calificaciones por Materia</h2>
+          <h2 className="text-lg font-semibold text-slate-200 mb-1">Calificaciones por Materia</h2>
+          <p className="text-xs text-slate-500 mb-4">
+            Docentes asignados a su grupo{asignacionGrupo?.grupo ? ` ${asignacionGrupo.grupo.numero}` : ''}. Las notas en blanco indican calificaciones aún no registradas.
+          </p>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-slate-800 text-slate-400 uppercase tracking-widest text-[10px] font-bold">
                   <th className="py-3 px-2">Materia</th>
+                  <th className="py-3 px-2">Docente</th>
                   <th className="py-3 px-2 text-center">Parcial 1 (30%)</th>
                   <th className="py-3 px-2 text-center">Parcial 2 (30%)</th>
                   <th className="py-3 px-2 text-center">Examen Final (40%)</th>
@@ -171,14 +216,16 @@ export default function DashboardPage() {
                   const p2 = getNotaExamenPost(m.key, 2);
                   const ef = getNotaExamenPost(m.key, 3);
                   const pf = getPromedioMateriaPost(m.key);
+                  const docente = getDocenteMateria(m.key);
 
                   return (
                     <tr key={m.key} className="border-b border-slate-800/40 hover:bg-slate-900/10 text-slate-300">
                       <td className="py-4 px-2 font-medium text-slate-200">{m.label}</td>
+                      <td className="py-4 px-2 text-slate-400">{docente}</td>
                       <td className="py-4 px-2 text-center font-mono">{p1}</td>
                       <td className="py-4 px-2 text-center font-mono">{p2}</td>
                       <td className="py-4 px-2 text-center font-mono">{ef}</td>
-                      <td className={`py-4 px-2 text-center font-bold font-mono ${pf !== '-' && pf >= 60 ? 'text-emerald-400' : pf !== '-' ? 'text-red-400' : 'text-slate-500'
+                      <td className={`py-4 px-2 text-center font-bold font-mono ${pf !== '-' && Number(pf) >= 60 ? 'text-emerald-400' : pf !== '-' ? 'text-red-400' : 'text-slate-500'
                         }`}>
                         {pf}
                       </td>
@@ -217,6 +264,26 @@ export default function DashboardPage() {
         <h1 className="text-2xl font-bold text-slate-100 mt-1">Estadísticas en Tiempo Real (CU22)</h1>
         <p className="text-xs text-slate-400 mt-1">Sesión: {user?.name} ({user?.role})</p>
       </div>
+
+      {['Administrador', 'Coordinador'].includes(user?.role) && pendientesDocentes > 0 && (
+        <div
+          onClick={() => navigate('/admin/postulaciones-docentes')}
+          className="glass-panel p-5 rounded-2xl border border-slate-800/80 bg-slate-900/20 cursor-pointer hover:border-blue-500/30 hover:bg-slate-900/30 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+        >
+          <div>
+            <span className="text-[10px] font-semibold text-blue-400 uppercase tracking-widest">Postulaciones docentes — CU25</span>
+            <p className="text-sm font-medium text-slate-200 mt-1">
+              {pendientesDocentes === 1
+                ? '1 docente se postuló y espera su revisión'
+                : `${pendientesDocentes} docentes se postularon y esperan su revisión`}
+            </p>
+            <p className="text-xs text-slate-500 mt-1">Revise datos, hoja de vida y acepte o rechace cada postulación.</p>
+          </div>
+          <span className="inline-flex justify-center px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold border border-slate-700/50 transition-colors">
+            Revisar postulaciones →
+          </span>
+        </div>
+      )}
 
       {error && (
         <div className="glass-panel p-8 rounded-2xl border-l-4 border-red-500 max-w-2xl mx-auto text-center space-y-4">
@@ -358,7 +425,7 @@ export default function DashboardPage() {
                   >
                     <div>
                       <h4 className="font-semibold text-xs text-slate-200 hover:text-blue-400">{c.title}</h4>
-                      <p className="text-[10px] text-slate-500 mt-1 leading-relaxed">{c.desc.slice(0, 50)}...</p>
+                      <p className="text-[10px] text-slate-500 mt-1 leading-relaxed">{c.desc.slice(0, 55)}...</p>
                     </div>
                   </div>
                 ))}

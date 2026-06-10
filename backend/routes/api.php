@@ -5,6 +5,9 @@ use App\Http\Controllers\Autenticacion\UserController;
 use App\Http\Controllers\RegistroPostulantes\PostulanteController;
 use App\Http\Controllers\RegistroPostulantes\PagoController;
 use App\Http\Controllers\PlanificacionAcademica\DocenteController;
+use App\Http\Controllers\PlanificacionAcademica\HorarioGrupoMateriaController;
+use App\Http\Controllers\PlanificacionAcademica\MiHorarioController;
+use App\Http\Controllers\PlanificacionAcademica\PostulacionDocenteController;
 use App\Http\Controllers\PlanificacionAcademica\GrupoController;
 use App\Http\Controllers\PlanificacionAcademica\SimulacroController;
 use App\Http\Controllers\Evaluacion\EvaluacionController;
@@ -34,6 +37,10 @@ Route::post('/postulantes/delete-by-email', [PostulanteController::class, 'delet
 Route::post('/postulantes/{postulante}/pago', [PagoController::class, 'crearSesion']);
 Route::post('/stripe/webhook', [PagoController::class, 'webhook']);
 Route::post('/pagos/verificar', [PagoController::class, 'verificarPago']);
+
+// CU24 - Postulacion publica de docentes (sin autenticacion)
+Route::get('/postulaciones-docentes/areas', [PostulacionDocenteController::class, 'areas']);
+Route::post('/postulaciones-docentes', [PostulacionDocenteController::class, 'store']);
 
 // Chatbot (Público)
 Route::post('/chatbot/pregunta', [ChatbotController::class, 'pregunta']);
@@ -66,6 +73,11 @@ Route::middleware('auth:sanctum')->group(function () {
     // Notificaciones comunes
     Route::get('/notificaciones', [NotificacionController::class, 'index']);
     Route::post('/notificaciones/{id}/leer', [NotificacionController::class, 'marcarLeida']);
+
+    // Horario personal (Postulante y Docente)
+    Route::middleware('role:Postulante,Docente')->group(function () {
+        Route::get('/mi-horario', [MiHorarioController::class, 'show']);
+    });
 
     // Solo Administrador
     Route::middleware('role:Administrador')->group(function () {
@@ -110,11 +122,24 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/grupos/asignacion-masiva', [GrupoController::class, 'asignacionMasiva']);
         Route::post('/grupos/reasignar', [GrupoController::class, 'reasignar']);
 
-        // Docentes
+        // Docentes — horarios institucionales (solo lectura) y asignación
+        Route::get('/materias', [HorarioGrupoMateriaController::class, 'materias']);
+        Route::get('/horarios-grupo-materia', [HorarioGrupoMateriaController::class, 'index']);
+
         Route::get('/docentes', [DocenteController::class, 'index']);
         Route::post('/docentes', [DocenteController::class, 'store']);
         Route::get('/docentes/{docente}', [DocenteController::class, 'show']);
         Route::post('/docentes/asignar', [DocenteController::class, 'asignar']);
+    });
+
+    // CU25 - Revision y aceptacion de postulaciones docentes (Administrador / Coordinador)
+    Route::middleware('role:Administrador,Coordinador')->group(function () {
+        Route::get('/postulaciones-docentes', [PostulacionDocenteController::class, 'index']);
+        Route::get('/postulaciones-docentes/{docente}/hoja-vida', [PostulacionDocenteController::class, 'hojaVida']);
+        Route::get('/postulaciones-docentes/{docente}/respaldos', [PostulacionDocenteController::class, 'respaldos']);
+        Route::get('/postulaciones-docentes/{docente}', [PostulacionDocenteController::class, 'show']);
+        Route::post('/postulaciones-docentes/{docente}/aceptar', [PostulacionDocenteController::class, 'aceptar']);
+        Route::post('/postulaciones-docentes/{docente}/rechazar', [PostulacionDocenteController::class, 'rechazar']);
     });
 
     // Rutas de Simulacro (CU23) - Solo rol Postulante

@@ -6,20 +6,44 @@ use App\Http\Controllers\Controller;
 
 use App\Models\PlanificacionAcademica\AsignacionDocente;
 use App\Models\PlanificacionAcademica\Docente;
+use App\Models\PlanificacionAcademica\Grupo;
+use App\Models\PlanificacionAcademica\HorarioGrupoMateria;
 use App\Models\PlanificacionAcademica\Materia;
+use App\Services\PlanificacionAcademica\HorarioConflictService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class DocenteController extends Controller
 {
+    public function __construct(
+        private HorarioConflictService $horarioConflictService
+    ) {}
     /**
-     * Listar docentes con carga actual
+     * CU12: Listar docentes aceptados con carga actual.
+     * Solo docentes con estado "Aceptado" pueden ser asignados a grupos.
+     * Las postulaciones pendientes (CU24) se gestionan en PostulacionDocenteController.
      */
     public function index(): JsonResponse
     {
         $docentes = Docente::withCount('asignaciones as carga_actual')
+            ->with(['asignaciones.grupo', 'asignaciones.materia'])
+            ->where('estado', 'Aceptado')
             ->orderBy('apellidos')
-            ->get();
+            ->get()
+            ->map(function ($docente) {
+                $docente->asignaciones->each(function ($asig) {
+                    $asig->horarios = $this->horarioConflictService
+                        ->obtenerHorarios($asig->grupo_id, $asig->materia_id)
+                        ->map(fn ($h) => [
+                            'dia_semana' => $h->dia_semana,
+                            'dia_nombre' => $h->dia_nombre,
+                            'hora_inicio' => substr((string) $h->hora_inicio, 0, 5),
+                            'hora_fin' => substr((string) $h->hora_fin, 0, 5),
+                        ]);
+                });
+
+                return $docente;
+            });
 
         return response()->json($docentes);
     }
@@ -38,7 +62,10 @@ class DocenteController extends Controller
             'correo' => 'required|email|max:150',
         ]);
 
-        $docente = Docente::create($validated);
+        $docente = Docente::create([
+            ...$validated,
+            'estado' => 'Aceptado',
+        ]);
         return response()->json(['message' => 'Docente registrado.', 'docente' => $docente], 201);
     }
 
@@ -62,6 +89,13 @@ class DocenteController extends Controller
 
         // CU12 - Paso 3: C_Ctrl -> E_Doc : + findOrFail(docente_id)
         $docente = Docente::findOrFail($request->docente_id);
+
+        // Solo docentes aceptados por Administrador/Coordinador (CU25) pueden ser asignados
+        if ($docente->estado !== 'Aceptado') {
+            return response()->json([
+                'message' => 'Este docente aun no ha sido aceptado. Revise la postulacion en Postulaciones Docentes.',
+            ], 422);
+        }
 
         // CU12 - Paso 4: E_Doc --> C_Ctrl : + CargaHorariaValida
         // Validar carga maxima (4 grupos por docente)
@@ -102,6 +136,17 @@ class DocenteController extends Controller
             ], 422);
         }
 
+        // Validar choque de horarios con otras asignaciones del docente
+        $conflicto = $this->horarioConflictService->detectarChoque(
+            (int) $request->docente_id,
+            (int) $request->grupo_id,
+            (int) $request->materia_id
+        );
+
+        if ($conflicto) {
+            return response()->json($conflicto, 422);
+        }
+
         // CU12 - Paso 9: C_Ctrl -> E_AsigDoc : + create(datos)
         $asignacion = AsignacionDocente::create([
             'docente_id' => $request->docente_id,
@@ -121,8 +166,18 @@ class DocenteController extends Controller
      */
     public function show(Docente $docente): JsonResponse
     {
-        return response()->json(
-            $docente->load('asignaciones.grupo', 'asignaciones.materia')
-        );
+        $docente->load('asignaciones.grupo', 'asignaciones.materia');
+        $docente->asignaciones->each(function ($asig) {
+            $asig->horarios = $this->horarioConflictService
+                ->obtenerHorarios($asig->grupo_id, $asig->materia_id)
+                ->map(fn ($h) => [
+                    'dia_semana' => $h->dia_semana,
+                    'dia_nombre' => $h->dia_nombre,
+                    'hora_inicio' => substr((string) $h->hora_inicio, 0, 5),
+                    'hora_fin' => substr((string) $h->hora_fin, 0, 5),
+                ]);
+        });
+
+        return response()->json($docente);
     }
 }

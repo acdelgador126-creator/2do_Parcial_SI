@@ -21,7 +21,7 @@ class AsignacionCarreraController extends Controller
     {
         $user = $request->user();
 
-        $gestionActiva = \App\Models\AdmisionCarreras\AdmisionCarreras\Gestion::activa()->first();
+        $gestionActiva = \App\Models\AdmisionCarreras\Gestion::activa()->first();
         if (!$gestionActiva) {
             return response()->json(['message' => 'No hay gestión activa configurada.'], 422);
         }
