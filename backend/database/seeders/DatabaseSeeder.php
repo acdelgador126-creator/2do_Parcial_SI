@@ -81,7 +81,7 @@ class DatabaseSeeder extends Seeder
                 'id' => 1,
                 'name' => 'Admin CUP',
                 'email' => 'admin@ficct.uagrm.edu.bo',
-                'password' => '$2y$12$lqHi9fjbEsurjtBPXOuYVO6ZasIkwKxI2/OmiLqufO1824T9tWGy6', // Admin2026!
+                'password' => 'Admin2026!',
                 'role' => 'Administrador',
                 'active' => true,
             ],
@@ -89,7 +89,7 @@ class DatabaseSeeder extends Seeder
                 'id' => 2,
                 'name' => 'Coordinador CUP',
                 'email' => 'coordinador@ficct.uagrm.edu.bo',
-                'password' => '$2y$12$WxUhNnTFpDvStSZUlTt/uuH7iKvbPzEFSPMnPJRv0LYBT8p0ZSfy6', // Coord2026!
+                'password' => 'Coord2026!',
                 'role' => 'Coordinador',
                 'active' => true,
             ],
@@ -97,7 +97,7 @@ class DatabaseSeeder extends Seeder
                 'id' => 3,
                 'name' => 'Docente Test',
                 'email' => 'docente@ficct.uagrm.edu.bo',
-                'password' => '$2y$12$Kc6lGL23.CF8Fv8KpzXhxOn/XTMidsOMVNj5UjYoNnQeLusoGghGS', // Docente2026!
+                'password' => 'Docente2026!',
                 'role' => 'Docente',
                 'active' => true,
             ],
@@ -126,13 +126,13 @@ class DatabaseSeeder extends Seeder
                 'id' => 1999,
                 'name' => 'Postulante Test',
                 'email' => $postulanteEmail,
-                'password' => '$2y$12$4in5.khUQ0ZDJQ/LiovlP.tscLJmECsyaDztgbyGnIm2g12YMNgEi', // Post2026!
+                'password' => 'Post2026!',
                 'role' => 'Postulante',
                 'active' => true,
             ]);
         } else {
             $postulanteUser->update([
-                'password' => '$2y$12$4in5.khUQ0ZDJQ/LiovlP.tscLJmECsyaDztgbyGnIm2g12YMNgEi',
+                'password' => 'Post2026!',
                 'active' => true,
             ]);
         }
