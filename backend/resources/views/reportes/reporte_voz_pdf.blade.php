@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <title>{{ $titulo }}</title>
@@ -8,7 +9,11 @@
             margin: 16mm 10mm 18mm 10mm;
         }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
         body {
             font-family: 'DejaVu Sans', sans-serif;
@@ -125,27 +130,74 @@
             background-color: #f1f5f9;
         }
 
-        .col-num { width: 3%; text-align: center; }
-        .col-ci { width: 7%; }
-        .col-name { width: 12%; }
-        .col-sexo { width: 4%; text-align: center; }
-        .col-estado { width: 9%; }
-        .col-turno { width: 6%; }
-        .col-grupo { width: 8%; }
-        .col-carrera { width: 11%; }
-        .col-via { width: 6%; }
-        .col-prom { width: 5%; text-align: center; font-weight: bold; }
+        .col-num {
+            width: 3%;
+            text-align: center;
+        }
+
+        .col-ci {
+            width: 7%;
+        }
+
+        .col-name {
+            width: 12%;
+        }
+
+        .col-sexo {
+            width: 4%;
+            text-align: center;
+        }
+
+        .col-estado {
+            width: 9%;
+        }
+
+        .col-turno {
+            width: 6%;
+        }
+
+        .col-grupo {
+            width: 8%;
+        }
+
+        .col-carrera {
+            width: 11%;
+        }
+
+        .col-via {
+            width: 6%;
+        }
+
+        .col-prom {
+            width: 5%;
+            text-align: center;
+            font-weight: bold;
+        }
 
         .estado {
             font-size: 6.5px;
             font-weight: bold;
         }
 
-        .estado-admitido { color: #0369a1; }
-        .estado-aprobado { color: #047857; }
-        .estado-reprobado { color: #b91c1c; }
-        .estado-pendiente { color: #b45309; }
-        .estado-otro { color: #4338ca; }
+        .estado-admitido {
+            color: #0369a1;
+        }
+
+        .estado-aprobado {
+            color: #047857;
+        }
+
+        .estado-reprobado {
+            color: #b91c1c;
+        }
+
+        .estado-pendiente {
+            color: #b45309;
+        }
+
+        .estado-otro {
+            color: #4338ca;
+        }
 
         .footer {
             position: fixed;
@@ -167,6 +219,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="header">
         <div class="institution">Universidad Autónoma Gabriel René Moreno</div>
@@ -203,66 +256,74 @@
         <div class="meta-row"><strong>Total de registros:</strong> {{ count($resultados) }}</div>
     </div>
 
-    <table class="data">
-        <thead>
-            <tr>
-                <th class="col-num">Nº</th>
-                <th class="col-name">Postulante</th>
-                <th class="col-ci">CI</th>
-                <th class="col-sexo">Sexo</th>
-                <th class="col-estado">Estado</th>
-                <th class="col-turno">Turno</th>
-                <th class="col-grupo">Grupo</th>
-                <th class="col-carrera">1ra Opción</th>
-                <th class="col-carrera">2da Opción</th>
-                <th class="col-carrera">Carrera Asignada</th>
-                <th class="col-via">Vía</th>
-                <th class="col-prom">Promedio</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach($resultados as $i => $p)
-                @php
-                    $grupo = $p->asignacionGrupo?->grupo;
-                    $grupoLabel = $grupo ? 'G' . $grupo->numero . ' (' . $grupo->turno . ')' : '-';
-                    $estadoClass = match ($p->estado) {
-                        'Admitido' => 'estado-admitido',
-                        'Aprobado' => 'estado-aprobado',
-                        'Reprobado' => 'estado-reprobado',
-                        'Pendiente Reasignacion' => 'estado-pendiente',
-                        default => 'estado-otro',
-                    };
-                    $promedio = $p->promedio_general;
-                    if ($promedio !== null && $promedio !== '' && (float) $promedio > 0) {
-                        $promedio = number_format((float) $promedio, 2, '.', '');
-                    } else {
-                        $promedio = '-';
-                    }
-                @endphp
+    @php $globalIndex = 0; @endphp
+    @foreach(($chunks ?? collect([$resultados])) as $chunkIndex => $chunk)
+        @if($chunkIndex > 0)
+            <div style="page-break-before: always;"></div>
+        @endif
+        <table class="data">
+            <thead></thead>
+            <table class="data">
                 <tr>
-                    <td class="col-num">{{ $i + 1 }}</td>
-                    <td class="col-name">{{ $p->apellidos }}, {{ $p->nombres }}</td>
-                    <td class="col-ci">{{ $p->ci }}</td>
-                    <td class="col-sexo">{{ $p->sexo === 'M' ? 'M' : 'F' }}</td>
-                    <td class="col-estado"><span class="estado {{ $estadoClass }}">{{ $p->estado }}</span></td>
-                    <td class="col-turno">{{ $p->turno_preferencia ?? '-' }}</td>
-                    <td class="col-grupo">{{ $grupoLabel }}</td>
-                    <td class="col-carrera">{{ $p->primeraOpcion?->nombre ?? '-' }}</td>
-                    <td class="col-carrera">{{ $p->segundaOpcion?->nombre ?? '-' }}</td>
-                    <td class="col-carrera">{{ $p->admision?->carrera?->nombre ?? '-' }}</td>
-                    <td class="col-via">{{ $p->admision?->via ?? '-' }}</td>
-                    <td class="col-prom">{{ $promedio }}</td>
+                    <th class="col-num">Nº</th>
+                    <th class="col-name">Postulante</th>
+                    <th class="col-ci">CI</th>
+                    <th class="col-sexo">Sexo</th>
+                    <th class="col-estado">Estado</th>
+                    <th class="col-turno">Turno</th>
+                    <th class="col-grupo">Grupo</th>
+                    <th class="col-carrera">1ra Opción</th>
+                    <th class="col-carrera">2da Opción</th>
+                    <th class="col-carrera">Carrera Asignada</th>
+                    <th class="col-via">Vía</th>
+                    <th class="col-prom">Promedio</th>
                 </tr>
-            @endforeach
-        </tbody>
-    </table>
+                </thead>
+                <tbody>
+                    @foreach($chunk as $p)
+                        @php
+                            $globalIndex++;
+                            $grupo = $p->asignacionGrupo?->grupo;
+                            $grupoLabel = $grupo ? 'G' . $grupo->numero . ' (' . $grupo->turno . ')' : '-';
+                            $estadoClass = match ($p->estado) {
+                                'Admitido' => 'estado-admitido',
+                                'Aprobado' => 'estado-aprobado',
+                                'Reprobado' => 'estado-reprobado',
+                                'Pendiente Reasignacion' => 'estado-pendiente',
+                                default => 'estado-otro',
+                            };
+                            $promedio = $p->promedio_general;
+                            if ($promedio !== null && $promedio !== '' && (float) $promedio > 0) {
+                                $promedio = number_format((float) $promedio, 2, '.', '');
+                            } else {
+                                $promedio = '-';
+                            }
+                        @endphp
+                        <tr>
+                            <td class="col-num">{{ $globalIndex }}</td>
+                            <td class="col-name">{{ $p->apellidos }}, {{ $p->nombres }}</td>
+                            <td class="col-ci">{{ $p->ci }}</td>
+                            <td class="col-sexo">{{ $p->sexo === 'M' ? 'M' : 'F' }}</td>
+                            <td class="col-estado"><span class="estado {{ $estadoClass }}">{{ $p->estado }}</span></td>
+                            <td class="col-turno">{{ $p->turno_preferencia ?? '-' }}</td>
+                            <td class="col-grupo">{{ $grupoLabel }}</td>
+                            <td class="col-carrera">{{ $p->primeraOpcion?->nombre ?? '-' }}</td>
+                            <td class="col-carrera">{{ $p->segundaOpcion?->nombre ?? '-' }}</td>
+                            <td class="col-carrera">{{ $p->admision?->carrera?->nombre ?? '-' }}</td>
+                            <td class="col-via">{{ $p->admision?->via ?? '-' }}</td>
+                            <td class="col-prom">{{ $promedio }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+    @endforeach
+        <div class="summary">
+            Documento generado automáticamente — {{ count($resultados) }} registro(s)
+        </div>
 
-    <div class="summary">
-        Documento generado automáticamente — {{ count($resultados) }} registro(s)
-    </div>
-
-    <div class="footer">
-        FICCT — UAGRM | Reporte oficial del Sistema CUP | {{ $fecha }}
-    </div>
+        <div class="footer">
+            FICCT — UAGRM | Reporte oficial del Sistema CUP | {{ $fecha }}
+        </div>
 </body>
+
 </html>

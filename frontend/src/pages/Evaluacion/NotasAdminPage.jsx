@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import api from '../../api/axios';
 
 export default function NotasAdminPage() {
@@ -331,12 +331,12 @@ export default function NotasAdminPage() {
                   <th className="py-2 px-2">Nombres</th>
                   <th className="py-2 px-2"></th>
                   {materias.map((m) => (
-                    <>
+                    <Fragment key={m.id}>
                       <th key={`${m.id}-p1`} className="py-2 px-1 border-l border-slate-850 text-center w-10">P1</th>
                       <th key={`${m.id}-p2`} className="py-2 px-1 text-center w-10">P2</th>
                       <th key={`${m.id}-ef`} className="py-2 px-1 text-center w-10">EF</th>
                       <th key={`${m.id}-pf`} className="py-2 px-1 text-center w-12 bg-slate-900/30 text-slate-400">PF</th>
-                    </>
+                    </Fragment>
                   ))}
                 </tr>
               </thead>
@@ -365,7 +365,7 @@ export default function NotasAdminPage() {
                       const pf = getPromedioFinal(p, m.id);
 
                       return (
-                        <>
+                        <Fragment key={m.id}>
                           {/* Examen 1 */}
                           <td 
                             onClick={() => openEditModal(p, m, 1, p1)}
@@ -393,7 +393,7 @@ export default function NotasAdminPage() {
                           }`}>
                             {pf}
                           </td>
-                        </>
+                        </Fragment>
                       );
                     })}
                   </tr>

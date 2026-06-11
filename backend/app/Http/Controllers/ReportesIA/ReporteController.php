@@ -134,11 +134,11 @@ class ReporteController extends Controller
         $pendientes = 0;
 
         DB::transaction(function () use ($aprobados, $gestion, $coordinador, &$asignados, &$reasignados2da, &$pendientes) {
-            
+
             // 1. Limpiar las admisiones previas de esta gestión para recalcular desde cero de forma justa
             $ids = $aprobados->pluck('id');
             Admision::whereIn('postulante_id', $ids)->delete();
-            
+
             // 2. Restaurar todos los cupos disponibles al máximo original
             DB::table('cupos_gestion')->where('gestion_id', $gestion->id)->update([
                 'cupos_disponibles' => DB::raw('cupo_maximo')
@@ -269,10 +269,12 @@ class ReporteController extends Controller
         $cuposCarreras = DB::table('carreras')
             ->leftJoin('cupos_gestion', function ($join) use ($gestion) {
                 $join->on('carreras.id', '=', 'cupos_gestion.carrera_id')
-                     ->where('cupos_gestion.gestion_id', '=', $gestion->id);
+                    ->where('cupos_gestion.gestion_id', '=', $gestion->id);
             })
-            ->select('carreras.id', 'carreras.nombre', 
-                DB::raw('COALESCE(cupos_gestion.cupo_maximo, 0) as cupo_maximo'), 
+            ->select(
+                'carreras.id',
+                'carreras.nombre',
+                DB::raw('COALESCE(cupos_gestion.cupo_maximo, 0) as cupo_maximo'),
                 DB::raw('COALESCE(cupos_gestion.cupos_disponibles, 0) as cupos_disponibles')
             )
             ->get()
@@ -308,7 +310,9 @@ class ReporteController extends Controller
             ->join('postulantes', 'asignaciones_grupo.postulante_id', '=', 'postulantes.id')
             ->join('grupos', 'asignaciones_grupo.grupo_id', '=', 'grupos.id')
             ->where('grupos.gestion_id', $gestion->id)
-            ->select('grupos.numero', 'grupos.turno', 
+            ->select(
+                'grupos.numero',
+                'grupos.turno',
                 DB::raw("COUNT(CASE WHEN postulantes.estado IN ('Aprobado', 'Admitido') THEN 1 END) as aprobados"),
                 DB::raw("COUNT(*) as total")
             )
@@ -352,7 +356,7 @@ class ReporteController extends Controller
     {
         // CU22 - Caso B - Paso 2: B_Dash -> C_Rep : + getNotasIndividuales(postulanteId)
         $user = $request->user();
-        
+
         if ($user->role === 'Postulante') {
             $postulante = Postulante::where('user_id', $user->id)->first();
             if (!$postulante) {
@@ -497,7 +501,8 @@ class ReporteController extends Controller
                     ->leftJoin('notas_finales', 'materias.id', '=', 'notas_finales.materia_id')
                     ->leftJoin('postulantes', 'notas_finales.postulante_id', '=', 'postulantes.id')
                     ->where('postulantes.gestion_id', $gestion->id)
-                    ->select('materias.nombre', 
+                    ->select(
+                        'materias.nombre',
                         DB::raw('ROUND(AVG(notas_finales.promedio), 2) as promedio_nota'),
                         DB::raw('MAX(notas_finales.promedio) as nota_maxima'),
                         DB::raw('MIN(notas_finales.promedio) as nota_minima'),
@@ -530,7 +535,9 @@ class ReporteController extends Controller
                     ->join('postulantes', 'asignaciones_grupo.postulante_id', '=', 'postulantes.id')
                     ->join('grupos', 'asignaciones_grupo.grupo_id', '=', 'grupos.id')
                     ->where('postulantes.gestion_id', $gestion->id)
-                    ->select('grupos.numero', 'grupos.turno',
+                    ->select(
+                        'grupos.numero',
+                        'grupos.turno',
                         DB::raw("COUNT(CASE WHEN postulantes.estado = 'Aprobado' THEN 1 END) as cantidad_aprobados"),
                         DB::raw('COUNT(*) as total_estudiantes')
                     )
@@ -590,7 +597,7 @@ class ReporteController extends Controller
             } else {
                 $query->where(function ($q) use ($cId) {
                     $q->where('primera_opcion_id', $cId)
-                      ->orWhere('segunda_opcion_id', $cId);
+                        ->orWhere('segunda_opcion_id', $cId);
                 });
             }
         }
@@ -870,6 +877,7 @@ class ReporteController extends Controller
      */
     public function exportarReporteVoz(Request $request)
     {
+        \Log::info("exportarReporteVoz llamado con: " . json_encode($request->all()));
         $request->validate([
             'filtros' => 'required|array',
             'formato' => 'required|in:pdf,excel',
@@ -888,23 +896,42 @@ class ReporteController extends Controller
 
         $resultados = $this->buildVoiceQuery($filtros);
 
+        $response = null;
         if ($request->formato === 'pdf') {
+            // Aumentar memoria para PDFs grandes (1600+ registros)
+            ini_set('memory_limit', '1024M');
+            set_time_limit(120);
+            // Dividir resultados en bloques para que DomPDF no agote la memoria
+            // renderizando una sola tabla HTML gigante
+            $chunks = $resultados->chunk(500);
             $pdf = Pdf::loadView('reportes.reporte_voz_pdf', [
                 'titulo' => 'Reporte por Comando de Voz (IA — CU21)',
                 'fecha' => now()->format('d/m/Y H:i:s'),
                 'filtros' => $filtros,
                 'resultados' => $resultados,
+                'chunks' => $chunks,
             ])
                 ->setPaper('letter', 'landscape')
                 ->setOption('isHtml5ParserEnabled', true)
                 ->setOption('isRemoteEnabled', false)
                 ->setOption('defaultFont', 'DejaVu Sans');
 
-            return $pdf->download('reporte_voz_' . time() . '.pdf');
+            $response = $pdf->download('reporte_voz_' . time() . '.pdf');
+        } else {
+            // Excel
+            $response = Excel::download(new ReporteVozExport($resultados), 'reporte_voz_' . time() . '.xlsx');
         }
 
-        // Excel
-        return Excel::download(new ReporteVozExport($resultados), 'reporte_voz_' . time() . '.xlsx');
+        $origin = $request->header('Origin') ?: '*';
+        $response->headers->set('Access-Control-Allow-Origin', $origin);
+        if ($origin !== '*') {
+            $response->headers->set('Access-Control-Allow-Credentials', 'true');
+        }
+        $response->headers->set('Access-Control-Allow-Headers', '*');
+        $response->headers->set('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
+        $response->headers->set('Access-Control-Expose-Headers', 'Content-Disposition');
+
+        return $response;
     }
 
     /**
@@ -949,7 +976,7 @@ class ReporteController extends Controller
                     // Para otros estados, filtrar por preferencia de carrera
                     $query->where(function ($q) use ($carrera) {
                         $q->where('primera_opcion_id', $carrera->id)
-                          ->orWhere('segunda_opcion_id', $carrera->id);
+                            ->orWhere('segunda_opcion_id', $carrera->id);
                     });
                 }
             }

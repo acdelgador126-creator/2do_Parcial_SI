@@ -98,10 +98,12 @@ export default function PostulacionesDocentesPage() {
   useEffect(() => { fetchRows(); }, [fetchRows]);
 
   const abrirDetalle = async (docenteId) => {
+    // CU25 - Paso 1: Act -> B_Int : + SeleccionarPostulacion(docenteId)
     setDetalleLoading(true);
     limpiarDocumentos();
     setDetalle({ docente: { id: docenteId } });
     try {
+      // CU25 - Paso 2: B_Int -> C_Ctrl : + revisar(docenteId)
       const res = await api.get(`/postulaciones-docentes/${docenteId}`);
       setDetalle(res.data);
       if (res.data.tiene_hoja_vida) {
@@ -129,6 +131,8 @@ export default function PostulacionesDocentesPage() {
       const res = await api.post(`/postulaciones-docentes/${detalle.docente.id}/aceptar`, {
         confirmar_especialidad: confirmarEspecialidad,
       });
+      // CU25 - Paso 11: C_Ctrl --> B_Int : + ConfirmarAceptacion()
+      // CU25 - Paso 12: B_Int --> Act : + MostrarDocenteAceptado()
       setFeedback({ type: 'success', text: res.data?.message || 'Docente aceptado.' });
       cerrarDetalle();
       fetchRows();

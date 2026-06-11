@@ -1,11 +1,17 @@
 <?php
 
+require __DIR__ . '/vendor/autoload.php';
+
+// Cargar variables de entorno desde .env
+$dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
+$dotenv->safeLoad();
+
 // Conectar a la base de datos PostgreSQL para obtener TODOS los CIs de postulantes
-$host = '127.0.0.1';
-$port = '5432';
-$dbname = 'ficct_cup_db';
-$user = 'cup_user';
-$password = 'cup2026';
+$host = $_ENV['DB_HOST'] ?? '127.0.0.1';
+$port = $_ENV['DB_PORT'] ?? '5432';
+$dbname = $_ENV['DB_DATABASE'] ?? 'ficct_cup';
+$user = $_ENV['DB_USERNAME'] ?? 'postgres';
+$password = $_ENV['DB_PASSWORD'] ?? 'cup2026';
 
 try {
     $pdo = new PDO("pgsql:host=$host;port=$port;dbname=$dbname", $user, $password);
@@ -32,9 +38,9 @@ $f3 = fopen('public/notas_examen3.csv', 'w');
 
 // Some will fail (scores below 60), some will pass (scores above 60)
 foreach($cis as $ci) {
-    fputcsv($f1, [$ci, rand(30, 100)]);
-    fputcsv($f2, [$ci, rand(30, 100)]);
-    fputcsv($f3, [$ci, rand(40, 100)]);
+    fputcsv($f1, [$ci, rand(30, 100)], ",", '"', "\\");
+    fputcsv($f2, [$ci, rand(30, 100)], ",", '"', "\\");
+    fputcsv($f3, [$ci, rand(40, 100)], ",", '"', "\\");
 }
 
 fclose($f1);

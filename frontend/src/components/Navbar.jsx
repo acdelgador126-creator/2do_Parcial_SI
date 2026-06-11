@@ -327,6 +327,7 @@ export default function Navbar() {
           
           <div className="h-6 w-px bg-slate-800"></div>
 
+          {/* CU02 - Paso 1: Act -> B_Int : + SolicitarCerrarSesion() */}
           <button 
             onClick={logout} 
             className="text-xs font-semibold text-red-400 hover:text-red-300 hover:bg-red-500/10 px-3 py-1.5 rounded-lg transition-all duration-200 cursor-pointer"
@@ -476,6 +477,7 @@ export default function Navbar() {
           
           <div className="border-t border-slate-850 my-2"></div>
           
+          {/* CU02 - Paso 1: Act -> B_Int : + SolicitarCerrarSesion() */}
           <button 
             onClick={() => {
               setMenuOpen(false);

@@ -87,10 +87,12 @@ export default function DocentesPage() {
   };
 
   const asignarDocente = async (e, forzarEspecialidad = false) => {
+    // CU12 - Paso 1: Act -> B_Int : + AsignarDocente(docenteId, grupoId, materiaId)
     if (e) e.preventDefault();
     setMessage('');
 
     try {
+      // CU12 - Paso 2: B_Int -> C_Ctrl : + asignar(request)
       await api.post('/docentes/asignar', {
         docente_id: parseInt(docenteId, 10),
         grupo_id: parseInt(grupoId, 10),
@@ -98,6 +100,8 @@ export default function DocentesPage() {
         confirmar_especialidad: forzarEspecialidad,
       });
 
+      // CU12 - Paso 10: C_Ctrl --> B_Int : + RetornarExito()
+      // CU12 - Paso 11: B_Int --> Act : + ActualizarMatrizDocente()
       showMsg('Docente asignado al grupo y materia. El horario institucional quedó vinculado sin choques.', 'success');
       fetchData();
     } catch (err) {

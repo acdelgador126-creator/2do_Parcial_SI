@@ -65,6 +65,9 @@ export default function PostulacionDocentePage() {
     setError('');
     if (!validar()) return;
 
+    // CU24 - Paso 1: Act -> B_Int : + CompletarFormulario(datos, especialidad, areaId)
+    // CU24 - Paso 2: Act -> B_Int : + ClicEnviarPostulacion()
+
     setLoading(true);
     try {
       const fd = new FormData();
@@ -72,9 +75,13 @@ export default function PostulacionDocentePage() {
       fd.append('hoja_vida', hojaVida);
       if (respaldos) fd.append('respaldos', respaldos);
 
+      // CU24 - Paso 3: B_Int -> C_Ctrl : + store(request)
       await api.post('/postulaciones-docentes', fd, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
+
+      // CU24 - Paso 10: C_Ctrl --> B_Int : + RetornarExito()
+      // CU24 - Paso 11: B_Int --> Act : + MostrarConfirmacionPostulacion()
       setStep('success');
     } catch (err) {
       const data = err.response?.data;
@@ -227,6 +234,7 @@ export default function PostulacionDocentePage() {
                 </div>
 
                 <div className="md:col-span-2 mt-2">
+                  {/* CU24 - Paso 2: Act -> B_Int : + ClicEnviarPostulacion() */}
                   <button
                     type="submit"
                     disabled={loading}

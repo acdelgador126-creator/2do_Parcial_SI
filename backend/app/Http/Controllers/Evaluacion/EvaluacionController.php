@@ -134,6 +134,9 @@ class EvaluacionController extends Controller
             'file' => 'required|file|mimes:csv,txt',
         ]);
 
+        // Aumentar el límite de ejecución para procesamiento pesado de 1,600+ registros
+        set_time_limit(300);
+
         $materiaId = $request->materia_id;
         $numeroExamen = $request->numero_examen;
         $file = $request->file('file');
@@ -145,10 +148,38 @@ class EvaluacionController extends Controller
             array_shift($rows);
         }
 
+        // Extraer todos los CIs del CSV para consulta masiva en una sola query
+        $cis = [];
+        foreach ($rows as $row) {
+            if (count($row) >= 2) {
+                $cis[] = trim($row[0]);
+            }
+        }
+
+        // Pre-cargar todos los postulantes por su CI (evita 1600+ consultas SELECT)
+        $postulantesByCi = Postulante::whereIn('ci', $cis)->get()->keyBy('ci');
+
+        // Pre-cargar todos los exámenes previos de esta materia/número de examen
+        $postulanteIds = $postulantesByCi->pluck('id')->toArray();
+        $examenesPrevios = Examen::whereIn('postulante_id', $postulanteIds)
+            ->where('materia_id', $materiaId)
+            ->where('numero_examen', $numeroExamen)
+            ->get()
+            ->keyBy('postulante_id');
+
+        // Pre-cargar todos los exámenes de esta materia para los postulantes cargados
+        $todosExamenesMateria = Examen::whereIn('postulante_id', $postulanteIds)
+            ->where('materia_id', $materiaId)
+            ->get()
+            ->groupBy('postulante_id');
+
         $exitos = 0;
         $errores = [];
 
-        DB::transaction(function () use ($rows, $materiaId, $numeroExamen, $user, &$exitos, &$errores) {
+        DB::transaction(function () use (
+            $rows, $materiaId, $numeroExamen, $user, $postulantesByCi, 
+            $examenesPrevios, $todosExamenesMateria, &$exitos, &$errores
+        ) {
             foreach ($rows as $index => $row) {
                 if (count($row) < 2) {
                     $errores[] = "Línea " . ($index + 2) . ": Formato de columna inválido.";
@@ -163,22 +194,16 @@ class EvaluacionController extends Controller
                     continue;
                 }
 
-                // CU14 - Paso 3: C_Eval -> E_Post : + where('ci', ci)
-                // CU14 - Paso 4: E_Post --> C_Eval : + DatosPostulante
-                $postulante = Postulante::where('ci', $ci)->first();
+                // Obtener postulante pre-cargado
+                $postulante = $postulantesByCi->get($ci);
 
                 if (!$postulante) {
                     $errores[] = "CI {$ci} no encontrado en el sistema de postulantes.";
                     continue;
                 }
 
-                // CU14 Excepción E2: Omitir duplicados
-                $examenPrevio = Examen::where('postulante_id', $postulante->id)
-                    ->where('materia_id', $materiaId)
-                    ->where('numero_examen', $numeroExamen)
-                    ->first();
-
-                if ($examenPrevio) {
+                // CU14 Excepción E2: Omitir duplicados (usando pre-carga)
+                if ($examenesPrevios->has($postulante->id)) {
                     $errores[] = "Línea " . ($index + 2) . ": Se detectaron notas duplicadas para el CI {$ci} que serán omitidas.";
                     continue;
                 }
@@ -191,8 +216,24 @@ class EvaluacionController extends Controller
                     'nota' => $nota,
                 ]);
 
-                // CU14 - Paso 6: C_Eval -> C_Eval : + CalcularPromedioPonderado()
-                $resultadoPromedio = $this->calcularPromedioMateria($postulante->id, $materiaId);
+                // CU14 - Paso 6: C_Eval -> C_Eval : + CalcularPromedioPonderado() (en memoria)
+                $examenesExistentes = $todosExamenesMateria->get($postulante->id) ?? collect();
+                $examenesCollection = $examenesExistentes->concat([$examen]);
+
+                $promedio = 0.0;
+                foreach ($examenesCollection as $exam) {
+                    if ($exam->numero_examen == 1) {
+                        $promedio += $exam->nota * 0.30;
+                    } elseif ($exam->numero_examen == 2) {
+                        $promedio += $exam->nota * 0.30;
+                    } elseif ($exam->numero_examen == 3) {
+                        $promedio += $exam->nota * 0.40;
+                    }
+                }
+
+                $faltantes = 3 - $examenesCollection->count();
+                $observaciones = $faltantes > 0 ? "(Incompleto — faltan {$faltantes} exámenes)" : null;
+                $promedioRedondeado = round($promedio, 2);
 
                 // CU14 - Paso 7: C_Eval -> E_Nota : + update(promedio, estado)
                 NotaFinal::updateOrCreate(
@@ -201,20 +242,25 @@ class EvaluacionController extends Controller
                         'materia_id' => $materiaId,
                     ],
                     [
-                        'promedio' => $resultadoPromedio['promedio'],
-                        'estado' => $resultadoPromedio['promedio'] >= 60 ? 'APROBADO' : 'REPROBADO',
-                        'observaciones' => $resultadoPromedio['observaciones'],
+                        'promedio' => $promedioRedondeado,
+                        'estado' => $promedioRedondeado >= 60 ? 'APROBADO' : 'REPROBADO',
+                        'observaciones' => $observaciones,
                     ]
                 );
 
-                // Recalcular estado global del postulante en tiempo real (CU16 en tiempo real)
-                $this->actualizarEstadoDeUnPostulante($postulante->id);
+                // Recalcular estado global del postulante en tiempo real (CU16 de forma optimizada)
+                $estadoAnterior = $postulante->estado;
+                if (!in_array($estadoAnterior, ['Admitido', 'Pendiente Reasignacion', 'Aprobado', 'Reprobado'], true)) {
+                    if ($estadoAnterior !== 'En Evaluacion') {
+                        $postulante->update(['estado' => 'En Evaluacion']);
+                    }
+                }
 
                 // CU14 - Paso 8: C_Eval -> E_Aud : + create(log)
                 AuditoriaNota::create([
                     'examen_id' => $examen->id,
                     'usuario_modificador_id' => $user->id,
-                    'nota_anterior' => null, // Ya validamos que es nuevo registro
+                    'nota_anterior' => null,
                     'nota_nueva' => $nota,
                     'motivo' => 'Carga masiva CSV',
                 ]);
@@ -244,6 +290,7 @@ class EvaluacionController extends Controller
      */
     public function calcularPromediosGlobal(Request $request): JsonResponse
     {
+        set_time_limit(300);
         // CU15 - Paso 2: B_Console -> C_Ctrl : + calcularPromedios()
         $postulantes = Postulante::where('estado', 'En Evaluacion')->get();
         $materias = Materia::all();
@@ -291,6 +338,7 @@ class EvaluacionController extends Controller
      */
     public function determinarEstadosGlobal(Request $request): JsonResponse
     {
+        set_time_limit(300);
         // CU16 - Paso 2: B_Console -> C_Ctrl : + evaluarEstados()
         $postulantes = Postulante::whereIn('estado', ['En Evaluacion', 'Aprobado', 'Reprobado'])->get();
         $aprobados = 0;

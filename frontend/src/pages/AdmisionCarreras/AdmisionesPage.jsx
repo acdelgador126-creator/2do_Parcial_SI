@@ -104,6 +104,7 @@ export default function AdmisionesPage() {
   };
 
   const saveConfigUnificada = async (e) => {
+    // CU18 - Paso 1: Act -> B_Int : + EstablecerLimites(cuposPorCarrera)
     e.preventDefault();
     setLoading(true);
     setMessage(null);
@@ -128,7 +129,10 @@ export default function AdmisionesPage() {
         cupos: cuposPayload
       };
 
+      // CU18 - Paso 2: B_Int -> C_Ctrl : + store(request)
       await api.post('/cupos', payload);
+      
+      // CU18 - Paso 5: B_Int --> Act : + MostrarMensajeGuardado()
       setMessage({ type: 'success', text: 'Configuración de gestión y cupos guardada exitosamente.' });
       
       await fetchGestiones();
@@ -161,12 +165,16 @@ export default function AdmisionesPage() {
 
   // ==================== ASIGNACIÓN MASIVA (CU17) ====================
   const runAsignacionMasiva = async () => {
+    // CU17 - Paso 1: Act -> B_Admi : + ProcesarAsignacionCarreras()
     setLoading(true);
     setMessage(null);
     setResumen(null);
     try {
+      // CU17 - Paso 2: B_Admi -> C_Asig : + asignacionMasiva()
       const res = await api.post('/admisiones/procesar');
       setResumen(res.data.estadisticas || res.data.resumen);
+      
+      // CU17 - Paso 12: B_Admi --> Act : + MostrarResultadosYAlertas()
       setMessage({ type: 'success', text: res.data.message });
       await fetchCuposYAdmitidos();
     } catch (err) {
