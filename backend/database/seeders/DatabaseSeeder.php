@@ -9,7 +9,10 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        $sqlPath = base_path('../BASE_DE_DATOS/INSERTS_POBLACION_COMPLETA.sql');
+        $sqlPath = base_path('database/seeders/INSERTS_POBLACION_COMPLETA.sql');
+        if (!file_exists($sqlPath)) {
+            $sqlPath = base_path('../BASE_DE_DATOS/INSERTS_POBLACION_COMPLETA.sql');
+        }
         
         $this->command->info("Cargando y ejecutando $sqlPath...");
         
