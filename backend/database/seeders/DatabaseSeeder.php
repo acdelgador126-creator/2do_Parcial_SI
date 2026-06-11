@@ -20,8 +20,39 @@ class DatabaseSeeder extends Seeder
             throw new \Exception("No se encontró el archivo SQL en: " . $sqlPath);
         }
 
-        $sql = file_get_contents($sqlPath);
-        DB::unprepared($sql);
+        // Leer archivo línea por línea en una transacción para evitar socket write timeouts
+        $handle = fopen($sqlPath, "r");
+        if ($handle) {
+            DB::beginTransaction();
+            try {
+                $query = '';
+                while (($line = fgets($handle)) !== false) {
+                    $line = trim($line);
+                    // Ignorar comentarios y líneas vacías
+                    if ($line === '' || str_starts_with($line, '--')) {
+                        continue;
+                    }
+                    
+                    $query .= $line . ' ';
+                    
+                    // Si termina con punto y coma, ejecutamos el query acumulado
+                    if (str_ends_with($line, ';')) {
+                        $trimmedQuery = trim($query);
+                        $upperQuery = strtoupper($trimmedQuery);
+                        if ($upperQuery !== 'BEGIN;' && $upperQuery !== 'COMMIT;' && $upperQuery !== 'ROLLBACK;') {
+                            DB::unprepared($trimmedQuery);
+                        }
+                        $query = '';
+                    }
+                }
+                DB::commit();
+            } catch (\Exception $e) {
+                DB::rollBack();
+                fclose($handle);
+                throw $e;
+            }
+            fclose($handle);
+        }
         
         $this->command->info("Población de datos completada.");
 
